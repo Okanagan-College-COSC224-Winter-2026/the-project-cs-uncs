@@ -141,3 +141,7 @@ def check_result_md5(md5):
             ),
             200,
         )
+
+@fake.route("/practice/test", methods=["GET"]) # Make sure there's a leading slash
+def practice_test():
+    return {"course": "cosc 224"}, 200

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const BASE_URL = "http://localhost:5000";
 
@@ -9,7 +9,8 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     const navigate = useNavigate();
-    const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+    const location = useLocation();
+    const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
 
     useEffect(() => {
         ;(async () => {
@@ -18,19 +19,27 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
                     method: "GET",
                     credentials: "include",
                 });
-                if (response.ok) {
-                    setIsAuthed(true);
-                } else {
-                    setIsAuthed(false);
+                if (!response.ok) {
                     navigate("/");
+                    return;
                 }
+
+                const user = await response.json();
+
+                // If user must change password, redirect to /change-password
+                // (unless they're already on that page)
+                if (user.must_change_password && location.pathname !== "/change-password") {
+                    navigate("/change-password");
+                    return;
+                }
+
+                setIsAuthChecked(true);
             } catch (error) {
                 console.error("Error checking authentication:", error);
-                setIsAuthed(false);
                 navigate("/");
             }
         })();
-    }, [navigate]);
+    }, [navigate, location.pathname]);
 
-    return isAuthed ? <>{children}</> : null;
+    return isAuthChecked ? <>{children}</> : null;
 }

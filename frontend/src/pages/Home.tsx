@@ -8,7 +8,6 @@ import { isTeacher, isAdmin } from "../util/login";
 export default function Home() {
   const [courses, setCourses] = useState<CourseWithAssignments[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,7 +49,6 @@ export default function Home() {
     setSearchQuery(q);
     if (!q || q.trim() === "") {
       // If empty query, reload the user's classes without toggling global loading
-      setSearching(false);
       try {
         const coursesResp = await listClasses();
         const coursesWithAssignments = await Promise.all(
@@ -62,7 +60,7 @@ export default function Home() {
                 assignments: assignments || [],
                 assignmentCount: assignments?.length || 0,
               };
-            } catch (error) {
+            } catch {
               return {
                 ...course,
                 assignments: [],
@@ -77,19 +75,15 @@ export default function Home() {
       }
       return;
     }
-
-    setSearching(true);
     try {
       const resp = await (await import("../util/api")).searchClasses(q);
       const results = resp.results || [];
       // Map to CourseWithAssignments shape (no assignments fetched here)
-      const mapped = results.map((r: any) => ({ id: r.id, name: r.name, assignments: [], assignmentCount: 0 }));
+      const mapped = results.map((r: { id: number; name: string }) => ({ id: r.id, name: r.name, assignments: [], assignmentCount: 0 }));
       setCourses(mapped);
     } catch (error) {
       console.error("Search error:", error);
       setCourses([]);
-    } finally {
-      setSearching(false);
     }
   }
 

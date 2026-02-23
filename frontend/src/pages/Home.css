@@ -37,3 +37,15 @@
   filter: brightness(0.8);
   cursor: pointer;
 }
+
+.Search {
+  margin: 1rem 0;
+}
+
+.SearchInput {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--background-secondary);
+  border-radius: 4px;
+}

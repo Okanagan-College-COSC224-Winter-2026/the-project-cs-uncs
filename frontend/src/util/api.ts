@@ -121,6 +121,21 @@ export const listClasses = async () => {
   return await resp.json()
 }
 
+export const searchClasses = async (query: string) => {
+  const resp = await fetch(`${BASE_URL}/class/search?q=${encodeURIComponent(query)}`, {
+    method: 'GET',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`);
+  }
+
+  return await resp.json();
+}
+
 export const importStudentsForCourse = async (courseID: number, students: string) => {
   const response = await fetch(`${BASE_URL}/class/enroll_students`, {
     method: 'POST',

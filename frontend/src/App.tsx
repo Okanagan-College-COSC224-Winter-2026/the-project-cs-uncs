@@ -17,7 +17,7 @@ import CreateTeacher from "./pages/CreateTeacher";
 
 function AppContent() {
   const location = useLocation();
-  const noSidebarPaths = ["/", "/login", "/register", "/change-password"];
+  const noSidebarPaths = ["/", "/login", "/register"];
 
   return (
     <div className="App">
@@ -26,7 +26,11 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/change-password" element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          } />
 
           <Route path="/home" element={
             <ProtectedRoute>

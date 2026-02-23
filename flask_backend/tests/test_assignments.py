@@ -28,12 +28,13 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     )
 
     class_id = class_response.json["class"]["id"]
+    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat()
 
     # Now, create the assignment
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
-            {"courseID": class_id, "name": "Essay 1", "rubric": "Quality of writing", "due_date": datetime.datetime(2025, 12, 31, 23, 59, 59).isoformat()}
+            {"courseID": class_id, "name": "Essay 1", "rubric": "Quality of writing", "due_date": due_date}
         ),
         headers={"Content-Type": "application/json"},
     )
@@ -42,7 +43,7 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     assert assignment_response.json["msg"] == "Assignment created"
     assert assignment_response.json["assignment"]["name"] == "Essay 1"
     assert assignment_response.json["assignment"]["rubric_text"] == "Quality of writing"
-    assert assignment_response.json["assignment"]["due_date"] == "2025-12-31T23:59:59"
+    assert assignment_response.json["assignment"]["due_date"] == due_date
 
 
 def test_create_assignment_missing_fields(test_client, make_admin):
@@ -256,7 +257,7 @@ def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Painting 1",
                 "rubric": "Creativity",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -306,7 +307,7 @@ def test_non_assigned_teacher_cannot_edit_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Composition 1",
                 "rubric": "Harmony",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=5)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=5)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -408,7 +409,7 @@ def test_delete_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Essay on Ethics",
                 "rubric": "Argumentation",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -451,7 +452,7 @@ def test_delete_assignment_after_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Market Analysis",
                 "rubric": "Data Interpretation",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -495,7 +496,7 @@ def test_non_assigned_teacher_cannot_delete_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Geography Assignment",
                 "rubric": "Map Skills",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -582,7 +583,7 @@ def test_get_assignments_by_class_id(test_client, make_admin):
                     "courseID": class_id,
                     "name": name,
                     "rubric": "Content Quality",
-                    "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=10)).isoformat(),
+                    "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat(),
                 }
             ),
             headers={"Content-Type": "application/json"},

@@ -179,7 +179,8 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
         headers={"Content-Type": "application/json"},
     )
     class_id = class_response.json["class"]["id"]
-    # Now, create the assignment with a future due date
+    # Now, create the assignment with a future due date relative to now
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=60)
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
@@ -187,20 +188,22 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Lab Report 1",
                 "rubric": "Completeness",
-                "due_date": datetime.datetime(2025, 12, 31, 23, 59, 59).isoformat(),
+                "due_date": future_due.replace(microsecond=0).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
     )
     assignment_id = assignment_response.json["assignment"]["id"]
-    # Now, edit the assignment
+
+    # Now, edit the assignment to an earlier (but still future) due date
+    new_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
     edit_response = test_client.patch(
         f"/assignment/edit_assignment/{assignment_id}",
         data=json.dumps(
             {
                 "name": "Updated Lab Report 1",
                 "rubric": "Thoroughness",
-                "due_date": datetime.datetime(2025, 11, 30, 23, 59, 59).isoformat(),
+                "due_date": new_due.replace(microsecond=0).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -209,7 +212,20 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
     assert edit_response.json["msg"] == "Assignment updated"
     assert edit_response.json["assignment"]["name"] == "Updated Lab Report 1"
     assert edit_response.json["assignment"]["rubric_text"] == "Thoroughness"
-    assert edit_response.json["assignment"]["due_date"] == "2025-11-30T23:59:59"
+    # Ensure due_date returned matches the new due date (without microseconds)
+    returned_due = edit_response.json["assignment"].get("due_date")
+    assert returned_due is not None
+    # Parse the returned ISO datetime (may include timezone) and compare to expected
+    parsed_returned = datetime.datetime.fromisoformat(returned_due)
+    # Normalize both datetimes to UTC timestamps and allow a small delta for processing time
+    from datetime import timezone as _tz
+    if parsed_returned.tzinfo is None:
+        parsed_ts = parsed_returned.replace(tzinfo=_tz.utc).timestamp()
+    else:
+        parsed_ts = parsed_returned.astimezone(_tz.utc).timestamp()
+
+    expected_ts = new_due.replace(microsecond=0).astimezone(_tz.utc).timestamp()
+    assert abs(parsed_ts - expected_ts) < 2  # within 2 seconds
 
 def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
     """

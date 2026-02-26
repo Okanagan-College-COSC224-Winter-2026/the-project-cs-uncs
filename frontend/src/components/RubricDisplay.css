@@ -1,12 +1,14 @@
 .RubricDisplay {
     padding: 20px;
-    background-color: white;
+    background-color: var(--card-background);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     margin: 20px 0;
+    transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .RubricDisplay h2 {
     margin-bottom: 20px;
-    color: #333;
+    color: var(--text-primary);
 } 

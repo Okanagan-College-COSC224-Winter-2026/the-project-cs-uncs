@@ -18,7 +18,7 @@
   align-items: center;
   justify-content: center;
 
-  background: #eee;
+  background: var(--background-tertiary);
   padding: 4px 0;
 }
 
@@ -26,15 +26,16 @@
   padding: 8px;
   border: none;
   background-color: var(--button-primary);
-  color: #fff;
+  color: #ffffff;
   font-size: 16px;
   cursor: pointer;
 
-  transition: all 0.1s ease-in-out;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .AssignmentPage button:hover {
-  filter: brightness(0.9);
+  background-color: var(--button-primary-hover);
+  transform: translateY(-1px);
 }
 
 .AssignmentPage  button,

@@ -43,7 +43,7 @@
   
     width: 30%;
   
-    background-color: #fff;
+    background-color: var(--card-background);
   
     
   }

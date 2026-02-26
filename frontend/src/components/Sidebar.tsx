@@ -10,7 +10,7 @@ export default function Sidebar() {
   return (
     <div className="Sidebar">
       <div className="SidebarLogo">
-        <img src="/oc_logo.png" alt="OC Logo" />
+        <img src="/icons/logo.svg" alt="Peer Evaluation App Logo" />
       </div>
 
       <div className="SidebarTop">
@@ -43,9 +43,9 @@ export default function Sidebar() {
           aria-label={theme === 'light' ? 'Toggle Theme to dark mode' : 'Toggle Theme to light mode'}
         >
           {theme === 'light' ? (
-            <span title="Switch to dark mode">🌙</span>
+            <span title="Switch to dark mode"><img src="/icons/light-mode.svg" alt="Light mode" /></span>
           ) : (
-            <span title="Switch to light mode">☀️</span>
+            <span title="Switch to light mode"><img src="/icons/dark-mode.svg" alt="Dark mode" />️</span>
           )}
         </button>
       </div>

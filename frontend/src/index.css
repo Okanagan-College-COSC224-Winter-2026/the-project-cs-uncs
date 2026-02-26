@@ -25,6 +25,22 @@
   --button-disabled: var(--text-secondary);
 }
 
+[data-theme="dark"] {
+  color: #e8e8e8;
+  background-color: #1a1a1a;
+
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+
+  --background-primary: #1a1a1a;
+  --background-secondary: #2d2d2d;
+  --background-tertiary: #404040;
+
+  --button-primary: #4bd530;
+  --button-secondary: #555;
+  --button-disabled: var(--text-secondary);
+}
+
 body {
   margin: 0;
 }

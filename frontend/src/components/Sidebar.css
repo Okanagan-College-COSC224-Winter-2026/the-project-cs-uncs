@@ -40,6 +40,21 @@
   height: 100%;
 }
 
+.ThemeToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  padding: 0.75rem;
+  width: 100%;
+  text-align: center;
+  border-top: 1px solid var(--background-tertiary);
+}
+
+.ThemeToggle:hover {
+  background-color: var(--background-tertiary);
+}
+
 .SidebarRow {
   display: flex;
   flex-direction: column;

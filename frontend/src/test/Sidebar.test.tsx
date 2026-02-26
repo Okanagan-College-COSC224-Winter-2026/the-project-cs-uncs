@@ -22,7 +22,7 @@ function renderSidebar() {
 
 describe('Sidebar theme toggle', () => {
   beforeEach(() => {
-    localStorage.clear()
+    localStorage.removeItem('theme')
     document.documentElement.removeAttribute('data-theme')
   })
 

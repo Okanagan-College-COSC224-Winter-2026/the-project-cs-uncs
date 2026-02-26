@@ -1,9 +1,11 @@
 import { logout } from '../util/login'
+import { useTheme } from '../context/ThemeContext'
 import './Sidebar.css'
 
 export default function Sidebar() {
   // Check which page we are on
   const location = window.location.pathname
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <div className="Sidebar">
@@ -32,6 +34,20 @@ export default function Sidebar() {
         <SidebarRow selected={location === '/change-password'} href="/change-password">
           Change Password
         </SidebarRow>
+      </div>
+
+      <div className="SidebarBottom">
+        <button
+          className="ThemeToggle"
+          onClick={toggleTheme}
+          aria-label={theme === 'light' ? 'Toggle Theme to dark mode' : 'Toggle Theme to light mode'}
+        >
+          {theme === 'light' ? (
+            <span title="Switch to dark mode">🌙</span>
+          ) : (
+            <span title="Switch to light mode">☀️</span>
+          )}
+        </button>
       </div>
     </div>
   )

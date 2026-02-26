@@ -7,37 +7,41 @@
   height: 100vh;
   width: 100%;
 
-  background-color: #fff;
+  background-color: var(--background-primary);
+  transition: background-color var(--transition-base);
 }
 
 .LoginPage h1 {
-  margin: 16px;
+  margin: 0 0 24px 0;
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .LoginBlock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-around;
 
   margin: 8px;
-  padding-bottom: 16px;
+  padding: 40px 32px;
 
-  height: 50%;
-  width: 30%;
+  width: 100%;
+  max-width: 420px;
 
-  background-color: #fff;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
 
-  min-height: 300px;
-  max-height: 400px;
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .LoginInner {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-
-  height: 100%;
+  width: 100%;
 }
 
 .LoginButton {
@@ -47,9 +51,9 @@
 .LoginInputs {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 
   width: 100%;
 }
@@ -58,7 +62,22 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
 
-  margin: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.LoginInputChunk span {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.LoginInput {
+  width: 100%;
+}
+
+.LoginError {
+  margin-bottom: 16px;
 }

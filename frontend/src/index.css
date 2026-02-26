@@ -1,46 +1,77 @@
 :root {
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: #000;
-  background-color: #fff;
+  color-scheme: light;
+  color: #1e293b;
+  background-color: #f8fafc;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Color vars */
-  --text-primary: #000;
-  --text-secondary: #4d4d4d;
+  /* Color vars — light theme */
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
 
-  --background-primary: #fff;
-  --background-secondary: #dcdcdc;
-  --background-tertiary: #b5b5b5;
+  --background-primary: #f8fafc;
+  --background-secondary: #e2e8f0;
+  --background-tertiary: #cbd5e1;
 
-  --button-primary: #4bd530;
-  --button-secondary: #999;
-  --button-disabled: var(--text-secondary);
+  --card-background: #ffffff;
+  --border-color: #cbd5e1;
+  --input-background: #ffffff;
+
+  --button-primary: #22c55e;
+  --button-primary-hover: #16a34a;
+  --button-secondary: #94a3b8;
+  --button-secondary-hover: #64748b;
+  --button-disabled: #cbd5e1;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
 }
 
 [data-theme="dark"] {
-  color: #e8e8e8;
-  background-color: #1a1a1a;
+  color-scheme: dark;
+  color: #e2e8f0;
+  background-color: #0f172a;
 
-  --text-primary: #e8e8e8;
-  --text-secondary: #a0a0a0;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
 
-  --background-primary: #1a1a1a;
-  --background-secondary: #2d2d2d;
-  --background-tertiary: #404040;
+  --background-primary: #0f172a;
+  --background-secondary: #1e293b;
+  --background-tertiary: #334155;
 
-  --button-primary: #4bd530;
-  --button-secondary: #555;
-  --button-disabled: var(--text-secondary);
+  --card-background: #1e293b;
+  --border-color: #334155;
+  --input-background: #1e293b;
+
+  --button-primary: #22c55e;
+  --button-primary-hover: #16a34a;
+  --button-secondary: #475569;
+  --button-secondary-hover: #334155;
+  --button-disabled: #334155;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 body {
   margin: 0;
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }

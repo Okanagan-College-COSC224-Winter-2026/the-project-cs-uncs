@@ -1,18 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Textbox from '../components/Textbox';
 import StatusMessage from '../components/StatusMessage';
-import { changePassword } from '../util/api';
+import { changePassword, getCurrentUser } from '../util/api';
 import './LoginPage.css';
 
 export default function ChangePassword() {
   const navigate = useNavigate();
+  const [isForced, setIsForced] = useState(false);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((user) => {
+        setIsForced(user.must_change_password === true);
+      })
+      .catch(() => {
+        // If we can't fetch user state, default to voluntary flow
+        setIsForced(false);
+      });
+  }, []);
 
   const handleChangePassword = async () => {
     try {
@@ -55,7 +68,9 @@ export default function ChangePassword() {
       <div className="LoginBlock">
         <h1>Change Password</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-          You must change your temporary password before continuing.
+          {isForced
+            ? 'You must change your temporary password before continuing.'
+            : 'Enter your current password and choose a new one.'}
         </p>
 
         <StatusMessage message={error} type="error" />

@@ -3,7 +3,7 @@ User management endpoints
 """
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, set_access_cookies
 from marshmallow import Schema, ValidationError, fields, validate
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -111,7 +111,13 @@ def delete_user(user_id):
 @bp.route("/password", methods=["PATCH"])
 @jwt_required()
 def change_password():
-    """Change current user's password (only if must_change_password is True)"""
+    """Change current user's password.
+
+    Any authenticated user may change their own password by providing
+    the correct current password and a valid new password.  When the
+    ``must_change_password`` flag is set (e.g. admin-created accounts),
+    it is automatically cleared after a successful change.
+    """
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
 
@@ -131,17 +137,18 @@ def change_password():
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    # Security: Only allow password changes if must_change_password is True
-    if not user.must_change_password:
-        return jsonify({"msg": "Password change not required for this account"}), 403
-
     # Verify current password
     if not check_password_hash(user.hash_pass, current_password):
         return jsonify({"msg": "Current password is incorrect"}), 401
 
-    # Update password and clear must_change_password flag
+    # Update password and clear must_change_password flag if set
     user.hash_pass = generate_password_hash(new_password)
     user.must_change_password = False
     user.update()
 
-    return jsonify({"msg": "Password updated successfully"}), 200
+    # Reissue a fresh JWT so the embedded must_change_password claim
+    # is updated (the old token still carries the stale value).
+    access_token = create_access_token(identity=email)
+    response = jsonify({"msg": "Password updated successfully"})
+    set_access_cookies(response, access_token)
+    return response, 200

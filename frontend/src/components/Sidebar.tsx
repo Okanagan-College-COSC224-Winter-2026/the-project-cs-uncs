@@ -28,6 +28,10 @@ export default function Sidebar() {
         <SidebarRow selected={location.includes('/profile')} href="/profile/1">
           My Info
         </SidebarRow>
+
+        <SidebarRow selected={location === '/change-password'} href="/change-password">
+          Change Password
+        </SidebarRow>
       </div>
     </div>
   )

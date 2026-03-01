@@ -70,6 +70,21 @@ export const tryRegister = async (name: string, email: string, password: string)
   }
 }
 
+export const getCurrentUser = async () => {
+  const response = await fetch(`${BASE_URL}/user/`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch current user: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
 export const createClass = async (name: string) => {
   const response = await fetch(`${BASE_URL}/class/create_class`, {
     method: 'POST',
@@ -104,6 +119,21 @@ export const listClasses = async () => {
   }
 
   return await resp.json()
+}
+
+export const searchClasses = async (query: string) => {
+  const resp = await fetch(`${BASE_URL}/class/search?q=${encodeURIComponent(query)}`, {
+    method: 'GET',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`);
+  }
+
+  return await resp.json();
 }
 
 export const importStudentsForCourse = async (courseID: number, students: string) => {
@@ -498,6 +528,10 @@ export const createTeacherAccount = async (name: string, email: string, password
 }
 
 // User - Change Password
+// NOTE: This function intentionally does NOT call maybeHandleExpire().
+// The PATCH /user/password endpoint returns 401 for "wrong current password",
+// which is a user-facing validation error — not an expired session. Calling
+// maybeHandleExpire() here would incorrectly redirect the user to login.
 export const changePassword = async (currentPassword: string, newPassword: string) => {
   const response = await fetch(`${BASE_URL}/user/password`, {
     method: 'PATCH',
@@ -510,8 +544,6 @@ export const changePassword = async (currentPassword: string, newPassword: strin
     },
     credentials: 'include'
   });
-
-  maybeHandleExpire(response);
 
   if (!response.ok) {
     const errorData = await response.json();

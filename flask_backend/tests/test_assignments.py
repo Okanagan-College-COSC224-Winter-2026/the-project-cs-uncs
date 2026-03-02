@@ -650,3 +650,113 @@ def test_unauthenticated_user_cannot_get_assignments(test_client):
     # Attempt to retrieve assignments for a class without logging in
     assignments = test_client.get(f"/assignment/1")
     assert assignments.status_code == 401
+
+
+def test_teacher_can_create_assignment_with_due_date(test_client, make_admin):
+    """
+    GIVEN a teacher user
+    WHEN they create a new assignment with a due date via POST /assignment/create_assignment
+    THEN the assignment should be created with the due date stored
+    """
+    # ARRANGE - Create teacher and login
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # Create a class first
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Math 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat()
+
+    # ACT - Create assignment with due date
+    response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Homework 1", "due_date": due_date}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # ASSERT - Verify success
+    assert response.status_code == 201
+    assert response.json["msg"] == "Assignment created"
+    assert response.json["assignment"]["name"] == "Homework 1"
+    assert response.json["assignment"]["due_date"] == due_date
+
+
+def test_create_assignment_without_due_date_still_works(test_client, make_admin):
+    """
+    GIVEN a teacher user
+    WHEN they create an assignment without a due date (backward compatibility)
+    THEN the assignment should be created successfully with null due_date
+    """
+    # ARRANGE
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "English 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    # ACT - Create assignment WITHOUT due date
+    response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Essay"}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # ASSERT
+    assert response.status_code == 201
+    assert response.json["assignment"]["name"] == "Essay"
+    assert response.json["assignment"]["due_date"] is None
+
+
+def test_create_assignment_with_invalid_due_date_format(test_client, make_admin):
+    """
+    GIVEN a teacher user
+    WHEN they submit an assignment with an invalid due date format
+    THEN the API should return a 400 error
+    """
+    # ARRANGE
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Science 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    # ACT - Try to create with bad date format
+    response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Lab Report", "due_date": "not-a-date"}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # ASSERT
+    assert response.status_code == 400
+    assert "Invalid due date format" in response.json["msg"]

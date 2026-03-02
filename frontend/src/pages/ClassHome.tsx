@@ -106,9 +106,11 @@ export default function ClassHome() {
             {assignments.map((assignment) => {
               return (
                 <li key={assignment.id}>
-                  <AssignmentCard id={assignment.id}>
-                    {assignment.name}
-                  </AssignmentCard>
+                  <AssignmentCard 
+                    id={assignment.id}
+                    name={assignment.name}
+                    due_date={assignment.due_date}
+                  />
                 </li>
               );
             })}

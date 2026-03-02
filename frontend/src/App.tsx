@@ -2,6 +2,8 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
+import { ThemeProvider } from "./components/ThemeProvider";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 import "./App.css";
 import Profile from "./pages/Profile";
@@ -18,11 +20,13 @@ import CreateTeacher from "./pages/CreateTeacher";
 function AppContent() {
   const location = useLocation();
   const noSidebarPaths = ["/", "/login", "/register"];
+  const showThemeToggle = !noSidebarPaths.includes(location.pathname);
 
   return (
     <div className="App">
       {!noSidebarPaths.includes(location.pathname) && <Sidebar />}
       <div className="inner">
+        {showThemeToggle && <div className="ThemeToggleContainer"><ThemeToggle /></div>}
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -87,9 +91,11 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

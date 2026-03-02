@@ -1,26 +1,28 @@
 .Status-Message {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  border-radius: 4px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-radius: var(--border-radius);
   font-size: 0.95rem;
-  border: 1px solid;
+  border: 2px solid;
+  transition: var(--transition);
 }
 
 .Status-Message--error {
-  background-color: #fee;
-  border-color: #fcc;
-  color: #c33;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-color: var(--error);
+  color: var(--error);
 }
 
 .Status-Message--success {
-  background-color: #e8f5e9;
-  border-color: #a5d6a7;
-  color: #2e7d32;
+  background-color: rgba(40, 167, 69, 0.1);
+  border-color: var(--success);
+  color: var(--success);
 }
 
 .Status-Text {
   flex: 1;
+  font-weight: 500;
 }

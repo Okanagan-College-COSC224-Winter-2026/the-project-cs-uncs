@@ -7,11 +7,15 @@
   height: 100vh;
   width: 100%;
 
-  background-color: #fff;
+  background: linear-gradient(135deg, var(--background-primary) 0%, var(--background-secondary) 100%);
+  transition: var(--transition-slow);
 }
 
 .RegisterPage h1 {
-  margin: 16px;
+  margin: var(--spacing-lg);
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 .RegisterBlock {
@@ -20,16 +24,24 @@
   align-items: center;
   justify-content: space-around;
 
-  margin: 8px;
-  padding-bottom: 16px;
+  margin: var(--spacing-md);
+  padding: var(--spacing-xl);
 
   height: 50%;
   width: 30%;
 
-  background-color: #fff;
+  background-color: var(--background-primary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
 
-  min-height: 300px;
-  max-height: 400px;
+  min-height: 380px;
+  max-height: 550px;
+  transition: var(--transition);
+  overflow-y: auto;
+}
+
+.RegisterBlock:hover {
+  border-color: var(--accent-primary);
 }
 
 .RegisterInner {
@@ -38,10 +50,17 @@
   justify-content: space-between;
 
   height: 100%;
+  width: 100%;
+  gap: var(--spacing-lg);
 }
 
 .RegisterButton {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+}
+
+.RegisterButton button {
+  width: 100%;
 }
 
 .RegisterInputs {
@@ -49,9 +68,10 @@
   flex-direction: column;
   align-items: center;
 
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 
   width: 100%;
+  gap: var(--spacing-md);
 }
 
 .RegisterInputChunk {
@@ -60,5 +80,18 @@
   align-items: flex-start;
   justify-content: center;
 
-  margin: 12px;
+  margin: 0;
+  width: 100%;
+}
+
+.RegisterInputChunk label {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.95rem;
+}
+
+.RegisterInputChunk input,
+.RegisterInputChunk select {
+  width: 100%;
 }

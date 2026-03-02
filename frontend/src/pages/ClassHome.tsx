@@ -17,6 +17,7 @@ export default function ClassHome() {
   const [newAssignmentName, setNewAssignmentName] = useState("");
   const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
   const [className, setClassName] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'error' | 'success'>('error');
 
@@ -60,6 +61,7 @@ export default function ClassHome() {
         setNewAssignmentDueDate("");
         setStatusType('success');
         setStatusMessage('Assignment created successfully!');
+        setShowModal(false);
       } catch (error) {
         console.error('Error creating assignment:', error);
         setStatusType('error');
@@ -115,32 +117,53 @@ export default function ClassHome() {
 
         {isTeacher() ? (
           <div className="AssInputChunk">
-            <span>New Assignment Name:</span>
-            <Textbox
-              placeholder="New Assignment..."
-              onInput={setNewAssignmentName}
-              className="AssignmentInput"
-            />
-            <span>Due Date:</span>
-            <input
-              type="date"
-              value={newAssignmentDueDate}
-              onChange={(e) => setNewAssignmentDueDate(e.target.value)}
-              className="AssignmentInput"
-            />
-            <Button
-              onClick={() =>
-                tryCreateAssingment()
-              }
-              disabled={
-                newAssignmentName.trim() === "" ||
-                (newAssignmentDueDate && isNaN(Date.parse(newAssignmentDueDate)))
-              }
-            >
-              Add
+            <Button onClick={() => setShowModal(true)}>
+              Create Assignment
             </Button>
           </div>
         ) : null}
+
+        {showModal && (
+          <div className="ModalOverlay">
+            <div className="ModalContent">
+              <h3>Create Assignment</h3>
+              <div>
+                <label htmlFor="assignment-name-input">Name:</label>
+                <Textbox
+                  placeholder="New Assignment..."
+                  onInput={setNewAssignmentName}
+                  className="AssignmentInput"
+                />
+              </div>
+              <div>
+                <label htmlFor="assignment-due-input">Due Date:</label>
+                <input
+                  id="assignment-due-input"
+                  type="date"
+                  value={newAssignmentDueDate}
+                  onChange={(e) => setNewAssignmentDueDate(e.target.value)}
+                  className="AssignmentInput"
+                />
+              </div>
+              <div className="ModalButtons">
+                <Button
+                  onClick={() => tryCreateAssingment()}
+                  disabled={
+                    newAssignmentName.trim() === "" ||
+                    (!!newAssignmentDueDate && isNaN(Date.parse(newAssignmentDueDate)))
+                  }
+                >
+                  Add
+                </Button>
+                <Button type="secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </Button>
+              </div>
+              <StatusMessage message={statusMessage} type={statusType} />
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   );

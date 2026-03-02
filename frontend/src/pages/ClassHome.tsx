@@ -31,6 +31,21 @@ export default function ClassHome() {
   }, []);
     
     const tryCreateAssingment = async () => {
+      // client‑side validation before sending
+      if (!newAssignmentName.trim()) {
+        setStatusType('error');
+        setStatusMessage('Assignment name is required');
+        return;
+      }
+      if (newAssignmentDueDate) {
+        const parsed = Date.parse(newAssignmentDueDate);
+        if (isNaN(parsed)) {
+          setStatusType('error');
+          setStatusMessage('Invalid due date');
+          return;
+        }
+      }
+
       try {
         setStatusMessage('');
         const response = await createAssignment(idNew, newAssignmentName, newAssignmentDueDate || undefined);
@@ -116,6 +131,10 @@ export default function ClassHome() {
             <Button
               onClick={() =>
                 tryCreateAssingment()
+              }
+              disabled={
+                newAssignmentName.trim() === "" ||
+                (newAssignmentDueDate && isNaN(Date.parse(newAssignmentDueDate)))
               }
             >
               Add

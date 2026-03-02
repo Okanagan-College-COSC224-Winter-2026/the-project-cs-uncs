@@ -369,12 +369,15 @@ export const getRubric = async (rubricID: number) => {
 }
 
 
-export const createAssignment = async (courseID: number, name: string)=> {
+export const createAssignment = async (courseID: number, name: string, due_date?: string)=> {
+  const body: any = { courseID, name };
+  if (due_date) {
+    body.due_date = due_date;
+  }
+
   const response = await fetch(`${BASE_URL}/assignment/create_assignment`, {
     method: 'POST',
-    body: JSON.stringify({
-      courseID, name
-    }),
+    body: JSON.stringify(body),
     headers: {
       'Content-Type': 'application/json',
     },

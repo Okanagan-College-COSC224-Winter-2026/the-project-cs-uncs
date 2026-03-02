@@ -15,6 +15,7 @@ export default function ClassHome() {
   const idNew = Number(id)
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [newAssignmentName, setNewAssignmentName] = useState("");
+  const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
   const [className, setClassName] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'error' | 'success'>('error');
@@ -32,7 +33,7 @@ export default function ClassHome() {
     const tryCreateAssingment = async () => {
       try {
         setStatusMessage('');
-        const response = await createAssignment(idNew, newAssignmentName);
+        const response = await createAssignment(idNew, newAssignmentName, newAssignmentDueDate || undefined);
         const createdAssignment = response?.assignment;
 
         if (!createdAssignment?.id) {
@@ -41,6 +42,7 @@ export default function ClassHome() {
 
         setAssignments((prev) => [...prev, createdAssignment]);
         setNewAssignmentName("");
+        setNewAssignmentDueDate("");
         setStatusType('success');
         setStatusMessage('Assignment created successfully!');
       } catch (error) {
@@ -102,6 +104,13 @@ export default function ClassHome() {
             <Textbox
               placeholder="New Assignment..."
               onInput={setNewAssignmentName}
+              className="AssignmentInput"
+            />
+            <span>Due Date:</span>
+            <input
+              type="date"
+              value={newAssignmentDueDate}
+              onChange={(e) => setNewAssignmentDueDate(e.target.value)}
               className="AssignmentInput"
             />
             <Button

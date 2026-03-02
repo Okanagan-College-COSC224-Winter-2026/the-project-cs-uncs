@@ -1,4 +1,4 @@
-.A_Card{
+.A_Card {
   display: flex;
   flex-direction: row;
   justify-content: flex-start;
@@ -6,21 +6,35 @@
   gap: 12px;
   color: var(--text-primary);
 
-  padding: 12px;
+  /* padding: 12px; */
 
   width: 95%;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+
+  /* width: 100%; */
   height: auto;
 
-  border-radius: 6px;
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--background-primary);
 
-  font-weight: bold;
+  font-weight: 600;
   font-size: 1rem;
   text-align: left;
+
+  transition: var(--transition);
+  cursor: pointer;
+  gap: var(--spacing-md);
 }
 
 .A_Card img {
-  width: 40px;
+  /* width: 40px;
   height: 40px;
+  flex-shrink: 0; */
+  width: 48px;
+  height: 48px;
+  border-radius: var(--border-radius-sm);
   flex-shrink: 0;
 }
 
@@ -87,8 +101,13 @@
   color: white;
 }
 
-/*TODO: add disabled functionality */
-.A_Card:hover{
-  cursor: pointer;
+.A_Card:hover {
   background-color: var(--background-secondary);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateX(4px);
+}
+
+.A_Card:active {
+  transform: translateX(2px);
 }

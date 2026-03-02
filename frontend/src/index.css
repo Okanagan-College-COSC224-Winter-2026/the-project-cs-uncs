@@ -1,30 +1,116 @@
 :root {
-  font-family: Arial, sans-serif;
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
   font-weight: 400;
+  font-size: 16px;
 
   color-scheme: light dark;
-  color: #000;
-  background-color: #fff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Color vars */
-  --text-primary: #000;
-  --text-secondary: #4d4d4d;
+  /* === LIGHT THEME (DEFAULT) === */
+  /* Text Colors */
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
 
-  --background-primary: #fff;
-  --background-secondary: #dcdcdc;
-  --background-tertiary: #b5b5b5;
+  /* Background Colors */
+  --background-primary: #ffffff;
+  --background-secondary: #f5f5f5;
+  --background-tertiary: #e8e8e8;
 
-  --button-primary: #4bd530;
-  --button-secondary: #999;
-  --button-disabled: var(--text-secondary);
+  /* Accent Colors */
+  --accent-primary: #444444;
+  --accent-secondary: #2d2d2d;
+  --accent-hover: #333333;
+
+  /* State Colors */
+  --success: #28a745;
+  --error: #dc3545;
+  --warning: #ffc107;
+  --info: #17a2b8;
+
+  /* Input/Form Colors */
+  --input-bg: #ffffff;
+  --input-border: #ddd;
+  --input-border-focus: #444444;
+  --input-text: #1a1a1a;
+
+  /* Border & Shadow */
+  --border-color: #e0e0e0;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+
+  /* Border Radius */
+  --border-radius: 8px;
+  --border-radius-sm: 4px;
+  --border-radius-lg: 12px;
+
+  /* Transitions */
+  --transition: all 0.2s ease;
+  --transition-fast: 0.1s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* === DARK THEME === */
+[data-theme="dark"] {
+  /* Text Colors */
+  --text-primary: #e8e8e8;
+  --text-secondary: #999999;
+  --text-tertiary: #666666;
+
+  /* Background Colors */
+  --background-primary: #1a1a1a;
+  --background-secondary: #2d2d2d;
+  --background-tertiary: #3d3d3d;
+
+  /* Accent Colors */
+  --accent-primary: #3b82f6;
+  --accent-secondary: #60a5fa;
+  --accent-hover: #2563eb;
+
+  /* State Colors */
+  --success: #4caf50;
+  --error: #ff6b6b;
+  --warning: #ffb800;
+  --info: #4da6ff;
+
+  /* Input/Form Colors */
+  --input-bg: #2d2d2d;
+  --input-border: #404040;
+  --input-border-focus: #3b82f6;
+  --input-text: #e8e8e8;
+
+  /* Border & Shadow */
+  --border-color: #404040;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
+  color: var(--text-primary);
+  background-color: var(--background-primary);
+  transition: background-color var(--transition-slow), color var(--transition-slow);
 }

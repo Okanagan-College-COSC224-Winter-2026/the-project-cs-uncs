@@ -1,4 +1,38 @@
 .CreateClass {
-  padding: 4rem;
-  width: 60%;
+  padding: 0;
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.CreateClass h1 {
+  color: var(--text-primary);
+  border-bottom: 3px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
+}
+
+.CreateClass form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background-color: var(--background-primary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+}
+
+.CreateClass label {
+  color: var(--text-primary);
+  font-weight: 600;
+  display: block;
+  margin-bottom: var(--spacing-sm);
+}
+
+.CreateClass input,
+.CreateClass textarea,
+.CreateClass select {
+  width: 100%;
+  box-sizing: border-box;
 }

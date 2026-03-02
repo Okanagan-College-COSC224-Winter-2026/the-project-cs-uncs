@@ -1,14 +1,37 @@
 .Checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   cursor: pointer;
   user-select: none;
   font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+.Checkbox:hover {
+  color: var(--text-primary);
 }
 
 .Checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
+  accent-color: var(--accent-primary);
+  border-radius: var(--border-radius-sm);
+  border: 2px solid var(--input-border);
+  transition: var(--transition);
+}
+
+.Checkbox input[type="checkbox"]:hover {
+  border-color: var(--accent-primary);
+}
+
+.Checkbox input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(75, 213, 48, 0.1);
+}
+
+.Checkbox input[type="checkbox"]:checked {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }

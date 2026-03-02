@@ -1,10 +1,45 @@
 .Home {
-  margin: 1rem;
+  margin: 0;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
 }
 
 .Home h1 {
-  border-bottom: 1px solid var(--background-secondary);
+  border-bottom: 3px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.Search {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.SearchInput {
+  width: 100%;
+  max-width: 480px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--input-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.SearchInput:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(75, 213, 48, 0.1);
+}
+
+.SearchInput::placeholder {
+  color: var(--text-tertiary);
 }
 
 .Classes {
@@ -12,7 +47,8 @@
   flex-direction: row;
   flex-wrap: wrap;
 
-  gap: 1rem;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) 0;
 }
 
 .ClassCreateButton {
@@ -24,28 +60,25 @@
   width: 360px;
   height: 240px;
 
-  background: var(--background-secondary);
+  background-color: var(--background-secondary);
   color: var(--text-secondary);
 
-  border-radius: 6px;
-  border: 1px dashed var(--text-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 2px dashed var(--border-color);
 
-  transition: all 0.1s ease-in-out;
+  transition: var(--transition);
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .ClassCreateButton:hover {
-  filter: brightness(0.8);
-  cursor: pointer;
+  background-color: var(--background-tertiary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-2px);
 }
 
-.Search {
-  margin: 1rem 0;
-}
-
-.SearchInput {
-  width: 100%;
-  max-width: 480px;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--background-secondary);
-  border-radius: 4px;
+.ClassCreateButton:active {
+  transform: translateY(0);
 }

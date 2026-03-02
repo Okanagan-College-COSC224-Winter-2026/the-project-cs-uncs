@@ -6,12 +6,17 @@
 
   height: 100vh;
   width: 100%;
+  overflow: hidden;
 
-  background-color: #fff;
+  background: linear-gradient(135deg, var(--background-primary) 0%, var(--background-secondary) 100%);
+  transition: var(--transition-slow);
 }
 
 .LoginPage h1 {
-  margin: 16px;
+  margin: var(--spacing-lg);
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 .LoginBlock {
@@ -20,16 +25,23 @@
   align-items: center;
   justify-content: space-around;
 
-  margin: 8px;
-  padding-bottom: 16px;
+  margin: var(--spacing-md);
+  padding: var(--spacing-xl);
 
   height: 50%;
   width: 30%;
 
-  background-color: #fff;
+  background-color: var(--background-primary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
 
-  min-height: 300px;
-  max-height: 400px;
+  min-height: 380px;
+  max-height: 480px;
+  transition: var(--transition);
+}
+
+.LoginBlock:hover {
+  border-color: var(--accent-primary);
 }
 
 .LoginInner {
@@ -38,10 +50,17 @@
   justify-content: space-between;
 
   height: 100%;
+  width: 100%;
+  gap: var(--spacing-lg);
 }
 
 .LoginButton {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+}
+
+.LoginButton button {
+  width: 100%;
 }
 
 .LoginInputs {
@@ -49,9 +68,10 @@
   flex-direction: column;
   align-items: center;
 
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 
   width: 100%;
+  gap: var(--spacing-md);
 }
 
 .LoginInputChunk {
@@ -60,5 +80,17 @@
   align-items: flex-start;
   justify-content: center;
 
-  margin: 12px;
+  margin: 0;
+  width: 100%;
+}
+
+.LoginInputChunk label {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.95rem;
+}
+
+.LoginInputChunk input {
+  width: 100%;
 }

@@ -1,47 +1,69 @@
 .RubricCreator {
-    padding: 20px;
-    background-color: #f5f5f5;
-    border-radius: 8px;
-    margin: 20px 0;
+  padding: var(--spacing-lg);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  margin: var(--spacing-lg) 0;
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-md);
 }
 
 .RubricCreator h2 {
-    margin-bottom: 20px;
-    color: #333;
+  margin-bottom: var(--spacing-lg);
+  margin-top: 0;
+  color: var(--text-primary);
 }
 
 .comment-checkbox {
-    display: block;
-    margin-bottom: 20px;
+  display: block;
+  margin-bottom: var(--spacing-lg);
 }
 
 .criteria-input-section {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-bottom: 15px;
-    padding: 10px;
-    background-color: white;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--background-primary);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .criteria-input-section input[type="text"] {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+  flex: 1;
+  padding: var(--spacing-sm);
+  border: 2px solid var(--input-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.criteria-input-section input[type="text"]:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
 }
 
 .criteria-input-section input[type="number"] {
-    width: 100px;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+  width: 120px;
+  padding: var(--spacing-sm);
+  border: 2px solid var(--input-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.criteria-input-section input[type="number"]:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
 }
 
 .button-group {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
 } 

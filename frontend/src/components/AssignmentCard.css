@@ -3,12 +3,14 @@
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
+  gap: 12px;
   color: var(--text-primary);
 
+
+  width: 95%;
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-sm);
 
-  width: 100%;
   height: auto;
 
   border-radius: var(--border-radius);
@@ -29,6 +31,69 @@
   height: 48px;
   border-radius: var(--border-radius-sm);
   flex-shrink: 0;
+}
+
+.A_Card_Content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.A_Card_Name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.A_Card_Info {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+.A_Card_DueDate {
+  color: var(--text-secondary);
+}
+
+.A_Card_Status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.A_Card_Status_overdue {
+  background-color: #ff4444;
+  color: white;
+}
+
+.A_Card_Status_due-today {
+  background-color: #ff9500;
+  color: white;
+}
+
+.A_Card_Status_due-soon {
+  background-color: #ffcc00;
+  color: #333;
+}
+
+.A_Card_Status_upcoming {
+  background-color: #44bb44;
+  color: white;
+}
+
+.A_Card_Status_not-due {
+  background-color: #999;
+  color: white;
 }
 
 .A_Card:hover {

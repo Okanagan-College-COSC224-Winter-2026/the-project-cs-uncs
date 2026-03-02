@@ -369,8 +369,15 @@ export const getRubric = async (rubricID: number) => {
 }
 
 
+// typed request body for creating an assignment
+export type CreateAssignmentRequest = {
+  courseID: number;
+  name: string;
+  due_date?: string;
+};
+
 export const createAssignment = async (courseID: number, name: string, due_date?: string)=> {
-  const body: any = { courseID, name };
+  const body: CreateAssignmentRequest = { courseID, name };
   if (due_date) {
     body.due_date = due_date;
   }

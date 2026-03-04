@@ -7,39 +7,9 @@
 }
 
 .Home h1 {
-  border-bottom: 3px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: var(--spacing-md);
   color: var(--text-primary);
-}
-
-.Search {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.SearchInput {
-  width: 100%;
-  max-width: 480px;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 2px solid var(--input-border);
-  border-radius: var(--border-radius-sm);
-  background-color: var(--input-bg);
-  color: var(--input-text);
-  font-size: 1rem;
-  font-family: inherit;
-  transition: var(--transition);
-}
-
-.SearchInput:focus {
-  outline: none;
-  border-color: var(--input-border-focus);
-  box-shadow: 0 0 0 3px rgba(75, 213, 48, 0.1);
-}
-
-.SearchInput::placeholder {
-  color: var(--text-tertiary);
 }
 
 .Classes {
@@ -66,19 +36,52 @@
   border-radius: var(--border-radius-lg);
   border: 2px dashed var(--border-color);
 
-  transition: var(--transition);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
   cursor: pointer;
   font-size: 1.1rem;
   font-weight: 600;
 }
 
 .ClassCreateButton:hover {
-  background-color: var(--background-tertiary);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  transform: translateY(-2px);
+  background: var(--background-tertiary);
+  border-color: var(--button-primary);
+  color: var(--button-primary);
+  cursor: pointer;
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
 }
 
 .ClassCreateButton:active {
-  transform: translateY(0);
+    transform: translateY(0);
+}
+
+.Search {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.SearchInput {
+  width: 100%;
+  max-width: 480px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-background);
+  color: var(--input-text);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-base);
+}
+
+.SearchInput:focus {
+  outline: none;
+  border-color: var(--button-primary);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.SearchInput::placeholder {
+    color: var(--text-secondary);
 }

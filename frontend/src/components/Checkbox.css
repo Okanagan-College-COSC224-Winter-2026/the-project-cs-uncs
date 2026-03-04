@@ -5,7 +5,7 @@
   cursor: pointer;
   user-select: none;
   font-size: 0.95rem;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .Checkbox:hover {
@@ -18,8 +18,8 @@
   cursor: pointer;
   accent-color: var(--accent-primary);
   border-radius: var(--border-radius-sm);
-  border: 2px solid var(--input-border);
-  transition: var(--transition);
+  border: 2px solid var(--field-border);
+  transition: var(--transition-base);
 }
 
 .Checkbox input[type="checkbox"]:hover {

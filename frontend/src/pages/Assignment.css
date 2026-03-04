@@ -36,6 +36,7 @@
   background-color: var(--background-primary);
   overflow: hidden;
   box-shadow: var(--shadow-md);
+  margin: 0 10px;
 }
 
 .table .groupNames {
@@ -50,11 +51,16 @@
   border-bottom: 2px solid var(--border-color);
   position: relative;
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .table .groupNames:hover {
   background-color: var(--background-tertiary);
+}
+
+.AssignmentPage  button,
+.table .StudentName {
+    margin: 10px 10px 10px 20px;
 }
 
 .GroupArrow {
@@ -62,7 +68,7 @@
   left: var(--spacing-md);
   width: 20px;
   height: 20px;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .GroupArrow img {
@@ -93,7 +99,7 @@
   justify-content: space-between;
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
-  transition: var(--transition);
+  transition: all 0.1s ease-in-out;
 }
 
 .table tr:not(.groupNames):hover {
@@ -108,6 +114,17 @@
 .AssignmentPage button {
   padding: var(--spacing-sm) var(--spacing-md);
   margin: var(--spacing-md);
+  border: none;
+  background-color: var(--button-primary);
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.AssignmentPage button:hover {
+    background-color: var(--button-primary-hover);
+    transform: translateY(-1px);
 }
 
 .groupNameInput {

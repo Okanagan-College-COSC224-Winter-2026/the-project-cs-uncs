@@ -5,6 +5,7 @@
   margin: var(--spacing-lg) 0;
   border: 2px solid var(--border-color);
   box-shadow: var(--shadow-md);
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .RubricCreator h2 {
@@ -24,42 +25,44 @@
   align-items: center;
   margin-bottom: var(--spacing-md);
   padding: var(--spacing-md);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
   border-radius: var(--border-radius);
   border: 2px solid var(--border-color);
   box-shadow: var(--shadow-sm);
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .criteria-input-section input[type="text"] {
   flex: 1;
   padding: var(--spacing-sm);
-  border: 2px solid var(--input-border);
+  border: 2px solid var(--field-border);
   border-radius: var(--border-radius-sm);
-  background-color: var(--input-bg);
+  background-color: var(--input-background);
   color: var(--input-text);
+  outline: none;
   font-family: inherit;
-  transition: var(--transition);
+  transition: border-color var(--transition-fast), background-color var(--transition-base);
 }
 
 .criteria-input-section input[type="text"]:focus {
   outline: none;
-  border-color: var(--input-border-focus);
+  border-color: var(--field-border-focus);
 }
 
 .criteria-input-section input[type="number"] {
   width: 120px;
   padding: var(--spacing-sm);
-  border: 2px solid var(--input-border);
+  border: 2px solid var(--field-border);
   border-radius: var(--border-radius-sm);
-  background-color: var(--input-bg);
+  background-color: var(--input-background);
   color: var(--input-text);
   font-family: inherit;
-  transition: var(--transition);
+  outline: none;
+    transition: border-color var(--transition-fast), background-color var(--transition-base);
 }
 
 .criteria-input-section input[type="number"]:focus {
-  outline: none;
-  border-color: var(--input-border-focus);
+  border-color: var(--button-primary);
 }
 
 .button-group {

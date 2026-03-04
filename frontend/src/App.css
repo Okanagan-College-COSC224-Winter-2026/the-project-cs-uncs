@@ -3,17 +3,7 @@
   flex-direction: row;
   height: 100vh;
   background-color: var(--background-primary);
-  transition: var(--transition-slow);
-}
-
-.ThemeToggleContainer {
-  position: absolute;
-  top: var(--spacing-md);
-  right: var(--spacing-md);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: var(--transition-base);
 }
 
 .inner {
@@ -28,7 +18,7 @@
   gap: var(--spacing-lg);
   background-color: var(--background-primary);
   color: var(--text-primary);
-  transition: var(--transition-slow);
+  transition: var(--transition-base);
 }
 
 h1 {
@@ -68,10 +58,5 @@ p {
 a {
   color: var(--accent-secondary);
   text-decoration: none;
-  transition: var(--transition);
-}
-
-a:hover {
-  color: var(--accent-primary);
-  text-decoration: underline;
+  transition: var(--transition-base);
 }

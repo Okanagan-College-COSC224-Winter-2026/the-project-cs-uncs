@@ -35,8 +35,9 @@ export default function RegisterPage() {
         <div className="RegisterInner">
           <div className="RegisterInputs">
             <div className="RegisterInputChunk">
-              <span>Name</span>
+              <label htmlFor="register-name">Name</label>
               <Textbox
+                id='register-name'
                 placeholder='Name...'
                 onInput={setName}
                 className='RegisterInput'
@@ -44,8 +45,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="RegisterInputChunk">
-              <span>Email</span>
+              <label htmlFor="register-email">Email</label>
               <Textbox
+                id='register-email'
                 type='email'
                 placeholder='Email...'
                 onInput={setEmail}
@@ -54,8 +56,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="RegisterInputChunk">
-              <span>Password</span>
+              <label htmlFor="register-password">Password</label>
               <Textbox
+                id='register-password'
                 type='password'
                 placeholder='Password...'
                 onInput={setPassword}
@@ -64,8 +67,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="RegisterInputChunk">
-              <span>Confirm Password</span>
+              <label htmlFor="register-confirm-password">Confirm Password</label>
               <Textbox
+                id='register-confirm-password'
                 type='password'
                 placeholder='Confirm Password...'
                 onInput={setConfirmPassword}

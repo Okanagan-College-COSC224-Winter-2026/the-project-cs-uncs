@@ -1,57 +1,42 @@
 .Button {
   appearance: none;
-  background-color: var(--accent-primary);
-  color: var(--background-primary);
+  background: var(--button-primary);
+  color: #ffffff;
 
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: 6px;
 
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 10px 20px;
 
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-  white-space: nowrap;
-  user-select: none;
+
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.Button.secondary {
+  background: var(--button-secondary);
+}
+
+.Button:disabled {
+  background: var(--button-disabled);
+  color: var(--text-secondary);
+  cursor: not-allowed;
 }
 
 .Button:hover:not(:disabled) {
-  background-color: var(--accent-hover);
+  background: var(--button-primary-hover);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+}
+
+.Button.secondary:hover:not(:disabled) {
+  background: var(--button-secondary-hover);
 }
 
 .Button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
-}
-
-.Button.secondary {
-  background-color: var(--background-secondary);
-  color: var(--text-primary);
-  border: 2px solid var(--border-color);
-}
-
-.Button.secondary:hover:not(:disabled) {
-  background-color: var(--background-tertiary);
-  border-color: var(--accent-primary);
-}
-
-.Button:disabled {
-  background-color: var(--background-tertiary);
-  color: var(--text-tertiary);
-  cursor: not-allowed;
-  opacity: 0.6;
-  box-shadow: none;
-}
-
-.Button:focus {
-  outline: 3px solid var(--accent-primary);
-  outline-offset: 2px;
 }

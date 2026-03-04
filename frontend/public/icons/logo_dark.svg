@@ -1,0 +1,21 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="bubble1-clip">
+      <path d="M145 65C145 53.9543 136.046 45 125 45H75C63.9543 45 55 53.9543 55 65V95C55 106.046 63.9543 115 75 115H125L145 135V65Z"/>
+    </clipPath>
+  </defs>
+
+  <circle cx="100" cy="100" r="90" fill="#1e293b"/>
+
+  <!-- Bubble 1: indigo -->
+  <path d="M145 65C145 53.9543 136.046 45 125 45H75C63.9543 45 55 53.9543 55 65V95C55 106.046 63.9543 115 75 115H125L145 135V65Z" fill="#4F46E5"/>
+  
+  <!-- Bubble 2: cyan -->
+  <path d="M55 135C55 146.046 63.9543 155 75 155H125C136.046 155 145 146.046 145 135V105C145 93.9543 136.046 85 125 85H75L55 65V135Z" fill="#06B6D4"/>
+
+  <!-- Overlap: bubble 2 clipped to bubble 1 shape, darker blend -->
+  <path d="M55 135C55 146.046 63.9543 155 75 155H125C136.046 155 145 146.046 145 135V105C145 93.9543 136.046 85 125 85H75L55 65V135Z" fill="#0545A8" opacity="0.6" clip-path="url(#bubble1-clip)"/>
+
+  <!-- Checkmark -->
+  <path d="M85 100L95 110L115 90" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

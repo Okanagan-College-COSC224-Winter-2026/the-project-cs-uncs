@@ -10,7 +10,7 @@ export default function Sidebar() {
   return (
     <div className="Sidebar">
       <div className="SidebarLogo">
-        <img src="/icons/logo.svg" alt="Peer Evaluation App Logo" />
+        <img src={theme === 'dark' ? '/icons/logo_dark.svg' : '/icons/logo_light.svg'} alt="Peer Evaluation App Logo" />
       </div>
 
       <div className="SidebarTop">

@@ -77,10 +77,17 @@ export default function RegisterPage() {
 
         </div>
 
-        <Button
-          onClick={()=> attemptRegister()}
-          children="Register"
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            onClick={()=> attemptRegister()}
+            children="Register"
+          />
+          <Button
+            onClick={() => navigate('/')}
+            type='secondary'
+            children="Login"
+          />
+        </div>
 
       </div>
     </div>

@@ -35,7 +35,7 @@
 .criteria-input-section input[type="text"] {
   flex: 1;
   padding: var(--spacing-sm);
-  border: 2px solid var(--input-border);
+  border: 2px solid var(--field-border);
   border-radius: var(--border-radius-sm);
   background-color: var(--input-background);
   color: var(--input-text);
@@ -46,13 +46,13 @@
 
 .criteria-input-section input[type="text"]:focus {
   outline: none;
-  border-color: var(--input-border-focus);
+  border-color: var(--field-border-focus);
 }
 
 .criteria-input-section input[type="number"] {
   width: 120px;
   padding: var(--spacing-sm);
-  border: 2px solid var(--input-border);
+  border: 2px solid var(--field-border);
   border-radius: var(--border-radius-sm);
   background-color: var(--input-background);
   color: var(--input-text);

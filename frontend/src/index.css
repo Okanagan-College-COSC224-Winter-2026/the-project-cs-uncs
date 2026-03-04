@@ -5,8 +5,6 @@
   font-size: 16px;
 
   color-scheme: light;
-  color: #1e293b;
-  background-color: #f8fafc;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,10 +19,13 @@
   --background-secondary: #e2e8f0;
   --background-tertiary: #cbd5e1;
 
+  color: var(--text-primary);
+  background-color: var(--background-primary);
+
   /* Accent Colors */
-  --accent-primary: #444444;
-  --accent-secondary: #2d2d2d;
-  --accent-hover: #333333;
+  --accent-primary: #22c55e;
+  --accent-secondary: #16a34a;
+  --accent-hover: #15803d;
 
   /* State Colors */
   --success: #28a745;
@@ -34,8 +35,9 @@
 
   /* Input/Form Colors */
   --input-background: #ffffff;
-  --input-border: #ddd;
-  --input-border-focus: #444444;
+  --field-border: #dddddd;
+  --field-border-hover: #247a47;
+  --field-border-focus: #2da659;
   --input-text: #1a1a1a;
 
   --card-background: #ffffff;
@@ -53,6 +55,7 @@
 
   --transition-fast: 0.15s ease;
   --transition-base: 0.25s ease;
+  --transition-slow: 0.4s ease;
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -70,8 +73,6 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  color: #e2e8f0;
-  background-color: #0f172a;
 
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
@@ -81,9 +82,9 @@
   --background-tertiary: #334155;
 
   /* Accent Colors */
-  --accent-primary: #3b82f6;
-  --accent-secondary: #60a5fa;
-  --accent-hover: #2563eb;
+  --accent-primary: #4ade80;
+  --accent-secondary: #22c55e;
+  --accent-hover: #16a34a;
 
   /* State Colors */
   --success: #4caf50;
@@ -93,8 +94,9 @@
 
   /* Input/Form Colors */
   --input-background: #1e293b;
-  --input-border: #404040;
-  --input-border-focus: #3b82f6;
+  --field-border: #313843;
+  --field-border-hover: #4ade80;
+  --field-border-focus: #22c55e;
   --input-text: #e8e8e8;
 
   --card-background: #1e293b;

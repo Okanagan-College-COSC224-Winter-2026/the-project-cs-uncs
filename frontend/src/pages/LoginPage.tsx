@@ -39,7 +39,7 @@ export default function LoginPage() {
         <div className="LoginInner">
           <div className="LoginInputs">
             <div className="LoginInputChunk">
-              <span>Email</span>
+              <label>Email</label>
               <Textbox
                 placeholder='Email...'
                 onInput={setEmail}
@@ -48,7 +48,7 @@ export default function LoginPage() {
             </div>
 
             <div className="LoginInputChunk">
-              <span>Password</span>
+              <label>Password</label>
               <Textbox
                 type='password'
                 placeholder='Password...'

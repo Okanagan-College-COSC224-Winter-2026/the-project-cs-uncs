@@ -27,7 +27,7 @@
 .SidebarLogo img {
   width: 80px;
   height: 80px;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .SidebarLogo img:hover {
@@ -101,10 +101,6 @@
   transition: color var(--transition-fast);
 }
 
-.SidebarRow a:hover {
-  color: var(--accent-primary);
-}
-
 .SidebarRow.selected {
   background-color: var(--background-tertiary);
   border-left: 3px solid var(--button-primary);
@@ -113,6 +109,12 @@
 
 .SidebarRow.selected a {
   color: var(--button-primary);
-  padding-left: calc(1rem - 3px);
   font-weight: 600;
+}
+
+.SidebarRow button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
 }

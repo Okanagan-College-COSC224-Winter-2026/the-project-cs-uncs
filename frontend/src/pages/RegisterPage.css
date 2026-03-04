@@ -5,7 +5,10 @@
   justify-content: center;
 
   height: 100vh;
-  width: 100%;
+  width: 100vw;
+
+  /* Negative margin to offset the "inner" padding and ensure the background covers the entire viewport */
+  margin: calc(-1 * var(--spacing-lg));
 
   background: linear-gradient(135deg, var(--background-primary) 0%, var(--background-secondary) 100%);
   transition: var(--transition-slow);
@@ -16,7 +19,6 @@
   color: var(--text-primary);
   font-size: 2.5rem;
   font-weight: 700;
-  letter-spacing: -0.5px;
   text-align: center;
 }
 
@@ -35,9 +37,6 @@
   border-radius: var(--border-radius-lg);
   border: 2px solid var(--border-color);
   box-shadow: var(--shadow-lg);
-
-  min-height: 380px;
-  max-height: 550px;
   overflow-y: auto;
   transition: background-color var(--transition-base), border-color var(--transition-base);
 

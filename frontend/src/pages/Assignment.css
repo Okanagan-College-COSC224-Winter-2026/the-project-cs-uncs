@@ -51,7 +51,7 @@
   border-bottom: 2px solid var(--border-color);
   position: relative;
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .table .groupNames:hover {
@@ -68,7 +68,7 @@
   left: var(--spacing-md);
   width: 20px;
   height: 20px;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .GroupArrow img {

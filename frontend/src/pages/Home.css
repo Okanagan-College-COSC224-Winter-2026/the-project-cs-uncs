@@ -66,7 +66,7 @@
   width: 100%;
   max-width: 480px;
   padding: var(--spacing-sm) var(--spacing-md);
-  border: 2px solid var(--input-border);
+  border: 2px solid var(--field-border);
   border-radius: var(--border-radius-sm);
   background-color: var(--input-background);
   color: var(--input-text);
@@ -83,5 +83,5 @@
 }
 
 .SearchInput::placeholder {
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
 }

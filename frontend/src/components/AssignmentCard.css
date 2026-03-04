@@ -3,7 +3,6 @@
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
-  gap: 12px;
   color: var(--text-primary);
 
 
@@ -21,7 +20,7 @@
   font-size: 1rem;
   text-align: left;
 
-  transition: var(--transition);
+  transition: var(--transition-base);
   cursor: pointer;
   gap: var(--spacing-md);
 }

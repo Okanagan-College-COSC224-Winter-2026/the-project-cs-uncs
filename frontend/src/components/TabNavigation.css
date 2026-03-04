@@ -24,7 +24,7 @@
   cursor: pointer;
   color: var(--text-secondary);
   font-weight: 500;
-  transition: var(--transition);
+  transition: var(--transition-base);
   position: relative;
 }
 

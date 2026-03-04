@@ -40,7 +40,7 @@
   border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
 
   object-fit: cover;
-  transition: var(--transition);
+  transition: var(--transition-base);
 }
 
 .ClassCard:hover img {

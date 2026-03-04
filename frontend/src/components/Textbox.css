@@ -1,26 +1,47 @@
 .Textbox {
   appearance: none;
 
-  background: var(--input-background);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--input-text);
+  border: 2px solid var(--input-border);
 
-  padding: 10px 12px;
-  border-radius: 6px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-sm);
 
   width: 100%;
-  font-size: 0.95rem;
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-family: inherit;
   outline: none;
-
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-base);
-}
-
-.Textbox:focus {
-  border-color: var(--button-primary);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
 }
 
 .Textbox::placeholder {
   color: var(--text-secondary);
   opacity: 0.7;
+}
+
+.Textbox:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.Textbox:focus {
+  border-color: var(--button-primary);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  background-color: var(--input-bg);
+}
+
+.Textbox:disabled {
+  background-color: var(--background-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.Textbox[type="password"],
+.Textbox[type="email"],
+.Textbox[type="number"],
+.Textbox[type="tel"] {
+  font-family: 'Courier New', monospace;
 }

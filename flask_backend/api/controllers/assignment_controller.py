@@ -19,7 +19,10 @@ def create_assignment():
     if not due_date:
         due_date = None
     else:
-        due_date = datetime.fromisoformat(due_date)
+        try:
+            due_date = datetime.fromisoformat(due_date)
+        except (ValueError, TypeError):
+            return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     if not course_id:
         return jsonify({"msg": "Course ID is required"}), 400

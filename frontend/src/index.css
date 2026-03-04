@@ -1,7 +1,8 @@
 :root {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
   font-weight: 400;
+  font-size: 16px;
 
   color-scheme: light;
   color: #1e293b;
@@ -20,9 +21,25 @@
   --background-secondary: #e2e8f0;
   --background-tertiary: #cbd5e1;
 
+  /* Accent Colors */
+  --accent-primary: #444444;
+  --accent-secondary: #2d2d2d;
+  --accent-hover: #333333;
+
+  /* State Colors */
+  --success: #28a745;
+  --error: #dc3545;
+  --warning: #ffc107;
+  --info: #17a2b8;
+
+  /* Input/Form Colors */
+  --input-background: #ffffff;
+  --input-border: #ddd;
+  --input-border-focus: #444444;
+  --input-text: #1a1a1a;
+
   --card-background: #ffffff;
   --border-color: #cbd5e1;
-  --input-background: #ffffff;
 
   --button-primary: #22c55e;
   --button-primary-hover: #16a34a;
@@ -36,6 +53,19 @@
 
   --transition-fast: 0.15s ease;
   --transition-base: 0.25s ease;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+
+  /* Border Radius */
+  --border-radius: 8px;
+  --border-radius-sm: 4px;
+  --border-radius-lg: 12px;
 }
 
 [data-theme="dark"] {
@@ -50,9 +80,25 @@
   --background-secondary: #1e293b;
   --background-tertiary: #334155;
 
+  /* Accent Colors */
+  --accent-primary: #3b82f6;
+  --accent-secondary: #60a5fa;
+  --accent-hover: #2563eb;
+
+  /* State Colors */
+  --success: #4caf50;
+  --error: #ff6b6b;
+  --warning: #ffb800;
+  --info: #4da6ff;
+
+  /* Input/Form Colors */
+  --input-background: #1e293b;
+  --input-border: #404040;
+  --input-border-focus: #3b82f6;
+  --input-text: #e8e8e8;
+
   --card-background: #1e293b;
   --border-color: #334155;
-  --input-background: #1e293b;
 
   --button-primary: #22c55e;
   --button-primary-hover: #16a34a;

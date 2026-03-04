@@ -1,10 +1,15 @@
 .Home {
-  margin: 1rem;
+  margin: 0;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
 }
 
 .Home h1 {
-  border-bottom: 1px solid var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
+  color: var(--text-primary);
 }
 
 .Classes {
@@ -12,7 +17,8 @@
   flex-direction: row;
   flex-wrap: wrap;
 
-  gap: 1rem;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) 0;
 }
 
 .ClassCreateButton {
@@ -24,13 +30,16 @@
   width: 360px;
   height: 240px;
 
-  background: var(--background-secondary);
+  background-color: var(--background-secondary);
   color: var(--text-secondary);
 
-  border-radius: 10px;
+  border-radius: var(--border-radius-lg);
   border: 2px dashed var(--border-color);
 
   transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .ClassCreateButton:hover {
@@ -42,24 +51,37 @@
   box-shadow: var(--shadow-md);
 }
 
+.ClassCreateButton:active {
+    transform: translateY(0);
+}
+
 .Search {
-  margin: 1rem 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
 }
 
 .SearchInput {
   width: 100%;
   max-width: 480px;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--input-border);
+  border-radius: var(--border-radius-sm);
   background-color: var(--input-background);
-  color: var(--text-primary);
-  font-size: 0.95rem;
+  color: var(--input-text);
+  font-size: 1rem;
+  font-family: inherit;
   outline: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-base);
 }
 
 .SearchInput:focus {
+  outline: none;
   border-color: var(--button-primary);
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.SearchInput::placeholder {
+    color: var(--text-tertiary);
 }

@@ -64,8 +64,8 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="LoginPage">
-      <div className="LoginBlock">
+    <div className="InputPage">
+      <div className="InputBlock">
         <h1>Change Password</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {isForced
@@ -84,8 +84,9 @@ export default function ChangePassword() {
         <div className="LoginInner">
           <div className="LoginInputs">
             <div className="LoginInputChunk">
-              <span>Current Password</span>
+              <label htmlFor="cp-current-password">Current Password</label>
               <Textbox
+                id='cp-current-password'
                 type='password'
                 placeholder='Current password...'
                 onInput={setCurrentPassword}
@@ -94,8 +95,9 @@ export default function ChangePassword() {
             </div>
 
             <div className="LoginInputChunk">
-              <span>New Password</span>
+              <label htmlFor="cp-new-password">New Password</label>
               <Textbox
+                id='cp-new-password'
                 type='password'
                 placeholder='New password...'
                 onInput={setNewPassword}
@@ -104,8 +106,9 @@ export default function ChangePassword() {
             </div>
 
             <div className="LoginInputChunk">
-              <span>Confirm New Password</span>
+              <label htmlFor="cp-confirm-password">Confirm New Password</label>
               <Textbox
+                id='cp-confirm-password'
                 type='password'
                 placeholder='Confirm new password...'
                 onInput={setConfirmPassword}

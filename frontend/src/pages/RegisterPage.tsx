@@ -230,6 +230,6 @@ export default function RegisterPage() {
           Register
         </Button>
       </div>
-    </div>
+        </div>
   );
 }

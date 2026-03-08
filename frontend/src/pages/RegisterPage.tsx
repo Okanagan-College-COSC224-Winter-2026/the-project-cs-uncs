@@ -231,5 +231,6 @@ export default function RegisterPage() {
         </Button>
       </div>
         </div>
+    </div>
   );
 }

@@ -10,6 +10,7 @@ interface Criterion {
   criterionRowID: number;
   grade: number;
   comments: string;
+  scoreMax: number;
 }
 
 interface ReviewDetail {
@@ -239,7 +240,7 @@ export default function TeacherReviewDashboard() {
                                 Criterion #{criterion.criterionRowID}
                               </span>
                               <span className="grade-badge">
-                                Grade: {criterion.grade}
+                                Grade: {criterion.grade}{criterion.scoreMax ? `/${criterion.scoreMax}` : ''}
                               </span>
                             </div>
                             {criterion.comments && (

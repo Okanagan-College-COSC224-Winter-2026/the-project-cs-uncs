@@ -423,6 +423,17 @@ def get_all_reviews_for_assignment(assignment_id):
             # Get criteria for this review
             criteria_list = list(review.criteria.all())
 
+            # Enhance criteria with scoreMax from CriteriaDescription
+            criteria_with_max = []
+            for criterion in criteria_list:
+                crit_data = criterion_schema.dump(criterion)
+                # Add scoreMax from the related CriteriaDescription
+                if criterion.criterion_row:
+                    crit_data['scoreMax'] = criterion.criterion_row.scoreMax
+                else:
+                    crit_data['scoreMax'] = None
+                criteria_with_max.append(crit_data)
+
             review_data = {
                 "id": review.id,
                 "reviewer": {
@@ -437,7 +448,7 @@ def get_all_reviews_for_assignment(assignment_id):
                 },
                 "completed": review.completed,
                 "criteria_count": len(criteria_list),
-                "criteria": criterion_schema.dump(criteria_list, many=True)
+                "criteria": criteria_with_max
             }
 
             if review.completed:

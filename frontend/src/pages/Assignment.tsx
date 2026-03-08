@@ -7,8 +7,7 @@ import TabNavigation from "../components/TabNavigation";
 import { isTeacher } from "../util/login";
 
 import { 
-  getUserId,
-  getReview
+  getUserId
 } from "../util/api";
 
 interface SelectedCriterion {
@@ -19,7 +18,6 @@ interface SelectedCriterion {
 export default function Assignment() {
   const { id } = useParams();
   const [selectedCriteria, setSelectedCriteria] = useState<SelectedCriterion[]>([]);
-  const [review, setReview] = useState<number[]>([]);
 
   useEffect(() => {
       (async () => {
@@ -90,7 +88,7 @@ export default function Assignment() {
       <TabNavigation tabs={tabs} />
 
       <div className='assignmentRubricDisplay'>
-        <RubricDisplay rubricId={Number(id)} onCriterionSelect={handleCriterionSelect} grades={review} />
+        <RubricDisplay rubricId={Number(id)} onCriterionSelect={handleCriterionSelect} grades={[]} />
       </div>
       {
         isTeacher() && 

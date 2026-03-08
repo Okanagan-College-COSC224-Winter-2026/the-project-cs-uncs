@@ -540,3 +540,31 @@ def test_enroll_in_class_invalid_email_format(test_client, make_admin):
     )
     assert response.status_code == 400
     assert response.json["msg"] == "Invalid email format: johndoeatexample.com"
+
+    # Backend test (pytest)
+    # Add to flask_backend/tests/test_classes.py
+
+    def test_roster_matched_registration(test_client, make_admin):
+        """Test student registration with roster-matched courses"""
+        # Create teacher and course
+        make_admin(email="teacher@example.com", password="teacher", name="Teacher")
+        test_client.post("/auth/login",
+                         json={"email": "teacher@example.com", "password": "teacher"})
+
+        course_resp = test_client.post("/class/create_class",
+                                       json={"name": "CS 101"})
+        course_id = course_resp.json["class"]["id"]
+
+        # Upload roster with student email
+        csv_data = "id,name,email\n1,John Doe,john@example.com"
+        test_client.post("/class/enroll_students",
+                         json={"class_id": course_id, "students": csv_data})
+
+        # Student registers with same email
+        register_resp = test_client.post("/auth/register",
+                                         json={"name": "John Doe", "email": "john@example.com",
+                                               "password": "newpass123"})
+
+        # Should return available_courses
+        assert register_resp.json["available_courses"][0]["id"] == course_id
+        assert register_resp.status_code == 201

@@ -5,7 +5,10 @@
   align-items: center;
 
   width: 100%;
-  padding: 12px;
+  padding: var(--spacing-md);
+  gap: var(--spacing-lg);
+  border-bottom: 2px solid var(--border-color);
+  background-color: var(--background-primary);
 }
 
 .TabNav .Tab {
@@ -14,16 +17,24 @@
   justify-content: center;
   align-items: center;
 
-  padding: 20px 6px;
-  margin: 0px 20px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin: 0;
 
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: var(--transition-base);
+  position: relative;
 }
 
 .TabNav .Tab:hover {
-  cursor: pointer;
+  color: var(--text-primary);
+  border-bottom-color: var(--border-color);
 }
 
 .TabNav .Tab.active {
-  border-bottom: 2px solid black;
+  border-bottom-color: var(--accent-primary);
+  color: var(--accent-primary);
+  font-weight: 600;
 }

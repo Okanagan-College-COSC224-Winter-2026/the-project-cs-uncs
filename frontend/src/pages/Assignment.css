@@ -1,88 +1,74 @@
-.assignmentTables {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
+.AssignmentHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-md);
 }
+
+.AssignmentHeader h1 {
+  margin: 0;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.assignmentTables {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+  width: 100%;
+  min-height: 400px;
+}
+
 .table {
-    width: 50%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border: 1px solid var(--background-secondary);
-    /* background-color: var(--background-secondary); */
-    margin: 0 10px;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--background-primary);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin: 0 10px;
 }
 
 .table .groupNames {
+  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
+  width: 100%;
 
-  background: #eee;
-  padding: 4px 0;
-}
-
-.AssignmentPage button {
-  padding: 8px;
-  border: none;
-  background-color: var(--button-primary);
-  color: #fff;
-  font-size: 16px;
+  background-color: var(--background-secondary);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 2px solid var(--border-color);
+  position: relative;
   cursor: pointer;
-
-  transition: all 0.1s ease-in-out;
+  transition: var(--transition-base);
 }
 
-.AssignmentPage button:hover {
-  filter: brightness(0.9);
+.table .groupNames:hover {
+  background-color: var(--background-tertiary);
 }
 
 .AssignmentPage  button,
 .table .StudentName {
-  margin: 10px;
-  margin-left: 20px;
-}
-
-.table tr {
-  width: 100%;
-  display:flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-
-  transition: all 0.1s ease-in-out;
-}
-
-.table tr:not(.groupNames):hover {
-  background-color: var(--background-secondary);
-}
-
-.table th {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-
-    border-bottom: 1px solid var(--background-secondary);
-}
-
-.groupNames {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-
-    position: relative;
+    margin: 10px 10px 10px 20px;
 }
 
 .GroupArrow {
   position: absolute;
-  top: 4px;
-  left: 20px;
+  left: var(--spacing-md);
   width: 20px;
   height: 20px;
+  transition: var(--transition-base);
 }
 
 .GroupArrow img {
@@ -94,14 +80,54 @@
   transform: rotate(90deg);
 }
 
-.AssignmentHeader {
+.table th {
+  width: 100%;
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 12px;
+  padding: var(--spacing-sm);
+  border-bottom: 2px solid var(--border-color);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.groupNameInput{
+.table tr {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  transition: all 0.1s ease-in-out;
+}
+
+.table tr:not(.groupNames):hover {
+  background-color: var(--background-secondary);
+}
+
+.table .StudentName {
+  margin: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.AssignmentPage button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-md);
+  border: none;
+  background-color: var(--button-primary);
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.AssignmentPage button:hover {
+    background-color: var(--button-primary-hover);
+    transform: translateY(-1px);
+}
+
+.groupNameInput {
   width: 15%;
+  max-width: 200px;
 }

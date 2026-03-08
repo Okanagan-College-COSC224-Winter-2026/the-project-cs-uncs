@@ -5,60 +5,92 @@
   justify-content: center;
 
   height: 100vh;
-  width: 100%;
+  width: 100vw;
 
-  background-color: #fff;
+  /* Negative margin to offset the "inner" padding and ensure the background covers the entire viewport */
+  margin: calc(-1 * var(--spacing-lg));
+
+  background: linear-gradient(135deg, var(--background-primary) 0%, var(--background-secondary) 100%);
+  transition: var(--transition-slow);
 }
 
 .RegisterPage h1 {
-  margin: 16px;
+  margin: var(--spacing-lg);
+  color: var(--text-primary);
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .RegisterBlock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-around;
 
-  margin: 8px;
-  padding-bottom: 16px;
+  margin: var(--spacing-md);
+  padding: var(--spacing-xl);
 
-  height: 50%;
-  width: 30%;
+  width: 100%;
+  max-width: 420px;
 
-  background-color: #fff;
+  background-color: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 
-  min-height: 300px;
-  max-height: 400px;
 }
 
 .RegisterInner {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-
   height: 100%;
+  width: 100%;
+  gap: var(--spacing-lg);
 }
 
 .RegisterButton {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+}
+
+.RegisterButton button {
+  width: 100%;
 }
 
 .RegisterInputs {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 
   width: 100%;
+  gap: var(--spacing-md);
 }
 
 .RegisterInputChunk {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
 
-  margin: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.RegisterInputChunk span {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.RegisterInputChunk input,
+.RegisterInputChunk select {
+    width: 100%;
+}
+
+.RegisterError {
+  margin-bottom: 16px;
 }

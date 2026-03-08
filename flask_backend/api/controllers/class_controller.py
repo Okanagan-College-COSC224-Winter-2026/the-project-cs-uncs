@@ -47,6 +47,36 @@ def get_classes():
     return jsonify([{"id": c.id, "name": c.name} for c in classes]), 200
 
 
+@bp.route("/search", methods=["GET"])
+@jwt_required()
+def search_classes():
+    """Search classes by name (case-insensitive, partial match)
+
+    Query params:
+      - q: search string
+    """
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": [], "message": "Query parameter 'q' required"}), 400
+
+    # Partial, case-insensitive match on the course name
+    matches = Course.query.filter(Course.name.ilike(f"%{q}%")).all()
+
+    results = []
+    for c in matches:
+        results.append({
+            "id": c.id,
+            "name": c.name,
+            "teacher": {"id": c.teacher.id if c.teacher else None, "name": c.teacher.name if c.teacher else None},
+            "student_count": len(c.students) if c.students is not None else 0,
+        })
+
+    if not results:
+        return jsonify({"results": [], "message": "No courses found"}), 200
+
+    return jsonify({"results": results}), 200
+
+
 @bp.route("/classes", methods=["GET"])
 @jwt_required()
 def get_user_classes():

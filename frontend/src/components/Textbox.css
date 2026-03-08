@@ -1,12 +1,40 @@
 .Textbox {
   appearance: none;
 
-  background: var(--background-primary);
-  color: var(--text-primary);
-  border: 1px solid black;
+  background-color: var(--input-background);
+  color: var(--input-text);
+  border: 2px solid var(--field-border);
 
-  padding: 12px;
-  border-radius: 4px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-sm);
 
   width: 100%;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-base);
+}
+
+.Textbox::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.Textbox:hover {
+  border-color: var(--field-border-hover);
+}
+
+.Textbox:focus,
+.Textbox:focus-visible {
+  border: 2px solid var(--field-border-focus);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  background-color: var(--input-background);
+  outline: none;
+}
+
+.Textbox:disabled {
+  background-color: var(--background-tertiary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
 }

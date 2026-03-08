@@ -1,19 +1,28 @@
 .comment {
-    width: 100%;
-    height: 100%;
-    min-height: 80px;
-    resize: vertical;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 4px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: var(--background-primary);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: inherit;
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+  resize: vertical;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--spacing-sm);
+  border: 2px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-background);
+  color: var(--input-text);
+  font-family: inherit;
+  font-size: inherit;
+  transition: var(--transition-base);
+}
+
+.comment:focus {
+  outline: none;
+  border-color: var(--field-border-focus);
+  box-shadow: 0 0 0 3px rgba(68, 68, 68, 0.1);
 }
 
 .reviewedCell {
-    background-color: lightgreen;
+  background-color: var(--success);
+  color: var(--background-primary);
+  font-weight: 600;
 }

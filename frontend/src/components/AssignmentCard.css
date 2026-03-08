@@ -1,29 +1,107 @@
-.A_Card{
+.A_Card {
   display: flex;
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
   color: var(--text-primary);
 
-  padding: 4px;
 
   width: 95%;
-  height:auto;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 
-  border-radius: 6px;
+  height: auto;
 
-  font-weight: bold;
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--background-primary);
+
+  font-weight: 600;
   font-size: 1rem;
   text-align: left;
+
+  transition: var(--transition-base);
+  cursor: pointer;
+  gap: var(--spacing-md);
 }
 
 .A_Card img {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--border-radius-sm);
+  flex-shrink: 0;
 }
 
-/*TODO: add disabled functionality */
-.A_Card:hover{
-  cursor: pointer;
+.A_Card_Content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.A_Card_Name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.A_Card_Info {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+.A_Card_DueDate {
+  color: var(--text-secondary);
+}
+
+.A_Card_Status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.A_Card_Status_overdue {
+  background-color: #ff4444;
+  color: white;
+}
+
+.A_Card_Status_due-today {
+  background-color: #ff9500;
+  color: white;
+}
+
+.A_Card_Status_due-soon {
+  background-color: #ffcc00;
+  color: #333;
+}
+
+.A_Card_Status_upcoming {
+  background-color: #44bb44;
+  color: white;
+}
+
+.A_Card_Status_not-due {
+  background-color: #999;
+  color: white;
+}
+
+.A_Card:hover {
   background-color: var(--background-secondary);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateX(4px);
+}
+
+.A_Card:active {
+  transform: translateX(2px);
 }

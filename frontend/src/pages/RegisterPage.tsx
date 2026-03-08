@@ -142,8 +142,54 @@ export default function RegisterPage() {
 
   return (
     <div className="RegisterPage">
-      <div className="RegisterContainer">
-        <h1>Create Account</h1>
+      {error && <StatusMessage message={error} type="error" className="RegisterError" />}
+      <div className="RegisterBlock">
+        <h1>Register</h1>
+
+        <div className="RegisterInner">
+          <div className="RegisterInputs">
+            <div className="RegisterInputChunk">
+              <label htmlFor="register-name">Name</label>
+              <Textbox
+                id='register-name'
+                placeholder='Name...'
+                onInput={setName}
+                className='RegisterInput'
+              />
+            </div>
+
+            <div className="RegisterInputChunk">
+              <label htmlFor="register-email">Email</label>
+              <Textbox
+                id='register-email'
+                type='email'
+                placeholder='Email...'
+                onInput={setEmail}
+                className='RegisterInput'
+              />
+            </div>
+
+            <div className="RegisterInputChunk">
+              <label htmlFor="register-password">Password</label>
+              <Textbox
+                id='register-password'
+                type='password'
+                placeholder='Password...'
+                onInput={setPassword}
+                className='RegisterInput'
+              />
+            </div>
+
+            <div className="RegisterInputChunk">
+              <label htmlFor="register-confirm-password">Confirm Password</label>
+              <Textbox
+                id='register-confirm-password'
+                type='password'
+                placeholder='Confirm Password...'
+                onInput={setConfirmPassword}
+                className='RegisterInput'
+              />
+            </div>
 
         <div className="FormGroup">
           <label>Full Name</label>
@@ -163,13 +209,15 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="FormGroup">
-          <label>Password</label>
-          <Textbox
-            placeholder="Enter your password"
-            onInput={setPassword}
-            type="password"
-            className="RegisterInput"
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            onClick={()=> attemptRegister()}
+            children="Register"
+          />
+          <Button
+            onClick={() => navigate('/')}
+            type='secondary'
+            children="Login"
           />
         </div>
 

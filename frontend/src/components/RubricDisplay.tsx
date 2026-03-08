@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Criteria from './Criteria';
-import { getCriteria, getRubric } from '../util/api';
+import { getCriteria } from '../util/api';
 import './RubricDisplay.css';
 
 interface RubricDisplayProps {
@@ -9,16 +9,10 @@ interface RubricDisplayProps {
     grades: number[];
 }
 
-interface RubricInfo {
-    id: number;
-    assignmentID: number;
-    canComment: boolean;
-    grades: number[];
-}
-
 export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: RubricDisplayProps) {
     const [criteria, setCriteria] = useState<Criterion[]>([]);
-    const [rubricInfo, setRubricInfo] = useState<RubricInfo | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const questions: string[] = [];
     const scoreMaxes: number[] = [];
     const hasScores: boolean[] = [];
@@ -26,12 +20,20 @@ export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: R
     useEffect(() => {
         const loadData = async () => {
             if (rubricId) {
-                const [criteriaResp, rubricResp] = await Promise.all([
-                    getCriteria(rubricId),
-                    getRubric(rubricId)
-                ]);
-                setCriteria(criteriaResp);
-                setRubricInfo(rubricResp);
+                try {
+                    setLoading(true);
+                    setError(null);
+                    // getCriteria now accepts assignment ID
+                    const criteriaResp = await getCriteria(rubricId);
+                    setCriteria(criteriaResp);
+                } catch (err) {
+                    console.error('Error loading criteria:', err);
+                    setError('Failed to load rubric criteria');
+                } finally {
+                    setLoading(false);
+                }
+            } else {
+                setLoading(false);
             }
         };
         loadData();
@@ -42,6 +44,22 @@ export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: R
         scoreMaxes.push(crit.scoreMax);
         hasScores.push(crit.hasScore);
     });
+
+    if (loading) {
+        return (
+            <div className="RubricDisplay">
+                <p>Loading rubric...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="RubricDisplay">
+                <p className="error">{error}</p>
+            </div>
+        );
+    }
 
     if (!rubricId || criteria.length === 0) {
         return (
@@ -57,7 +75,7 @@ export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: R
             <Criteria
                 questions={questions}
                 scoreMaxes={scoreMaxes}
-                canComment={rubricInfo?.canComment ?? false}
+                canComment={true}
                 hasScores={hasScores}
                 onCriterionSelect={onCriterionSelect}
                 grades={grades}

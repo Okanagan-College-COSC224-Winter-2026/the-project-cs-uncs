@@ -14,6 +14,8 @@ import Group from "./pages/Group";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePassword from "./pages/ChangePassword";
 import CreateTeacher from "./pages/CreateTeacher";
+import PeerReviews from "./pages/PeerReviews";
+import ReviewSubmission from "./pages/ReviewSubmission";
 
 function AppContent() {
   const location = useLocation();
@@ -70,9 +72,33 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
+          <Route path="/assignment/:id" element={
+            <ProtectedRoute>
+              <Assignment />
+            </ProtectedRoute>
+          } />
+
           <Route path="/assignments/:id/group" element={
             <ProtectedRoute>
               <Group />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/group" element={
+            <ProtectedRoute>
+              <Group />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/reviews" element={
+            <ProtectedRoute>
+              <PeerReviews />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:assignmentId/review/:reviewId" element={
+            <ProtectedRoute>
+              <ReviewSubmission />
             </ProtectedRoute>
           } />
         </Routes>

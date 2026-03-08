@@ -1,0 +1,380 @@
+"""
+Review controller - handles peer review operations for students and teachers
+"""
+
+from datetime import datetime, timezone
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import ValidationError
+
+from ..models import (
+    Assignment,
+    Criterion,
+    CriterionSchema,
+    CriteriaDescription,
+    Review,
+    ReviewSchema,
+    Rubric,
+    Submission,
+    SubmissionSchema,
+    User,
+)
+from .auth_controller import jwt_role_required
+
+bp = Blueprint("review", __name__, url_prefix="/review")
+
+# Schema instances
+review_schema = ReviewSchema()
+reviews_schema = ReviewSchema(many=True)
+criterion_schema = CriterionSchema()
+submission_schema = SubmissionSchema()
+
+from ..models.schemas import CriteriaDescriptionSchema
+criteria_description_schema = CriteriaDescriptionSchema(many=True)
+
+
+@bp.route("/assigned/<int:assignment_id>", methods=["GET"])
+@jwt_role_required("student", "teacher", "admin")
+def get_assigned_reviews(assignment_id):
+    """
+    Get all reviews assigned to the current user for a specific assignment
+
+    Returns:
+        - List of reviews with reviewee details and completion status
+        - Each review includes submission information if available
+    """
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+
+    # Verify assignment exists
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    # Get all reviews where this user is the reviewer
+    reviews = Review.get_by_reviewer_and_assignment(user.id, assignment_id)
+
+    # Build response with additional context
+    result = []
+    for review in reviews:
+        review_data = review_schema.dump(review)
+
+        # Add submission information for the reviewee
+        submission = Submission.query.filter_by(
+            studentID=review.revieweeID,
+            assignmentID=assignment_id
+        ).first()
+
+        if submission:
+            review_data["submission"] = submission_schema.dump(submission)
+        else:
+            review_data["submission"] = None
+
+        # Add completion status and criteria count
+        review_data["criteria_count"] = review.criteria.count()
+
+        result.append(review_data)
+
+    return jsonify({
+        "reviews": result,
+        "total_count": len(result),
+        "assignment": {
+            "id": assignment.id,
+            "name": assignment.name,
+            "due_date": assignment.due_date.isoformat() if assignment.due_date else None,
+            "can_submit": assignment.can_modify()  # Checks if before due date
+        }
+    }), 200
+
+
+@bp.route("/submission/<int:review_id>", methods=["GET"])
+@jwt_role_required("student", "teacher", "admin")
+def get_review_submission(review_id):
+    """
+    Get the submission content for a specific review
+
+    Only allows access if:
+    - User is the assigned reviewer
+    - OR user is a teacher/admin
+    """
+    try:
+        current_email = get_jwt_identity()
+        user = User.get_by_email(current_email)
+
+        print(f"[DEBUG] get_review_submission: review_id={review_id}, user={user.email}")
+
+        review = Review.get_by_id(review_id)
+        if not review:
+            print(f"[DEBUG] Review {review_id} not found")
+            return jsonify({"msg": "Review not found"}), 404
+
+        # Check permission: must be the reviewer or a teacher/admin
+        if review.reviewerID != user.id and not user.has_role("teacher", "admin"):
+            print(f"[DEBUG] Unauthorized access attempt")
+            return jsonify({"msg": "You are not authorized to view this submission"}), 403
+
+        # Get the submission
+        submission = Submission.query.filter_by(
+            studentID=review.revieweeID,
+            assignmentID=review.assignmentID
+        ).first()
+
+        if not submission:
+            print(f"[DEBUG] No submission found")
+
+
+        print(f"[DEBUG] Returning submission data successfully")
+        return jsonify({
+            "submission": submission_schema.dump(submission),
+            "review": review_schema.dump(review),
+            "reviewee_name": review.reviewee.name  # For display purposes (keeping anonymous per US3)
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] Exception in get_review_submission: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"msg": f"Server error: {str(e)}"}), 500
+
+
+@bp.route("/submit/<int:review_id>", methods=["POST"])
+@jwt_role_required("student", "teacher", "admin")
+def submit_review_feedback(review_id):
+    """
+    Submit feedback for a peer review
+
+    Request body:
+    {
+        "criteria": [
+            {
+                "criterionRowID": 1,
+                "grade": 5,
+                "comments": "Great work!"
+            },
+            ...
+        ]
+    }
+
+    Checks:
+    - User is the assigned reviewer
+    - Review period is still open (before due date)
+    - Review hasn't already been completed
+    """
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+
+    review = Review.get_by_id(review_id)
+    if not review:
+        return jsonify({"msg": "Review not found"}), 404
+
+    # Check permission: must be the reviewer
+    if review.reviewerID != user.id:
+        return jsonify({"msg": "You are not authorized to submit this review"}), 403
+
+    # Check if review period is still open
+    assignment = review.assignment
+    if assignment.due_date and not assignment.can_modify():
+        return jsonify({
+            "msg": "The review period has ended. Submissions are no longer accepted.",
+            "due_date": assignment.due_date.isoformat()
+        }), 403
+
+    # Check if already completed
+    if review.completed:
+        return jsonify({"msg": "This review has already been submitted"}), 400
+
+    # Validate request
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    data = request.json
+    criteria_data = data.get("criteria", [])
+
+    if not criteria_data:
+        return jsonify({"msg": "At least one criterion is required"}), 400
+
+    # Create or update criteria
+    for criterion_data in criteria_data:
+        # Check if criterion already exists
+        existing = Criterion.query.filter_by(
+            reviewID=review_id,
+            criterionRowID=criterion_data.get("criterionRowID")
+        ).first()
+
+        if existing:
+            # Update existing
+            existing.grade = criterion_data.get("grade")
+            existing.comments = criterion_data.get("comments", "")
+            existing.update()
+        else:
+            # Create new
+            criterion = Criterion(
+                reviewID=review_id,
+                criterionRowID=criterion_data.get("criterionRowID"),
+                grade=criterion_data.get("grade"),
+                comments=criterion_data.get("comments", "")
+            )
+            Criterion.create_criterion(criterion)
+
+    # Mark review as complete
+    review.mark_complete()
+
+    return jsonify({
+        "msg": "Review submitted successfully",
+        "review": review_schema.dump(review)
+    }), 200
+
+
+@bp.route("/status/<int:assignment_id>", methods=["GET"])
+@jwt_role_required("student", "teacher", "admin")
+def get_review_status(assignment_id):
+    """
+    Get review completion status for the current user on an assignment
+
+    Returns summary of assigned vs completed reviews
+    """
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    reviews = Review.get_by_reviewer_and_assignment(user.id, assignment_id)
+
+    completed_count = sum(1 for review in reviews if review.completed)
+    total_count = len(reviews)
+
+    return jsonify({
+        "assignment_id": assignment_id,
+        "total_assigned": total_count,
+        "completed": completed_count,
+        "remaining": total_count - completed_count,
+        "is_open": assignment.can_modify(),
+        "due_date": assignment.due_date.isoformat() if assignment.due_date else None
+    }), 200
+
+
+@bp.route("/create", methods=["POST"])
+@jwt_role_required("teacher", "admin")
+def create_review():
+    """
+    Create a new review assignment (teacher/admin only)
+
+    Request body:
+    {
+        "assignmentID": 1,
+        "reviewerID": 2,
+        "revieweeID": 3
+    }
+    """
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    data = request.json
+
+    # Validate required fields
+    required = ["assignmentID", "reviewerID", "revieweeID"]
+    if not all(field in data for field in required):
+        return jsonify({"msg": f"Missing required fields: {required}"}), 400
+
+    # Verify assignment exists
+    assignment = Assignment.get_by_id(data["assignmentID"])
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    # Verify users exist
+    reviewer = User.get_by_id(data["reviewerID"])
+    reviewee = User.get_by_id(data["revieweeID"])
+    if not reviewer or not reviewee:
+        return jsonify({"msg": "Reviewer or reviewee not found"}), 404
+
+    # Check if review already exists
+    existing = Review.get_by_reviewer_reviewee_assignment(
+        data["reviewerID"],
+        data["revieweeID"],
+        data["assignmentID"]
+    )
+    if existing:
+        return jsonify({"msg": "Review already exists", "review_id": existing.id}), 400
+
+    # Create review
+    review = Review(
+        assignmentID=data["assignmentID"],
+        reviewerID=data["reviewerID"],
+        revieweeID=data["revieweeID"]
+    )
+    Review.create_review(review)
+
+    return jsonify({
+        "msg": "Review created successfully",
+        "review": review_schema.dump(review)
+    }), 201
+
+
+@bp.route("/<int:review_id>", methods=["GET"])
+@jwt_role_required("student", "teacher", "admin")
+def get_review(review_id):
+    """
+    Get details of a specific review including all criteria
+    """
+    try:
+        current_email = get_jwt_identity()
+        user = User.get_by_email(current_email)
+
+        print(f"[DEBUG] get_review called: review_id={review_id}, user={user.email}")
+
+        review = Review.get_by_id_with_relations(review_id)
+        if not review:
+            print(f"[DEBUG] Review {review_id} not found")
+            return jsonify({"msg": "Review not found"}), 404
+
+
+        if review.reviewerID != user.id and not user.has_role("teacher", "admin"):
+            print(f"[DEBUG] Unauthorized: user {user.id} trying to access review for reviewer {review.reviewerID}")
+            return jsonify({"msg": "You are not authorized to view this review"}), 403
+
+        # Get all criteria for this review
+        criteria = list(review.criteria.all())
+        print(f"[DEBUG] Found {len(criteria)} criteria for review {review_id}")
+
+        result = {
+            "review": review_schema.dump(review),
+            "criteria": criterion_schema.dump(criteria, many=True)
+        }
+        print(f"[DEBUG] Returning review data successfully")
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"[ERROR] Exception in get_review: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"msg": f"Server error: {str(e)}"}), 500
+
+
+@bp.route("/criteria/<int:assignment_id>", methods=["GET"])
+@jwt_role_required("student", "teacher", "admin")
+def get_criteria_for_assignment(assignment_id):
+    """
+    Get rubric criteria descriptions for an assignment.
+    This is used when filling out a peer review.
+
+    Returns the criteria that reviewers should evaluate.
+    """
+    # Verify assignment exists
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    # Get the rubric for this assignment
+    rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+    if not rubric:
+        return jsonify({"msg": "No rubric found for this assignment", "criteria": []}), 200
+
+    # Get all criteria descriptions for this rubric
+    criteria_descriptions = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
+
+    return jsonify(criteria_description_schema.dump(criteria_descriptions)), 200
+
+

@@ -270,8 +270,8 @@ export const saveGroups = async (groupID: number, userID: number, assignmentID :
   })
 }
 
-export const getCriteria = async (rubricID: number) => {
-  const resp = await fetch(`${BASE_URL}/criteria?rubricID=${rubricID}`, {
+export const getCriteria = async (assignmentID: number) => {
+  const resp = await fetch(`${BASE_URL}/review/criteria/${assignmentID}`, {
     credentials: 'include'
   })
 
@@ -319,6 +319,139 @@ export const createRubric = async (id: number, assignmentID: number, canComment:
 
   if (!response.ok) {
     throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// ============================================================
+// REVIEW ENDPOINTS - Student Peer Review Features
+// ============================================================
+
+/**
+ * Get all reviews assigned to the current user for a specific assignment
+ */
+export const getAssignedReviews = async (assignmentId: number) => {
+  const response = await fetch(`${BASE_URL}/review/assigned/${assignmentId}`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get the submission content for a specific review
+ */
+export const getReviewSubmission = async (reviewId: number) => {
+  const response = await fetch(`${BASE_URL}/review/submission/${reviewId}`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Submit feedback for a peer review
+ */
+export const submitReviewFeedback = async (
+  reviewId: number,
+  criteria: { criterionRowID: number; grade: number; comments: string }[]
+) => {
+  const response = await fetch(`${BASE_URL}/review/submit/${reviewId}`, {
+    method: 'POST',
+    body: JSON.stringify({ criteria }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.msg || `Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get review completion status for current user on an assignment
+ */
+export const getReviewStatus = async (assignmentId: number) => {
+  const response = await fetch(`${BASE_URL}/review/status/${assignmentId}`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get details of a specific review including all criteria
+ */
+export const getReviewDetails = async (reviewId: number) => {
+  const response = await fetch(`${BASE_URL}/review/${reviewId}`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Create a new review assignment (teacher/admin only)
+ */
+export const createReviewAssignment = async (
+  assignmentId: number,
+  reviewerId: number,
+  revieweeId: number
+) => {
+  const response = await fetch(`${BASE_URL}/review/create`, {
+    method: 'POST',
+    body: JSON.stringify({
+      assignmentID: assignmentId,
+      reviewerID: reviewerId,
+      revieweeID: revieweeId
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.msg || `Response status: ${response.status}`);
   }
 
   return await response.json();

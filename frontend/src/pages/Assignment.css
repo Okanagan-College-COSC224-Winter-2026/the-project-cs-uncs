@@ -102,6 +102,23 @@
   padding: 12px;
 }
 
+.peer-reviews-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.peer-reviews-btn:hover {
+  background-color: #1565c0;
+}
+
+
 .groupNameInput{
   width: 15%;
 }

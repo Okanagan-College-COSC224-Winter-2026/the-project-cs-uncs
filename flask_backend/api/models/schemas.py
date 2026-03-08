@@ -136,7 +136,7 @@ class CriterionSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Criterion
         load_instance = True
-        include_fk = False
+        include_fk = True  # Need to include criterionRowID
         sqla_session = db.session
 
 
@@ -161,6 +161,7 @@ class ReviewSchema(ma.SQLAlchemyAutoSchema):
     reviewer = fields.Nested(UserListSchema, dump_only=True)
     reviewee = fields.Nested(UserListSchema, dump_only=True)
     assignment = fields.Nested(AssignmentSchema, dump_only=True)
+    completed = fields.Bool(dump_default=False)
 
 
 class ReviewListSchema(ma.SQLAlchemyAutoSchema):
@@ -175,12 +176,13 @@ class ReviewListSchema(ma.SQLAlchemyAutoSchema):
 
     class Meta:
         model = Review
-        fields = ("id", "assignmentID", "reviewer", "reviewee")
+        fields = ("id", "assignmentID", "reviewer", "reviewee", "completed")
         dump_only = ("id",)
         include_fk = True  # Allows assignmentID to be serialized
 
     reviewer = fields.Nested(UserListSchema, dump_only=True)
     reviewee = fields.Nested(UserListSchema, dump_only=True)
+    completed = fields.Bool(dump_default=False)
 
 
 # ============================================================

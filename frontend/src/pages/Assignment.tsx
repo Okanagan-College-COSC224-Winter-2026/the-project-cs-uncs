@@ -1,5 +1,5 @@
 import { useEffect, useState, ChangeEvent } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import "./Assignment.css";
 import RubricCreator from "../components/RubricCreator";
 import RubricDisplay from "../components/RubricDisplay";
@@ -21,6 +21,7 @@ interface SelectedCriterion {
 
 export default function Assignment() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [stuGroup, setStuGroup] = useState<StudentGroups[]>([]);
   const [revieweeID, setRevieweeID] = useState<number>(0);
   const [stuID, setStuID] = useState<number>(0);
@@ -29,20 +30,33 @@ export default function Assignment() {
 
   useEffect(() => {
       (async () => {
-        const stuID = await getUserId();
-      setStuID(stuID);
-      const stus = await listStuGroup(Number(id), stuID);
-      setStuGroup(stus);
         try {
-          const reviewResponse = await getReview(Number(id), stuID, revieweeID);
-          const reviewData = await reviewResponse.json();
-          setReview(reviewData.grades);
-          console.log("Review data:", reviewData);
+          const stuID = await getUserId();
+          setStuID(stuID);
+
+          try {
+            const stus = await listStuGroup(Number(id), stuID);
+            setStuGroup(stus);
+          } catch (error) {
+            console.log('Group list not available:', error);
+            setStuGroup([]);
+          }
+
+          if (revieweeID) {
+            try {
+              const reviewResponse = await getReview(Number(id), stuID, revieweeID);
+              const reviewData = await reviewResponse.json();
+              setReview(reviewData.grades);
+              console.log("Review data:", reviewData);
+            } catch (error) {
+              console.log('Review not available:', error);
+            }
+          }
         } catch (error) {
-          console.error('Error fetching review:', error);
+          console.error('Error in Assignment page:', error);
         }
       })();
-  }, [revieweeID, id, stuID]);
+  }, [revieweeID, id]);
 
   const handleCriterionSelect = (row: number, column: number) => {
     // Check if this criterion is already selected
@@ -76,6 +90,14 @@ export default function Assignment() {
     <>
       <div className="AssignmentHeader">
         <h2>Assignment {id}</h2>
+        {!isTeacher() && (
+          <button
+            className="peer-reviews-btn"
+            onClick={() => navigate(`/assignment/${id}/reviews`)}
+          >
+            View Peer Reviews
+          </button>
+        )}
       </div>
 
       <TabNavigation
@@ -100,37 +122,6 @@ export default function Assignment() {
             <RubricCreator id={Number(id)}/>
           </div>
       }
-
-{
-      //List group members as radio buttons to select for given review
-      !isTeacher() && <div className='groupMembers'>
-        <h3>Select a group member to review</h3>
-          {stuGroup.map((stus) => {
-                return (
-                  <>
-                  <input type='radio' id={stus.userID.toString()} value={stus.userID} name='groupMembers' onChange={handleRadioChange}></input>
-                  <label htmlFor={stus.userID.toString()}>{stus.userID}</label>
-                  <br></br>
-                  </>
-                )
-              }
-            )
-          }
-          <button className='submitReview' onClick={async () => {
-            console.log("Submitting review with selected criteria:", selectedCriteria);
-            try {
-              const reviewResponse = await createReview(Number(id), stuID, revieweeID);
-              const reviewData = await reviewResponse.json();
-              console.log("Review response:", reviewData);
-              for (const criterion of selectedCriteria) {
-                await createCriterion(reviewData.id, criterion.row, criterion.column, "");
-              }
-              console.log('Review submitted successfully');
-            } catch (error) {
-              console.error('Error submitting review:', error);
-            }
-          }}>Submit Review</button>
-      </div>}
     </>
   );
 }

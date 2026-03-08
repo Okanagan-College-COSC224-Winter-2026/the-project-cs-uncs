@@ -429,7 +429,6 @@ flask_backend/
 - **`GET /review/assignment/<assignment_id>/all`** - Get all reviews for assignment (teacher/admin) **NEW**
 
 See [docs/dev-guidelines/ENDPOINT_SUMMARY.md](../docs/dev-guidelines/ENDPOINT_SUMMARY.md) for complete API documentation.
-See [docs/TEACHER_REVIEW_OVERVIEW.md](../docs/TEACHER_REVIEW_OVERVIEW.md) for details on the teacher review overview feature.
 
 ## Configuration
 

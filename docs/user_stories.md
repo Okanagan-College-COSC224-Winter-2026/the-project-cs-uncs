@@ -21,11 +21,7 @@
 - [x] Student cannot open unassigned submissions  
 - [x] Opening an assigned submission shows the content and review interface  
 - [x] Submitted feedback marks that review as complete  
-- [x] If the review period has ended, the student cannot submit feedback and is notified  
-
-**Implementation**: See `docs/US1_COMPLETE.md` and `docs/US1_IMPLEMENTATION.md` for full details.  
-**Tests**: 19 tests passing (100% coverage)  
-**Date Completed**: February 22, 2026
+- [x] If the review period has ended, the student cannot submit feedback and is notified
 
 ---
 

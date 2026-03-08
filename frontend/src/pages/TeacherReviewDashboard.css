@@ -1,0 +1,389 @@
+.teacher-dashboard-container {
+  padding: 0;
+}
+
+.teacher-dashboard-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem 2rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.header-content h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.8rem;
+}
+
+.header-content h3 {
+  margin: 0 0 0.5rem 0;
+  color: #555;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.course-info {
+  color: #666;
+  font-size: 1rem;
+  margin: 0.25rem 0;
+}
+
+.due-date {
+  color: #666;
+  font-size: 0.95rem;
+  margin: 0.25rem 0;
+}
+
+.deadline-passed {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+.back-button {
+  padding: 0.5rem 1rem;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #000;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: #e0e0e0;
+}
+
+.statistics-section {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.statistics-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  background-color: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.completed {
+  border-color: #4caf50;
+}
+
+.stat-card.incomplete {
+  border-color: #ff9800;
+}
+
+.stat-card.rate {
+  border-color: #2196f3;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-card.completed .stat-value {
+  color: #4caf50;
+}
+
+.stat-card.incomplete .stat-value {
+  color: #ff9800;
+}
+
+.stat-card.rate .stat-value {
+  color: #2196f3;
+}
+
+.reviews-section {
+  margin-top: 2rem;
+}
+
+.reviews-section h3 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.no-reviews {
+  text-align: center;
+  padding: 3rem;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  color: #666;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-item {
+  background-color: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.review-item:hover {
+  border-color: #1976d2;
+}
+
+.review-item.completed {
+  border-left: 4px solid #4caf50;
+}
+
+.review-item.incomplete {
+  border-left: 4px solid #ff9800;
+}
+
+.review-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.review-summary:hover {
+  background-color: #fafafa;
+}
+
+.review-participants {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex: 1;
+}
+
+.participant {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.participant .label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.participant .name {
+  font-size: 1.05rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.participant .email {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.arrow {
+  font-size: 1.5rem;
+  color: #999;
+  font-weight: bold;
+}
+
+.review-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge.completed {
+  background-color: #c8e6c9;
+  color: #2e7d32;
+}
+
+.badge.pending {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.criteria-count {
+  font-size: 0.9rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.expand-icon {
+  font-size: 0.9rem;
+  color: #999;
+  margin-left: 0.5rem;
+}
+
+.review-details {
+  padding: 1.5rem;
+  background-color: #fafafa;
+  border-top: 1px solid #e0e0e0;
+}
+
+.no-criteria {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+.criteria-list h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.criterion-detail {
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.criterion-detail:last-child {
+  margin-bottom: 0;
+}
+
+.criterion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.criterion-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.grade-badge {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.criterion-comments {
+  margin-top: 0.5rem;
+}
+
+.criterion-comments strong {
+  color: #555;
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.criterion-comments p {
+  margin: 0;
+  padding: 0.75rem;
+  background-color: #f5f5f5;
+  border-left: 3px solid #1976d2;
+  border-radius: 4px;
+  color: #333;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-message {
+  padding: 1rem;
+  background-color: #ffebee;
+  border-left: 4px solid #d32f2f;
+  border-radius: 4px;
+  color: #c62828;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .teacher-dashboard-content {
+    padding: 0 1rem 1rem 1rem;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .back-button {
+    align-self: flex-start;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .review-participants {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .arrow {
+    transform: rotate(90deg);
+  }
+
+  .review-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+  }
+}

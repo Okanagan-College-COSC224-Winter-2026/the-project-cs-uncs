@@ -16,6 +16,7 @@ import ChangePassword from "./pages/ChangePassword";
 import CreateTeacher from "./pages/CreateTeacher";
 import PeerReviews from "./pages/PeerReviews";
 import ReviewSubmission from "./pages/ReviewSubmission";
+import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
 
 function AppContent() {
   const location = useLocation();
@@ -93,6 +94,12 @@ function AppContent() {
           <Route path="/assignment/:id/reviews" element={
             <ProtectedRoute>
               <PeerReviews />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/teacher-reviews" element={
+            <ProtectedRoute>
+              <TeacherReviewDashboard />
             </ProtectedRoute>
           } />
 

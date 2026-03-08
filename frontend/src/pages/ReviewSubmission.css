@@ -1,7 +1,11 @@
 .review-submission-container {
+  padding: 0;
+}
+
+.review-submission-content {
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0 2rem 2rem 2rem;
 }
 
 .review-header {
@@ -259,8 +263,8 @@
 }
 
 @media (max-width: 768px) {
-  .review-submission-container {
-    padding: 1rem;
+  .review-submission-content {
+    padding: 0 1rem 1rem 1rem;
   }
 
   .review-header {

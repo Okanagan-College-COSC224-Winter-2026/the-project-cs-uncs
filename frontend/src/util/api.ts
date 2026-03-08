@@ -457,6 +457,26 @@ export const createReviewAssignment = async (
   return await response.json();
 }
 
+/**
+ * Get all reviews for an assignment (teacher/admin only)
+ * Returns detailed information about all peer reviews including completion stats
+ */
+export const getAllReviewsForAssignment = async (assignmentId: number) => {
+  const response = await fetch(`${BASE_URL}/review/assignment/${assignmentId}/all`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.msg || `Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export const getRubric = async (rubricID: number) => {
   const resp = await fetch(`${BASE_URL}/rubric?rubricID=${rubricID}`, {
       credentials: 'include'

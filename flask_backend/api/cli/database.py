@@ -11,6 +11,7 @@ from ..models import (
     Assignment,
     Rubric,
     CriteriaDescription,
+    Criterion,
     Submission,
     Review,
     User_Course
@@ -308,32 +309,134 @@ def add_users_command():
     if reviews_created == 0:
         click.echo(f"✓ All review assignments already exist")
 
+    # Add more reviews to create a comprehensive test scenario
+    # Review 4: Student 3 → Student 4
+    review4 = Review.query.filter_by(
+        assignmentID=assignment.id,
+        reviewerID=students[2].id,
+        revieweeID=students[3].id
+    ).first()
+
+    if not review4:
+        review4 = Review(
+            assignmentID=assignment.id,
+            reviewerID=students[2].id,
+            revieweeID=students[3].id
+        )
+        Review.create_review(review4)
+        click.echo(f"✓ Assigned review: {students[2].name} → {students[3].name}")
+
+    # Review 5: Student 2 → Student 4
+    review5 = Review.query.filter_by(
+        assignmentID=assignment.id,
+        reviewerID=students[1].id,
+        revieweeID=students[3].id
+    ).first()
+
+    if not review5:
+        review5 = Review(
+            assignmentID=assignment.id,
+            reviewerID=students[1].id,
+            revieweeID=students[3].id
+        )
+        Review.create_review(review5)
+        click.echo(f"✓ Assigned review: {students[1].name} → {students[3].name}")
+
+    # Review 6: Student 4 → Student 1
+    review6 = Review.query.filter_by(
+        assignmentID=assignment.id,
+        reviewerID=students[3].id,
+        revieweeID=students[0].id
+    ).first()
+
+    if not review6:
+        review6 = Review(
+            assignmentID=assignment.id,
+            reviewerID=students[3].id,
+            revieweeID=students[0].id
+        )
+        Review.create_review(review6)
+        click.echo(f"✓ Assigned review: {students[3].name} → {students[0].name}")
+
+    # Complete some reviews with criteria (for testing teacher overview)
+    click.echo("\nAdding sample completed reviews...")
+
+    # Get all criteria descriptions for the rubric
+    criteria_descriptions = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
+
+    if criteria_descriptions and review1:
+        # Complete Review 1 (Student 1 → Student 2) with high scores
+        existing_criteria = Criterion.query.filter_by(reviewID=review1.id).count()
+        if existing_criteria == 0:
+            for i, crit_desc in enumerate(criteria_descriptions):
+                criterion = Criterion(
+                    reviewID=review1.id,
+                    criterionRowID=crit_desc.id,
+                    grade=9 if i < 3 else 8,
+                    comments=f"Excellent work on {crit_desc.question.split('-')[0].strip().lower()}!"
+                )
+                db.session.add(criterion)
+            review1.completed = True
+            db.session.commit()
+            click.echo(f"✓ Completed review: {students[0].name} → {students[1].name}")
+
+    if criteria_descriptions and review3:
+        # Complete Review 3 (Student 2 → Student 3) with medium scores
+        existing_criteria = Criterion.query.filter_by(reviewID=review3.id).count()
+        if existing_criteria == 0:
+            for i, crit_desc in enumerate(criteria_descriptions):
+                criterion = Criterion(
+                    reviewID=review3.id,
+                    criterionRowID=crit_desc.id,
+                    grade=7 if i % 2 == 0 else 8,
+                    comments=f"Good job, but could improve {crit_desc.question.split('-')[0].strip().lower()}."
+                )
+                db.session.add(criterion)
+            review3.completed = True
+            db.session.commit()
+            click.echo(f"✓ Completed review: {students[1].name} → {students[2].name}")
+
+    if criteria_descriptions and review4:
+        # Complete Review 4 (Student 3 → Student 4)
+        existing_criteria = Criterion.query.filter_by(reviewID=review4.id).count()
+        if existing_criteria == 0:
+            for i, crit_desc in enumerate(criteria_descriptions):
+                criterion = Criterion(
+                    reviewID=review4.id,
+                    criterionRowID=crit_desc.id,
+                    grade=9,
+                    comments="Outstanding work!"
+                )
+                db.session.add(criterion)
+            review4.completed = True
+            db.session.commit()
+            click.echo(f"✓ Completed review: {students[2].name} → {students[3].name}")
+
+    if criteria_descriptions and review6:
+        # Complete Review 6 (Student 4 → Student 1)
+        existing_criteria = Criterion.query.filter_by(reviewID=review6.id).count()
+        if existing_criteria == 0:
+            for i, crit_desc in enumerate(criteria_descriptions):
+                criterion = Criterion(
+                    reviewID=review6.id,
+                    criterionRowID=crit_desc.id,
+                    grade=8,
+                    comments="Very good work overall."
+                )
+                db.session.add(criterion)
+            review6.completed = True
+            db.session.commit()
+            click.echo(f"✓ Completed review: {students[3].name} → {students[0].name}")
+
     click.echo("=" * 60)
     click.echo("Setup complete!")
     click.echo("=" * 60)
-    click.echo("\n📋 ALL CREDENTIALS (password: 123456):")
-    click.echo("-" * 60)
-    click.echo("\nORIGINAL EXAMPLE USERS:")
-    click.echo("  Student: student@example.com")
-    click.echo("  Teacher: teacher@example.com")
-    click.echo("  Admin:   admin@example.com")
-    click.echo("\nPEER REVIEW USERS:")
-    click.echo("  Teacher: teacher@test.com")
-    click.echo("  Students:")
-    for i in range(1, 5):
-        click.echo(f"    - student{i}@test.com")
-    click.echo("-" * 60)
-    click.echo(f"\nPeer Review Course ID: {course.id}")
-    click.echo(f"Assignment ID: {assignment.id}")
-    click.echo(f"\n{students[0].name} has 2 reviews assigned")
-    click.echo(f"{students[1].name} has 1 review assigned")
-    click.echo(f"{students[2].name} and {students[3].name} have 0 reviews assigned")
-    click.echo("\n🚀 To test peer reviews:")
-    click.echo("1. Start backend: flask run")
-    click.echo("2. Start frontend: cd ../frontend && npm run dev")
-    click.echo("3. Login as student1@test.com (password: 123456)")
-    click.echo(f"4. Navigate to assignment {assignment.id}")
-    click.echo("5. Click 'View Peer Reviews' and complete a review!")
+    click.echo("\n📋 CREDENTIALS (password: 123456):")
+    click.echo("\nOriginal Users:")
+    click.echo("  student@example.com | teacher@example.com | admin@example.com")
+    click.echo("\nPeer Review Users:")
+    click.echo("  teacher@test.com")
+    click.echo("  student1@test.com | student2@test.com | student3@test.com | student4@test.com")
     click.echo("")
 
 

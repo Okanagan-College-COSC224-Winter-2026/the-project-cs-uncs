@@ -70,6 +70,11 @@ class Review(db.Model):
         ).first()
 
     @classmethod
+    def get_by_assignment(cls, assignment_id):
+        """Get all reviews for a specific assignment (for teacher overview)"""
+        return cls.query.filter_by(assignmentID=assignment_id).all()
+
+    @classmethod
     def create_review(cls, review):
         """Add a new review to the database"""
         db.session.add(review)

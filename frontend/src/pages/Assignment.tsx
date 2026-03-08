@@ -1,5 +1,5 @@
-import { useEffect, useState, ChangeEvent } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import "./Assignment.css";
 import RubricCreator from "../components/RubricCreator";
 import RubricDisplay from "../components/RubricDisplay";
@@ -7,10 +7,7 @@ import TabNavigation from "../components/TabNavigation";
 import { isTeacher } from "../util/login";
 
 import { 
-  listStuGroup,
   getUserId,
-  createReview,
-  createCriterion,
   getReview
 } from "../util/api";
 
@@ -21,10 +18,6 @@ interface SelectedCriterion {
 
 export default function Assignment() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const [stuGroup, setStuGroup] = useState<StudentGroups[]>([]);
-  const [revieweeID, setRevieweeID] = useState<number>(0);
-  const [stuID, setStuID] = useState<number>(0);
   const [selectedCriteria, setSelectedCriteria] = useState<SelectedCriterion[]>([]);
   const [review, setReview] = useState<number[]>([]);
 
@@ -32,31 +25,14 @@ export default function Assignment() {
       (async () => {
         try {
           const stuID = await getUserId();
-          setStuID(stuID);
-
-          try {
-            const stus = await listStuGroup(Number(id), stuID);
-            setStuGroup(stus);
-          } catch (error) {
-            console.log('Group list not available:', error);
-            setStuGroup([]);
-          }
-
-          if (revieweeID) {
-            try {
-              const reviewResponse = await getReview(Number(id), stuID, revieweeID);
-              const reviewData = await reviewResponse.json();
-              setReview(reviewData.grades);
-              console.log("Review data:", reviewData);
-            } catch (error) {
-              console.log('Review not available:', error);
-            }
-          }
+          // Review data is now handled in the PeerReviews component
+          // This is just a placeholder for future use
+          console.log('Current user ID:', stuID);
         } catch (error) {
           console.error('Error in Assignment page:', error);
         }
       })();
-  }, [revieweeID, id]);
+  }, [id]);
 
   const handleCriterionSelect = (row: number, column: number) => {
     // Check if this criterion is already selected
@@ -80,38 +56,38 @@ export default function Assignment() {
     }
   };
 
-  function handleRadioChange(event: ChangeEvent<HTMLInputElement>): void {
-    const selectedID = Number(event.target.value);
-    setRevieweeID(selectedID);
-    console.log(`Selected group member ID: ${selectedID}`);
+  // Build tabs array based on user role
+  const tabs = [
+    {
+      label: "Home",
+      path: `/assignment/${id}`,
+    },
+    {
+      label: "Group",
+      path: `/assignment/${id}/group`,
+    }
+  ];
+
+  // Add role-specific review tab
+  if (isTeacher()) {
+    tabs.push({
+      label: "Peer Reviews",
+      path: `/assignment/${id}/teacher-reviews`,
+    });
+  } else {
+    tabs.push({
+      label: "Peer Review",
+      path: `/assignment/${id}/reviews`,
+    });
   }
 
   return (
     <>
       <div className="AssignmentHeader">
         <h2>Assignment {id}</h2>
-        {!isTeacher() && (
-          <button
-            className="peer-reviews-btn"
-            onClick={() => navigate(`/assignment/${id}/reviews`)}
-          >
-            View Peer Reviews
-          </button>
-        )}
       </div>
 
-      <TabNavigation
-        tabs={[
-          {
-            label: "Home",
-            path: `/assignment/${id}`,
-          },
-          {
-            label: "Group",
-            path: `/assignment/${id}/group`,
-          }
-        ]}
-      />
+      <TabNavigation tabs={tabs} />
 
       <div className='assignmentRubricDisplay'>
         <RubricDisplay rubricId={Number(id)} onCriterionSelect={handleCriterionSelect} grades={review} />

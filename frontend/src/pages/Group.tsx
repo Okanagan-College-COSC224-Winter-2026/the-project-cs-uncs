@@ -140,24 +140,38 @@ export default function Group() {
     })();
   }, []);
 
+  // Build tabs array based on user role
+  const tabs = [
+    {
+      label: "Home",
+      path: `/assignment/${id}`,
+    },
+    {
+      label: "Group",
+      path: `/assignment/${id}/group`,
+    }
+  ];
+
+  // Add role-specific review tab
+  if (isTeacher()) {
+    tabs.push({
+      label: "Peer Reviews",
+      path: `/assignment/${id}/teacher-reviews`,
+    });
+  } else {
+    tabs.push({
+      label: "Peer Review",
+      path: `/assignment/${id}/reviews`,
+    });
+  }
+
   return (
     <>
       <div className="AssignmentHeader">
         <h2>Assignment {id}</h2>
       </div>
 
-      <TabNavigation
-        tabs={[
-          {
-            label: "Home",
-            path: `/assignment/${id}`,
-          },
-          {
-            label: "Group",
-            path: `/assignment/${id}/group`,
-          }
-        ]}
-      />
+      <TabNavigation tabs={tabs} />
 
       <StatusMessage message={statusMessage} type={statusType} />
 

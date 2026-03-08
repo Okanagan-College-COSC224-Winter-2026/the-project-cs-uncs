@@ -6,7 +6,9 @@ import {
   submitReviewFeedback,
   getCriteria
 } from '../util/api';
+import TabNavigation from '../components/TabNavigation';
 import './ReviewSubmission.css';
+import './Assignment.css';
 
 interface CriteriaDescription {
   id: number;
@@ -221,23 +223,39 @@ export default function ReviewSubmission() {
 
   return (
     <div className="review-submission-container">
-      <div className="review-header">
-        <h2>Submit Peer Review</h2>
-        <button
-          className="back-button"
-          onClick={() => navigate(`/assignment/${assignmentId}/reviews`)}
-        >
-          ← Back to Reviews
-        </button>
+      <div className="AssignmentHeader">
+        <h2>Assignment {assignmentId}</h2>
       </div>
 
-      {successMessage && (
-        <div className="success-message">{successMessage}</div>
-      )}
+      <TabNavigation
+        tabs={[
+          {
+            label: "Home",
+            path: `/assignment/${assignmentId}`,
+          },
+          {
+            label: "Group",
+            path: `/assignment/${assignmentId}/group`,
+          },
+          {
+            label: "Peer Review",
+            path: `/assignment/${assignmentId}/reviews`,
+          }
+        ]}
+      />
 
-      {error && (
-        <div className="error-message">{error}</div>
-      )}
+      <div className="review-submission-content">
+        <div className="review-header">
+          <h2>Submit Peer Review</h2>
+        </div>
+
+        {successMessage && (
+          <div className="success-message">{successMessage}</div>
+        )}
+
+        {error && (
+          <div className="error-message">{error}</div>
+        )}
 
       {!canSubmit && !isCompleted && (
         <div className="deadline-warning">
@@ -325,6 +343,7 @@ export default function ReviewSubmission() {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,11 @@
 .peer-reviews-container {
+  padding: 0;
+}
+
+.peer-reviews-content {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0 2rem 2rem 2rem;
 }
 
 .reviews-header {
@@ -173,8 +177,8 @@
 }
 
 @media (max-width: 768px) {
-  .peer-reviews-container {
-    padding: 1rem;
+  .peer-reviews-content {
+    padding: 0 1rem 1rem 1rem;
   }
 
   .review-card {

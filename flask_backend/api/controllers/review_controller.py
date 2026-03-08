@@ -378,3 +378,101 @@ def get_criteria_for_assignment(assignment_id):
     return jsonify(criteria_description_schema.dump(criteria_descriptions)), 200
 
 
+@bp.route("/assignment/<int:assignment_id>/all", methods=["GET"])
+@jwt_role_required("teacher", "admin")
+def get_all_reviews_for_assignment(assignment_id):
+    """
+    Get all peer reviews for a specific assignment (teacher/admin only)
+
+    This endpoint allows teachers to view all peer reviews for their assignments,
+    including reviewer/reviewee information, completion status, and submitted criteria.
+
+    Authorization:
+    - Teachers can only view reviews for assignments in their own courses
+    - Admins can view reviews for any assignment
+
+    Returns:
+        - List of all reviews with reviewer, reviewee, and criteria details
+        - Assignment information
+        - Completion statistics
+    """
+    try:
+        current_email = get_jwt_identity()
+        user = User.get_by_email(current_email)
+
+        # Verify assignment exists
+        assignment = Assignment.get_by_id(assignment_id)
+        if not assignment:
+            return jsonify({"msg": "Assignment not found"}), 404
+
+        # Check authorization: teachers can only view their own course assignments
+        if user.is_teacher() and assignment.course.teacherID != user.id:
+            return jsonify({
+                "msg": "You are not authorized to view reviews for this assignment"
+            }), 403
+
+        # Get all reviews for this assignment
+        reviews = Review.get_by_assignment(assignment_id)
+
+        # Build detailed response with criteria for each review
+        result = []
+        completed_count = 0
+        total_criteria = 0
+
+        for review in reviews:
+            # Get criteria for this review
+            criteria_list = list(review.criteria.all())
+
+            review_data = {
+                "id": review.id,
+                "reviewer": {
+                    "id": review.reviewer.id,
+                    "name": review.reviewer.name,
+                    "email": review.reviewer.email
+                },
+                "reviewee": {
+                    "id": review.reviewee.id,
+                    "name": review.reviewee.name,
+                    "email": review.reviewee.email
+                },
+                "completed": review.completed,
+                "criteria_count": len(criteria_list),
+                "criteria": criterion_schema.dump(criteria_list, many=True)
+            }
+
+            if review.completed:
+                completed_count += 1
+            total_criteria += len(criteria_list)
+
+            result.append(review_data)
+
+        # Calculate statistics
+        total_reviews = len(reviews)
+        completion_rate = (completed_count / total_reviews * 100) if total_reviews > 0 else 0
+
+        return jsonify({
+            "assignment": {
+                "id": assignment.id,
+                "name": assignment.name,
+                "course_id": assignment.courseID,
+                "course_name": assignment.course.name,
+                "due_date": assignment.due_date.isoformat() if assignment.due_date else None,
+                "is_open": assignment.can_modify()
+            },
+            "statistics": {
+                "total_reviews": total_reviews,
+                "completed_reviews": completed_count,
+                "incomplete_reviews": total_reviews - completed_count,
+                "completion_rate": round(completion_rate, 2),
+                "total_criteria_submitted": total_criteria
+            },
+            "reviews": result
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] Exception in get_all_reviews_for_assignment: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"msg": f"Server error: {str(e)}"}), 500
+
+

@@ -122,7 +122,7 @@ def get_review_submission(review_id):
 
         if not submission:
             print(f"[DEBUG] No submission found")
-
+            return jsonify({"msg": "Submission not found"}), 404
 
         print(f"[DEBUG] Returning submission data successfully")
         return jsonify({

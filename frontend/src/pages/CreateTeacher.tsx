@@ -44,8 +44,8 @@ export default function CreateTeacher() {
   };
 
   return (
-    <div className="LoginPage">
-      <div className="LoginBlock">
+    <div className="InputPage">
+      <div className="InputBlock">
         <h1>Create Teacher Account</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           Create a new teacher account with a temporary password.

@@ -15,7 +15,7 @@
   transition: var(--transition-slow);
 }
 
-.LoginPage h1 {
+.InputPage h1 {
   margin: 0 0 24px 0;
   color: var(--text-primary);
   font-size: 2.5rem;
@@ -23,7 +23,7 @@
   text-align: center;
 }
 
-.LoginBlock {
+.InputBlock {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,4 +95,12 @@
 
 .LoginError {
   margin-bottom: 16px;
+}
+
+.InputPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
 }

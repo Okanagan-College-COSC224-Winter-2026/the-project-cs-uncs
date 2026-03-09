@@ -33,7 +33,7 @@ export default function LoginPage() {
   return (
     <div className="LoginPage">
       {error && <StatusMessage message={error} type="error" className="LoginError" />}
-      <div className="LoginBlock">  
+      <div className="InputBlock">
         <h1>Login</h1>
 
         <div className="LoginInner">

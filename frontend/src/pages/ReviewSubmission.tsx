@@ -94,7 +94,7 @@ export default function ReviewSubmission() {
               setCriteriaDescriptions(descriptions);
             }
           }
-        } catch (criteriaError) {
+        } catch {
           // If criteria fetch fails, try using the review's existing criteria
           if (reviewData.criteria && reviewData.criteria.length > 0) {
             const descriptions = reviewData.criteria.map((c: { criterionRowID: number }) => ({

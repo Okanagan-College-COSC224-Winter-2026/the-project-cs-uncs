@@ -22,6 +22,19 @@ This document summarizes all API endpoints documented across the user stories an
 | `/user/<id>` | DELETE | N/A | ✅ Implemented | Delete user (self or admin) |
 | `/user/password` | PATCH | N/A | ✅ Implemented | Changes the current user's password |
 
+### Peer Reviews
+
+| Endpoint | Method | Use Case | Status | Description |
+|----------|--------|----------|--------|-------------|
+| `/review/assigned/<assignment_id>` | GET | US1 | ✅ Implemented | Get all reviews assigned to current user for an assignment |
+| `/review/submission/<review_id>` | GET | US1 | ✅ Implemented | Get submission content for a specific review |
+| `/review/submit/<review_id>` | POST | US1 | ✅ Implemented | Submit feedback for a peer review |
+| `/review/status/<assignment_id>` | GET | US1 | ✅ Implemented | Get review completion status for current user |
+| `/review/create` | POST | N/A | ✅ Implemented | Create new review assignment (teacher/admin only) |
+| `/review/<review_id>` | GET | N/A | ✅ Implemented | Get details of a specific review with criteria |
+| `/review/criteria/<assignment_id>` | GET | N/A | ✅ Implemented | Get rubric criteria for an assignment |
+| `/review/assignment/<assignment_id>/all` | GET | US3 | ✅ Implemented | Get all reviews for an assignment (teacher/admin only) |
+
 ## Authentication Requirements
 
 All protected endpoints require:

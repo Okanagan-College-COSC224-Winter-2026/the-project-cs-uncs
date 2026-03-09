@@ -2,9 +2,9 @@
 
 <!-- markdownlint-disable MD024 -->
 
-## US1 – Student Peer Review Access — **Backlog**
+## US1 – Student Peer Review Access — **✅ COMPLETED**
 
-**As a student, I want to be able to access a set number of assignments assigned by my instructor, so that I can provide feedback on my classmates’ work.**
+**As a student, I want to be able to access a set number of assignments assigned by my instructor, so that I can provide feedback on my classmates' work.**
 
 ### Assumptions and Details
 
@@ -16,12 +16,12 @@
 
 ### Capabilities and Acceptance Criteria
 
-- [ ] Student can view a list of peer assignments to review  
-- [ ] Number of visible assignments matches what was assigned  
-- [ ] Student cannot open unassigned submissions  
-- [ ] Opening an assigned submission shows the content and review interface  
-- [ ] Submitted feedback marks that review as complete  
-- [ ] If the review period has ended, the student cannot submit feedback and is notified  
+- [x] Student can view a list of peer assignments to review  
+- [x] Number of visible assignments matches what was assigned  
+- [x] Student cannot open unassigned submissions  
+- [x] Opening an assigned submission shows the content and review interface  
+- [x] Submitted feedback marks that review as complete  
+- [x] If the review period has ended, the student cannot submit feedback and is notified
 
 ---
 

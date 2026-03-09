@@ -293,11 +293,42 @@ The Flask backend includes several CLI commands for database management:
 
 After running `flask add_users`, the following accounts are available:
 
+### Original Example Users
+
 | Role    | Email                 | Password   |
 |---------|-----------------------|------------|
 | Admin   | admin@example.com     | 123456     |
 | Teacher | teacher@example.com   | 123456     |
 | Student | student@example.com   | 123456     |
+
+### Peer Review Test Users (with complete test scenario)
+
+| Role    | Email                 | Password   | Notes |
+|---------|-----------------------|------------|-------|
+| Teacher | teacher@test.com      | 123456     | Can view all reviews via `/review/assignment/<id>/all` |
+| Student | student1@test.com     | 123456     | Has 2 incomplete reviews assigned |
+| Student | student2@test.com     | 123456     | Has 1 incomplete, 1 complete review |
+| Student | student3@test.com     | 123456     | Has 1 complete review |
+| Student | student4@test.com     | 123456     | Has 1 complete review |
+
+**Peer Review Setup:**
+- 1 course: "Introduction to Peer Review"
+- 1 assignment: "Essay Peer Review Assignment" with rubric (5 criteria)
+- 6 total reviews assigned (4 completed, 2 incomplete)
+- 3 submissions from students 2, 3, and 4
+
+**Review Matrix:**
+- Student 1 → Student 2 (✅ Completed with high scores)
+- Student 1 → Student 3 (⏳ Incomplete)
+- Student 2 → Student 3 (✅ Completed with medium scores)
+- Student 2 → Student 4 (⏳ Incomplete)
+- Student 3 → Student 4 (✅ Completed)
+- Student 4 → Student 1 (✅ Completed)
+
+This provides a realistic test scenario for:
+- Students completing peer reviews
+- Teachers monitoring review progress
+- Testing the new teacher review overview endpoint
 
 ## Running Tests
 
@@ -386,6 +417,16 @@ flask_backend/
 ### User Management
 - `GET /user/profile` - Get current user profile (requires JWT)
 - `GET /user/all` - List all users (admin only)
+
+### Peer Reviews (NEW)
+- `GET /review/assigned/<assignment_id>` - Get reviews assigned to current user
+- `GET /review/submission/<review_id>` - Get submission for a review
+- `POST /review/submit/<review_id>` - Submit peer review feedback
+- `GET /review/status/<assignment_id>` - Get review completion status
+- `POST /review/create` - Create review assignment (teacher/admin)
+- `GET /review/<review_id>` - Get review details with criteria
+- `GET /review/criteria/<assignment_id>` - Get rubric criteria for assignment
+- **`GET /review/assignment/<assignment_id>/all`** - Get all reviews for assignment (teacher/admin) **NEW**
 
 See [docs/dev-guidelines/ENDPOINT_SUMMARY.md](../docs/dev-guidelines/ENDPOINT_SUMMARY.md) for complete API documentation.
 

@@ -16,6 +16,7 @@ class Review(db.Model):
     assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
     reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
     revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
+    completed = db.Column(db.Boolean, default=False, nullable=False)
 
     # relationships - using lazy='joined' for commonly accessed foreign entities
     assignment = db.relationship("Assignment", back_populates="reviews", lazy="joined")
@@ -29,10 +30,11 @@ class Review(db.Model):
         "Criterion", back_populates="review", cascade="all, delete-orphan", lazy="dynamic"
     )
 
-    def __init__(self, assignmentID, reviewerID, revieweeID):
+    def __init__(self, assignmentID, reviewerID, revieweeID, completed=False):
         self.assignmentID = assignmentID
         self.reviewerID = reviewerID
         self.revieweeID = revieweeID
+        self.completed = completed
 
     def __repr__(self):
         return f"<Review id={self.id} assignmentID={self.assignmentID}>"
@@ -45,19 +47,32 @@ class Review(db.Model):
     @classmethod
     def get_by_id_with_relations(cls, review_id):
         """Get review by ID with all relationships explicitly loaded.
-        Use this when you need to ensure assignment's course is also loaded."""
-        return (
-            cls.query.options(joinedload(cls.assignment).joinedload("course"))
-            .filter_by(id=int(review_id))
-            .first()
-        )
+        Relationships (reviewer, reviewee, assignment) are already eagerly loaded via lazy='joined'."""
+        return cls.query.filter_by(id=int(review_id)).first()
 
     @classmethod
     def get_all_with_relations(cls):
         """Get all reviews with relationships loaded.
         Assignment relationships (reviewer, reviewee, assignment) are
         automatically loaded via lazy='joined'."""
-        return cls.query.options(joinedload(cls.assignment).joinedload("course")).all()
+        return cls.query.all()
+
+    @classmethod
+    def get_by_reviewer_and_assignment(cls, reviewer_id, assignment_id):
+        """Get all reviews for a specific reviewer and assignment"""
+        return cls.query.filter_by(reviewerID=reviewer_id, assignmentID=assignment_id).all()
+
+    @classmethod
+    def get_by_reviewer_reviewee_assignment(cls, reviewer_id, reviewee_id, assignment_id):
+        """Get a specific review by reviewer, reviewee, and assignment"""
+        return cls.query.filter_by(
+            reviewerID=reviewer_id, revieweeID=reviewee_id, assignmentID=assignment_id
+        ).first()
+
+    @classmethod
+    def get_by_assignment(cls, assignment_id):
+        """Get all reviews for a specific assignment (for teacher overview)"""
+        return cls.query.filter_by(assignmentID=assignment_id).all()
 
     @classmethod
     def create_review(cls, review):
@@ -65,6 +80,11 @@ class Review(db.Model):
         db.session.add(review)
         db.session.commit()
         return review
+
+    def mark_complete(self):
+        """Mark the review as completed"""
+        self.completed = True
+        db.session.commit()
 
     def update(self):
         """Update review in the database"""

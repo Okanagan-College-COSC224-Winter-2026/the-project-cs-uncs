@@ -51,8 +51,9 @@ Field types, primary keys, and notable constraints are included for quick refere
 ### Reviews, Rubrics, and Criteria
 
 - Review
-  - id (PK), assignmentID (FK -> Assignment.id), reviewerID (FK -> User.id), revieweeID (FK -> User.id)
+  - id (PK), assignmentID (FK -> Assignment.id), reviewerID (FK -> User.id), revieweeID (FK -> User.id), completed (BOOLEAN NOT NULL DEFAULT FALSE)
   - Peer review instances scoped to a single assignment, with eager-loaded relationships for performance
+  - `completed` field tracks whether the review has been submitted by the reviewer
 - Rubric
   - id (PK), assignmentID (FK -> Assignment.id), canComment (BOOLEAN NOT NULL DEFAULT TRUE)
   - Multiple rubrics per assignment permitted; business logic decides which one is active

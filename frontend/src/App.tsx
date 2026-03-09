@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import "./App.css";
 import Profile from "./pages/Profile";
@@ -20,7 +21,7 @@ import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
 
 function AppContent() {
   const location = useLocation();
-  const noSidebarPaths = ["/", "/login", "/register", "/change-password"];
+  const noSidebarPaths = ["/", "/login", "/register"];
 
   return (
     <div className="App">
@@ -29,7 +30,11 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/change-password" element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          } />
 
           <Route path="/home" element={
             <ProtectedRoute>
@@ -116,9 +121,11 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

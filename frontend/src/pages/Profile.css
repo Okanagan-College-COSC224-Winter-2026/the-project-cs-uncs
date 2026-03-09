@@ -1,9 +1,22 @@
 .Profile {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: flex-start;
   align-items: flex-start;
-  padding: 4rem;
+  padding: 0;
+  gap: var(--spacing-lg);
+}
+
+.Profile .profile-hero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-lg);
+  width: 100%;
+  padding: var(--spacing-xl);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
 }
 
 .Profile .profile-image {
@@ -11,12 +24,20 @@
   height: 200px;
   border-radius: 50%;
   overflow: hidden;
+  border: 4px solid var(--accent-primary);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-lg);
 }
 
 .Profile .profile-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: var(--transition-base);
+}
+
+.Profile .profile-image:hover img {
+  transform: scale(1.05);
 }
 
 .Profile .profile-info {
@@ -24,10 +45,37 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  margin-left: 1rem;
+  gap: var(--spacing-md);
 }
 
 .Profile .profile-info h1 {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+  font-size: 2rem;
+  margin-bottom: 0;
+  color: var(--text-primary);
+}
+
+.Profile .profile-info p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.Profile .profile-section {
+  width: 100%;
+  padding: var(--spacing-lg);
+  background-color: var(--background-primary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+}
+
+.Profile .profile-section h2 {
+  margin-top: 0;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
+}
+
+/* Dark mode profile image frame */
+[data-theme="dark"] .Profile .profile-image {
+  border-color: #0a0a0a;
+  box-shadow: 0 0 0 1px #1a1a1a, var(--shadow-lg);
 }

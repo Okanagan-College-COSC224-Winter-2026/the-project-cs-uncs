@@ -1,9 +1,10 @@
-import functools
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, get_jwt, get_jwt_identity, verify_jwt_in_request
+from flask_jwt_extended.exceptions import JWTExtendedException
+from jwt.exceptions import PyJWTError
 
 from .cli import init_app
 from .controllers import (
@@ -79,6 +80,17 @@ def create_app(test_config=None):
     jwt = JWTManager()
     jwt.init_app(app)
 
+    # Embed must_change_password in every JWT so the before_request
+    # hook can check it without hitting the database on every request.
+    @jwt.additional_claims_loader
+    def add_claims(identity):
+        from .models import User  # local import to avoid circular refs
+
+        user = User.get_by_email(identity)
+        if user:
+            return {"must_change_password": user.must_change_password}
+        return {}
+
     # Configure CORS to allow credentials (cookies)
     # In production, configure allowed origins via CORS_ORIGINS env var (comma-separated)
     cors_origins = (
@@ -101,6 +113,64 @@ def create_app(test_config=None):
 
     # Initialize CLI commands
     init_app(app)
+
+    # ── Enforce must_change_password globally ──────────────────────
+    # Blueprint prefixes (and bare endpoints) that should never trigger
+    # the must_change_password check.  Skipping these avoids the cost
+    # of JWT cookie parsing / decoding on every request.
+    _SKIP_PASSWORD_CHECK_PREFIXES = ("auth.", "static.", "fake.")
+
+    # Individual non-blueprint endpoints to skip (e.g. top-level routes)
+    _SKIP_PASSWORD_CHECK_ENDPOINTS = {"hello", None}
+
+    # Endpoints that *do* require a valid JWT but should still be
+    # allowed when the user must change their password (they need
+    # these to detect the flag, change their password, or log out).
+    _PASSWORD_CHANGE_EXEMPT = {
+        ("user.get_current_user", "GET"),    # GET /user/ — frontend reads the flag
+        ("user.change_password", "PATCH"),   # PATCH /user/password — the change itself
+    }
+
+    @app.before_request
+    def enforce_password_change():
+        """Block users who must change their temporary password from
+        accessing any protected endpoint except the exempt ones.
+
+        Reads the ``must_change_password`` flag directly from the JWT
+        claims (embedded at token creation / refresh via
+        ``additional_claims_loader``) so **no database query** is
+        needed on every authenticated request.
+        """
+        # CORS preflight requests never carry cookies — skip immediately
+        if request.method == "OPTIONS":
+            return
+
+        # Fast path: skip endpoints that never need this check
+        # (unauthenticated routes, static files, etc.)
+        endpoint = request.endpoint
+        if endpoint in _SKIP_PASSWORD_CHECK_ENDPOINTS:
+            return
+        if endpoint and any(endpoint.startswith(p) for p in _SKIP_PASSWORD_CHECK_PREFIXES):
+            return
+
+        # Only check endpoints that require a JWT cookie
+        try:
+            verify_jwt_in_request(optional=True)
+            identity = get_jwt_identity()
+        except (JWTExtendedException, PyJWTError):
+            return  # No valid JWT → let the endpoint handle 401 itself
+
+        if identity is None:
+            return  # Unauthenticated request — nothing to enforce
+
+        # Check if the matched endpoint is exempt
+        if (endpoint, request.method) in _PASSWORD_CHANGE_EXEMPT:
+            return
+
+        # Read the flag from JWT claims – no DB hit required
+        claims = get_jwt()
+        if claims.get("must_change_password", False):
+            return jsonify({"msg": "Password change required before continuing"}), 403
 
     # Register blueprints
     app.register_blueprint(auth_controller.bp)

@@ -5,11 +5,12 @@ interface Props {
   className?: string
   placeholder?: string
   type?: string
+  id?: string
 }
 
 export default function Textbox(props: Props) {
   return (
-    <input type={props.type || 'text'} className={'Textbox ' + props.className} placeholder={props.placeholder} onInput={(e) => {
+    <input type={props.type || 'text'} id={props.id} className={'Textbox' + (props.className ? ' ' + props.className : '')} placeholder={props.placeholder} onInput={(e) => {
       e.preventDefault()
       if (!props?.onInput) {
         return

@@ -1,14 +1,16 @@
 import { logout } from '../util/login'
+import { useTheme } from '../context/ThemeContext'
 import './Sidebar.css'
 
 export default function Sidebar() {
   // Check which page we are on
   const location = window.location.pathname
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <div className="Sidebar">
       <div className="SidebarLogo">
-        <img src="/oc_logo.png" alt="OC Logo" />
+        <img src={theme === 'dark' ? '/icons/logo_dark.svg' : '/icons/logo_light.svg'} alt="Peer Evaluation App Logo" />
       </div>
 
       <div className="SidebarTop">
@@ -28,6 +30,24 @@ export default function Sidebar() {
         <SidebarRow selected={location.includes('/profile')} href="/profile/1">
           My Info
         </SidebarRow>
+
+        <SidebarRow selected={location === '/change-password'} href="/change-password">
+          Change Password
+        </SidebarRow>
+      </div>
+
+      <div className="SidebarBottom">
+        <button
+          className="ThemeToggle"
+          onClick={toggleTheme}
+          aria-label={theme === 'light' ? 'Toggle Theme to dark mode' : 'Toggle Theme to light mode'}
+        >
+          {theme === 'light' ? (
+            <span title="Switch to dark mode"><img src="/icons/light-mode.svg" alt="Light mode" /></span>
+          ) : (
+            <span title="Switch to light mode"><img src="/icons/dark-mode.svg" alt="Dark mode" />️</span>
+          )}
+        </button>
       </div>
     </div>
   )

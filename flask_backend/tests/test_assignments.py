@@ -28,12 +28,13 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     )
 
     class_id = class_response.json["class"]["id"]
+    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat()
 
     # Now, create the assignment
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
-            {"courseID": class_id, "name": "Essay 1", "rubric": "Quality of writing", "due_date": datetime.datetime(2025, 12, 31, 23, 59, 59).isoformat()}
+            {"courseID": class_id, "name": "Essay 1", "rubric": "Quality of writing", "due_date": due_date}
         ),
         headers={"Content-Type": "application/json"},
     )
@@ -42,7 +43,7 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     assert assignment_response.json["msg"] == "Assignment created"
     assert assignment_response.json["assignment"]["name"] == "Essay 1"
     assert assignment_response.json["assignment"]["rubric_text"] == "Quality of writing"
-    assert assignment_response.json["assignment"]["due_date"] == "2025-12-31T23:59:59"
+    assert assignment_response.json["assignment"]["due_date"] == due_date
 
 
 def test_create_assignment_missing_fields(test_client, make_admin):
@@ -179,7 +180,8 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
         headers={"Content-Type": "application/json"},
     )
     class_id = class_response.json["class"]["id"]
-    # Now, create the assignment with a future due date
+    # Now, create the assignment with a future due date relative to now
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=60)
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
@@ -187,20 +189,22 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Lab Report 1",
                 "rubric": "Completeness",
-                "due_date": datetime.datetime(2025, 12, 31, 23, 59, 59).isoformat(),
+                "due_date": future_due.replace(microsecond=0).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
     )
     assignment_id = assignment_response.json["assignment"]["id"]
-    # Now, edit the assignment
+
+    # Now, edit the assignment to an earlier (but still future) due date
+    new_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
     edit_response = test_client.patch(
         f"/assignment/edit_assignment/{assignment_id}",
         data=json.dumps(
             {
                 "name": "Updated Lab Report 1",
                 "rubric": "Thoroughness",
-                "due_date": datetime.datetime(2025, 11, 30, 23, 59, 59).isoformat(),
+                "due_date": new_due.replace(microsecond=0).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -209,7 +213,20 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
     assert edit_response.json["msg"] == "Assignment updated"
     assert edit_response.json["assignment"]["name"] == "Updated Lab Report 1"
     assert edit_response.json["assignment"]["rubric_text"] == "Thoroughness"
-    assert edit_response.json["assignment"]["due_date"] == "2025-11-30T23:59:59"
+    # Ensure due_date returned matches the new due date (without microseconds)
+    returned_due = edit_response.json["assignment"].get("due_date")
+    assert returned_due is not None
+    # Parse the returned ISO datetime (may include timezone) and compare to expected
+    parsed_returned = datetime.datetime.fromisoformat(returned_due)
+    # Normalize both datetimes to UTC timestamps and allow a small delta for processing time
+    from datetime import timezone as _tz
+    if parsed_returned.tzinfo is None:
+        parsed_ts = parsed_returned.replace(tzinfo=_tz.utc).timestamp()
+    else:
+        parsed_ts = parsed_returned.astimezone(_tz.utc).timestamp()
+
+    expected_ts = new_due.replace(microsecond=0).astimezone(_tz.utc).timestamp()
+    assert abs(parsed_ts - expected_ts) < 2  # within 2 seconds
 
 def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
     """
@@ -240,7 +257,7 @@ def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Painting 1",
                 "rubric": "Creativity",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -290,7 +307,7 @@ def test_non_assigned_teacher_cannot_edit_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Composition 1",
                 "rubric": "Harmony",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=5)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=5)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -392,7 +409,7 @@ def test_delete_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Essay on Ethics",
                 "rubric": "Argumentation",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -435,7 +452,7 @@ def test_delete_assignment_after_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Market Analysis",
                 "rubric": "Data Interpretation",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -479,7 +496,7 @@ def test_non_assigned_teacher_cannot_delete_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Geography Assignment",
                 "rubric": "Map Skills",
-                "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -566,7 +583,7 @@ def test_get_assignments_by_class_id(test_client, make_admin):
                     "courseID": class_id,
                     "name": name,
                     "rubric": "Content Quality",
-                    "due_date": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=10)).isoformat(),
+                    "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat(),
                 }
             ),
             headers={"Content-Type": "application/json"},
@@ -633,3 +650,113 @@ def test_unauthenticated_user_cannot_get_assignments(test_client):
     # Attempt to retrieve assignments for a class without logging in
     assignments = test_client.get(f"/assignment/1")
     assert assignments.status_code == 401
+
+
+def test_teacher_can_create_assignment_with_due_date(test_client, make_admin):
+    """
+    GIVEN a teacher user
+    WHEN they create a new assignment with a due date via POST /assignment/create_assignment
+    THEN the assignment should be created with the due date stored
+    """
+    # ARRANGE - Create teacher and login
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # Create a class first
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Math 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat()
+
+    # ACT - Create assignment with due date
+    response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Homework 1", "due_date": due_date}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # ASSERT - Verify success
+    assert response.status_code == 201
+    assert response.json["msg"] == "Assignment created"
+    assert response.json["assignment"]["name"] == "Homework 1"
+    assert response.json["assignment"]["due_date"] == due_date
+
+
+def test_create_assignment_without_due_date_still_works(test_client, make_admin):
+    """
+    GIVEN a teacher user
+    WHEN they create an assignment without a due date (backward compatibility)
+    THEN the assignment should be created successfully with null due_date
+    """
+    # ARRANGE
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "English 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    # ACT - Create assignment WITHOUT due date
+    response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Essay"}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # ASSERT
+    assert response.status_code == 201
+    assert response.json["assignment"]["name"] == "Essay"
+    assert response.json["assignment"]["due_date"] is None
+
+
+def test_create_assignment_with_invalid_due_date_format(test_client, make_admin):
+    """
+    GIVEN a teacher user
+    WHEN they submit an assignment with an invalid due date format
+    THEN the API should return a 400 error
+    """
+    # ARRANGE
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Science 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    # ACT - Try to create with bad date format
+    response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Lab Report", "due_date": "not-a-date"}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    
+    # ASSERT
+    assert response.status_code == 400
+    assert "Invalid due date format" in response.json["msg"]

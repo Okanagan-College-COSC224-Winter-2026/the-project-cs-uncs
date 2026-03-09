@@ -1,12 +1,17 @@
 .RubricDisplay {
-    padding: 20px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin: 20px 0;
+  padding: var(--spacing-lg);
+  background-color: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  margin: var(--spacing-lg) 0;
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .RubricDisplay h2 {
-    margin-bottom: 20px;
-    color: #333;
+  margin-top: 0;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
 } 

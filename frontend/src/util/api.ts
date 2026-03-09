@@ -154,6 +154,8 @@ export const importStudentsForCourse = async (courseID: number, students: string
   if (!response.ok) {
     throw new Error(`Response status: ${response.status}`);
   }
+  return await response.json();  // ADD THIS LINE
+
 }
 
 export const listAssignments = async (classId: string) => {
@@ -715,3 +717,39 @@ export const changePassword = async (currentPassword: string, newPassword: strin
 
   return await response.json();
 }
+export const joinRosterCourse = async (courseId: number) => {
+  const resp = await fetch(`${BASE_URL}/class/join_course`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ course_id: courseId }),
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`);
+  }
+
+  return await resp.json();
+};
+
+export const getAvailableCourses = async () => {
+  const resp = await fetch(`${BASE_URL}/class/available_courses`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`);
+  }
+
+  return await resp.json();
+};

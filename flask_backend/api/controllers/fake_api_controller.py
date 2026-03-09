@@ -141,3 +141,9 @@ def check_result_md5(md5):
             ),
             200,
         )
+
+@fake.route("/practice/test", methods=["GET"])
+def practice():
+    return jsonify({"course": "cosc 224"}), 200
+
+

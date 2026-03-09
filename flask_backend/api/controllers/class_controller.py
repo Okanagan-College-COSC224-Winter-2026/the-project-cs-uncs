@@ -194,3 +194,76 @@ def enroll_students():
             enrolled_students.append(email)
 
     return jsonify({"msg": f"{len(enrolled_students)} students added to course {course.name}"}), 200
+
+
+# Add this endpoint to flask_backend/api/controllers/class_controller.py
+
+@bp.route("/available_courses", methods=["GET"])
+@jwt_required()
+def get_available_courses():
+    """
+    Get courses where the student's email is on the roster but they haven't enrolled yet.
+    This is used for roster-matched registration.
+
+    Returns courses where:
+    1. Student exists in User_Course (added via CSV upload)
+    2. Student's account was created (with default password)
+
+    A student uses this to discover courses they were added to and can join.
+    """
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+
+    if not user or user.role != 'student':
+        return jsonify({"msg": "Only students can access this endpoint"}), 403
+
+    # Get all courses where this student is on the roster
+    user_courses = User_Course.get_courses_by_student(user.id)
+    courses = [Course.get_by_id(uc.courseID) for uc in user_courses]
+
+    course_list = [{
+        "id": c.id,
+        "name": c.name,
+        "teacherID": c.teacherID,
+        "teacher_name": c.teacher.name if c.teacher else "Unknown"
+    } for c in courses if c]
+
+    return jsonify(course_list), 200
+
+
+@bp.route("/join_course", methods=["POST"])
+@jwt_required()
+def join_roster_course():
+    """
+    Student joins a course they were added to via roster upload.
+    This creates the User_Course link if it doesn't exist.
+
+    Body: { "course_id": number }
+    """
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+
+    if not user or user.role != 'student':
+        return jsonify({"msg": "Only students can join courses"}), 403
+
+    data = request.get_json()
+    course_id = data.get("course_id")
+
+    if not course_id:
+        return jsonify({"msg": "Course ID is required"}), 400
+
+    course = Course.get_by_id(course_id)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    # Check if already enrolled
+    enrollment = User_Course.get(user.id, course_id)
+    if enrollment:
+        return jsonify({"msg": "Already enrolled in this course"}), 400
+
+    # Join the course
+    try:
+        User_Course.add(user.id, course_id)
+        return jsonify({"msg": f"Successfully joined course {course.name}"}), 200
+    except Exception as e:
+        return jsonify({"msg": f"Error joining course: {str(e)}"}), 500

@@ -375,6 +375,72 @@ def get_criteria_for_assignment(assignment_id):
     return jsonify(criteria_description_schema.dump(criteria_descriptions)), 200
 
 
+@bp.route("/received/<int:assignment_id>", methods=["GET"])
+@jwt_role_required("student", "teacher", "admin")
+def get_received_feedback(assignment_id):
+    """
+    Get all completed peer reviews received by the current user for an assignment.
+
+    Returns feedback the current user received (where they are the reviewee),
+    including grades and comments for each criterion. Reviewer identity is
+    kept anonymous.
+    """
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    # Get all completed reviews where this user is the reviewee
+    reviews = Review.query.filter_by(
+        revieweeID=user.id,
+        assignmentID=assignment_id,
+        completed=True
+    ).all()
+
+    # Get criteria descriptions for context (question text and score max)
+    rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+    criteria_descriptions = {}
+    if rubric:
+        descriptions = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
+        for desc in descriptions:
+            criteria_descriptions[desc.id] = {
+                "question": desc.question,
+                "scoreMax": desc.scoreMax,
+                "hasScore": desc.hasScore
+            }
+
+    feedback_list = []
+    for review in reviews:
+        criteria_list = list(review.criteria.all())
+        criteria_data = []
+        for criterion in criteria_list:
+            desc = criteria_descriptions.get(criterion.criterionRowID, {})
+            criteria_data.append({
+                "criterionRowID": criterion.criterionRowID,
+                "question": desc.get("question", f"Criterion {criterion.criterionRowID}"),
+                "scoreMax": desc.get("scoreMax"),
+                "hasScore": desc.get("hasScore", True),
+                "grade": criterion.grade,
+                "comments": criterion.comments
+            })
+        feedback_list.append({
+            "review_id": review.id,
+            "criteria": criteria_data
+        })
+
+    return jsonify({
+        "assignment": {
+            "id": assignment.id,
+            "name": assignment.name,
+            "due_date": assignment.due_date.isoformat() if assignment.due_date else None
+        },
+        "feedback": feedback_list,
+        "total_reviews": len(feedback_list)
+    }), 200
+
+
 @bp.route("/assignment/<int:assignment_id>/all", methods=["GET"])
 @jwt_role_required("teacher", "admin")
 def get_all_reviews_for_assignment(assignment_id):

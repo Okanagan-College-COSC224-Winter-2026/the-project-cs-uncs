@@ -240,6 +240,10 @@ export default function ReviewSubmission() {
           {
             label: "Peer Review",
             path: `/assignment/${assignmentId}/reviews`,
+          },
+          {
+            label: "My Feedback",
+            path: `/assignment/${assignmentId}/feedback`,
           }
         ]}
       />

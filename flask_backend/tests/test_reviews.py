@@ -538,5 +538,131 @@ class TestCreateReview:
         assert 'already exists' in data['msg']
 
 
+class TestGetReceivedFeedback:
+    """Test GET /review/received/<assignment_id>"""
+
+    @pytest.fixture
+    def completed_reviews(self, db, course_with_assignment, students, rubric_with_criteria):
+        """Create completed reviews where student2 received feedback from student1"""
+        _, assignment = course_with_assignment
+        rubric, criteria = rubric_with_criteria
+
+        review = Review(
+            assignmentID=assignment.id,
+            reviewerID=students[0].id,  # student1 is reviewer
+            revieweeID=students[1].id   # student2 is reviewee
+        )
+        Review.create_review(review)
+
+        # Submit criteria for the review
+        from api.models import Criterion
+        for i, criterion_desc in enumerate(criteria[:2]):
+            Criterion.create_criterion(Criterion(
+                reviewID=review.id,
+                criterionRowID=criterion_desc.id,
+                grade=8 + i,
+                comments=f"Good work on criterion {i+1}!"
+            ))
+
+        review.mark_complete()
+        return review
+
+    def test_get_received_feedback_success(self, test_client, students, completed_reviews):
+        """Student can view feedback they received"""
+        # Login as student2 (the reviewee)
+        response = test_client.post('/auth/login', json={
+            'email': 'student2@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        assignment_id = completed_reviews.assignmentID
+
+        response = test_client.get(f'/review/received/{assignment_id}')
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert data['total_reviews'] == 1
+        assert len(data['feedback']) == 1
+        assert 'assignment' in data
+
+        feedback = data['feedback'][0]
+        assert len(feedback['criteria']) == 2
+        assert feedback['criteria'][0]['grade'] == 8
+        assert 'Good work on criterion 1!' in feedback['criteria'][0]['comments']
+        assert 'question' in feedback['criteria'][0]
+        assert 'scoreMax' in feedback['criteria'][0]
+
+    def test_get_received_feedback_no_feedback(self, test_client, students, course_with_assignment):
+        """Student with no completed reviews receives empty list"""
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        _, assignment = course_with_assignment
+
+        response = test_client.get(f'/review/received/{assignment.id}')
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert data['total_reviews'] == 0
+        assert data['feedback'] == []
+
+    def test_get_received_feedback_excludes_incomplete(self, test_client, students, reviews_assigned, rubric_with_criteria):
+        """Incomplete reviews are not included in received feedback"""
+        # student2 is a reviewee in reviews_assigned but the review is not completed
+        response = test_client.post('/auth/login', json={
+            'email': 'student2@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        assignment_id = reviews_assigned[0].assignmentID
+
+        response = test_client.get(f'/review/received/{assignment_id}')
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert data['total_reviews'] == 0
+
+    def test_get_received_feedback_unauthorized(self, test_client, course_with_assignment):
+        """Unauthenticated user cannot access received feedback"""
+        _, assignment = course_with_assignment
+
+        response = test_client.get(f'/review/received/{assignment.id}')
+        assert response.status_code == 401
+
+    def test_get_received_feedback_nonexistent_assignment(self, test_client, students):
+        """Returns 404 for nonexistent assignment"""
+        response = test_client.post('/auth/login', json={
+            'email': 'student2@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        response = test_client.get('/review/received/99999')
+        assert response.status_code == 404
+
+    def test_get_received_feedback_does_not_expose_reviewer(self, test_client, students, completed_reviews):
+        """Reviewer identity is not exposed in the feedback response"""
+        response = test_client.post('/auth/login', json={
+            'email': 'student2@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        assignment_id = completed_reviews.assignmentID
+
+        response = test_client.get(f'/review/received/{assignment_id}')
+        assert response.status_code == 200
+
+        data = response.get_json()
+        feedback = data['feedback'][0]
+        # Reviewer identity should not be present
+        assert 'reviewer' not in feedback
+        assert 'reviewer_id' not in feedback
+        assert 'reviewer_name' not in feedback
 
 

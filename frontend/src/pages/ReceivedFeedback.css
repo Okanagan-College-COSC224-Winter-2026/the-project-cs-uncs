@@ -1,0 +1,138 @@
+.received-feedback-container {
+  padding: 0;
+}
+
+.received-feedback-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem 2rem;
+}
+
+.feedback-page-header {
+  margin-bottom: 2rem;
+}
+
+.feedback-page-header h2 {
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.assignment-name {
+  color: #666;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.no-feedback {
+  text-align: center;
+  padding: 3rem;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  color: #666;
+}
+
+.no-feedback p {
+  margin: 0.5rem 0;
+}
+
+.feedback-card {
+  background-color: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.feedback-card-header {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 0.75rem;
+}
+
+.feedback-card-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.no-criteria {
+  color: #888;
+  font-style: italic;
+}
+
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.criterion-feedback {
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.criterion-question {
+  margin-bottom: 0.75rem;
+  color: #333;
+  font-size: 1rem;
+}
+
+.criterion-score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.score-label {
+  color: #555;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.score-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.score-max {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.criterion-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.comments-label {
+  color: #555;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.comments-text {
+  color: #444;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.error-message {
+  padding: 1rem;
+  background-color: #ffebee;
+  border-left: 4px solid #d32f2f;
+  border-radius: 4px;
+  color: #c62828;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .received-feedback-content {
+    padding: 0 1rem 1rem 1rem;
+  }
+}

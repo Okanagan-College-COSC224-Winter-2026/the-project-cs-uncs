@@ -76,7 +76,7 @@ export default function ReceivedFeedback() {
   return (
     <div className="received-feedback-container">
       <div className="AssignmentHeader">
-        <h2>Assignment {assignmentId}</h2>
+        <h2>{assignment?.name ?? `Assignment ${assignmentId}`}</h2>
       </div>
 
       <TabNavigation tabs={tabs} />
@@ -84,9 +84,6 @@ export default function ReceivedFeedback() {
       <div className="received-feedback-content">
         <div className="feedback-page-header">
           <h2>My Received Feedback</h2>
-          {assignment?.name && (
-            <p className="assignment-name">{assignment.name}</p>
-          )}
         </div>
 
         {error && (

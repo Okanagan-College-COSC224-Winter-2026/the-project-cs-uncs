@@ -413,13 +413,18 @@ def get_received_feedback(assignment_id):
 
     feedback_list = []
     for review in reviews:
-        criteria_list = list(review.criteria.all())
         criteria_data = []
-        for criterion in criteria_list:
+        for criterion in review.criteria.all():
             desc = criteria_descriptions.get(criterion.criterionRowID, {})
+            if not desc:
+                import logging
+                logging.warning(
+                    "Criterion %s in review %s has no matching CriteriaDescription",
+                    criterion.criterionRowID, review.id
+                )
             criteria_data.append({
                 "criterionRowID": criterion.criterionRowID,
-                "question": desc.get("question", f"Criterion {criterion.criterionRowID}"),
+                "question": desc.get("question", "Question unavailable"),
                 "scoreMax": desc.get("scoreMax"),
                 "hasScore": desc.get("hasScore", True),
                 "grade": criterion.grade,

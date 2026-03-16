@@ -220,7 +220,7 @@ def submit_review_feedback(review_id):
     return jsonify({
         "msg": "Review submitted successfully",
         "review": review_schema.dump(review)
-    }), 200
+    }, 200)
 
 
 @bp.route("/status/<int:assignment_id>", methods=["GET"])
@@ -388,9 +388,13 @@ def get_received_feedback(assignment_id):
     current_email = get_jwt_identity()
     user = User.get_by_email(current_email)
 
+    print(f"[DEBUG] get_received_feedback: assignment_id={assignment_id}, user={user.email}")
+
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
+        print(f"[DEBUG] Assignment {assignment_id} not found")
         return jsonify({"msg": "Assignment not found"}), 404
+
 
     # Get all completed reviews where this user is the reviewee
     reviews = Review.query.filter_by(

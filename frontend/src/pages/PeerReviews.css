@@ -13,31 +13,32 @@
 }
 
 .reviews-header h2 {
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .due-date {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
 .deadline-passed {
-  color: #d32f2f;
+  color: var(--error);
   font-weight: bold;
 }
 
 .review-status {
-  background-color: #f5f5f5;
-  border-radius: 8px;
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius);
   padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
   margin-bottom: 2rem;
 }
 
 .review-status h3 {
   margin-top: 0;
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .status-details {
@@ -48,28 +49,29 @@
 
 .status-item {
   font-size: 1rem;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .status-item strong {
   font-size: 1.2rem;
   margin-left: 0.25rem;
+  color: var(--text-primary);
 }
 
 .status-item .completed {
-  color: #2e7d32;
+  color: var(--success);
 }
 
 .status-item .remaining {
-  color: #ed6c02;
+  color: var(--warning);
 }
 
 .no-reviews {
   text-align: center;
   padding: 3rem;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  color: #666;
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
 }
 
 .reviews-list {
@@ -78,61 +80,62 @@
 
 .reviews-list h3 {
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .review-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  background-color: var(--card-background);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
   padding: 1.5rem;
   margin-bottom: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .review-card:hover {
-  border-color: #1976d2;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .review-card.completed {
-  border-color: #c8e6c9;
-  background-color: #f1f8f4;
+  border-color: var(--success);
+  background-color: var(--card-background);
 }
 
 .review-card.pending {
-  border-color: #fff3e0;
-  background-color: #fffaf5;
+  border-color: var(--warning);
+  background-color: var(--card-background);
 }
 
 .review-info h4 {
   margin: 0 0 0.5rem 0;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.1rem;
 }
 
 .review-info p {
   margin: 0.25rem 0;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .reviewee-info .label {
   font-weight: 500;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .submission-status {
-  color: #2e7d32;
+  color: var(--success);
   font-weight: 500;
 }
 
 .submission-status.no-submission {
-  color: #ed6c02;
+  color: var(--warning);
 }
 
 .review-status-badge .badge {
@@ -144,35 +147,37 @@
 }
 
 .badge.completed {
-  background-color: #c8e6c9;
-  color: #2e7d32;
+  background-color: color-mix(in srgb, var(--success) 20%, transparent);
+  color: var(--success);
+  border: 1px solid var(--success);
 }
 
 .badge.pending {
-  background-color: #fff3e0;
-  color: #ed6c02;
+  background-color: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 
 .deadline-warning {
   margin-top: 2rem;
   padding: 1rem;
-  background-color: #fff3e0;
-  border-left: 4px solid #ed6c02;
+  background-color: color-mix(in srgb, var(--warning) 20%, transparent);
+  border-left: 4px solid var(--warning);
   border-radius: 4px;
 }
 
 .deadline-warning p {
   margin: 0;
-  color: #663c00;
+  color: var(--warning);
   font-weight: 500;
 }
 
 .error-message {
   padding: 1rem;
-  background-color: #ffebee;
-  border-left: 4px solid #d32f2f;
+  background-color: color-mix(in srgb, var(--error) 20%, transparent);
+  border-left: 4px solid var(--error);
   border-radius: 4px;
-  color: #c62828;
+  color: var(--error);
   font-weight: 500;
 }
 

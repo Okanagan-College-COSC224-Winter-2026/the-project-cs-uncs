@@ -19,6 +19,7 @@ import AdminUsers from "./pages/AdminUsers";
 import PeerReviews from "./pages/PeerReviews";
 import ReviewSubmission from "./pages/ReviewSubmission";
 import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
+import ReceivedFeedback from "./pages/ReceivedFeedback";
 
 function AppContent() {
   const location = useLocation();
@@ -114,6 +115,12 @@ function AppContent() {
           <Route path="/assignment/:assignmentId/review/:reviewId" element={
             <ProtectedRoute>
               <ReviewSubmission />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/feedback" element={
+            <ProtectedRoute>
+              <ReceivedFeedback />
             </ProtectedRoute>
           } />
         </Routes>

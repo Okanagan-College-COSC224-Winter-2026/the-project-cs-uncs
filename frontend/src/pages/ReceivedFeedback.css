@@ -1,0 +1,133 @@
+.received-feedback-container {
+  padding: 0;
+}
+
+.received-feedback-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem 2rem;
+}
+
+.feedback-page-header {
+  margin-bottom: 2rem;
+}
+
+.feedback-page-header h2 {
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.no-feedback {
+  text-align: center;
+  padding: 3rem;
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+}
+
+.no-feedback p {
+  margin: 0.5rem 0;
+}
+
+.feedback-card {
+  background-color: var(--card-background);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.feedback-card-header {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.feedback-card-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.no-criteria {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.criterion-feedback {
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-sm);
+  padding: 1rem;
+}
+
+.criterion-question {
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.criterion-score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.score-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.score-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.score-max {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.criterion-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.comments-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.comments-text {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.error-message {
+  padding: 1rem;
+  background-color: color-mix(in srgb, var(--error) 20%, transparent);
+  border-left: 4px solid var(--error);
+  border-radius: 4px;
+  color: var(--error);
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .received-feedback-content {
+    padding: 0 1rem 1rem 1rem;
+  }
+}

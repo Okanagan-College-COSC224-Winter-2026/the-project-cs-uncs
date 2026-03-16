@@ -25,7 +25,15 @@ export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: R
                     setError(null);
                     // getCriteria now accepts assignment ID
                     const criteriaResp = await getCriteria(rubricId);
-                    setCriteria(criteriaResp);
+
+                    if (Array.isArray(criteriaResp)) {
+                        setCriteria(criteriaResp);
+                    } else if (criteriaResp && Array.isArray(criteriaResp.criteria)) {
+                        setCriteria(criteriaResp.criteria);
+                    } else {
+                        console.warn('Unexpected criteria response format:', criteriaResp);
+                        setCriteria([]);
+                    }
                 } catch (err) {
                     console.error('Error loading criteria:', err);
                     setError('Failed to load rubric criteria');
@@ -82,4 +90,4 @@ export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: R
             />
         </div>
     );
-} 
+}

@@ -509,6 +509,26 @@ export const getAllReviewsForAssignment = async (assignmentId: number) => {
   return await response.json();
 }
 
+/**
+ * Get feedback received by the current student for a specific assignment.
+ * Returns completed peer reviews where the student is the reviewee,
+ * with grades and comments for each criterion. Reviewer identity is anonymous.
+ */
+export const getReceivedFeedback = async (assignmentId: number) => {
+  const response = await fetch(`${BASE_URL}/review/received/${assignmentId}`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export const getRubric = async (rubricID: number) => {
   const resp = await fetch(`${BASE_URL}/rubric?rubricID=${rubricID}`, {
       credentials: 'include'

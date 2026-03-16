@@ -104,7 +104,7 @@ export default function TeacherReviewDashboard() {
     return (
       <div className="teacher-dashboard-container">
         <div className="error-message">{error}</div>
-        <button onClick={() => navigate(`/assignment/${id}`)}>
+        <button className="dashboard-back-button" onClick={() => navigate(`/assignment/${id}`)}>
           Back to Assignment
         </button>
       </div>
@@ -151,10 +151,10 @@ export default function TeacherReviewDashboard() {
             <h3>{assignment.name}</h3>
             <p className="course-info">Course: {assignment.course_name}</p>
             {assignment.due_date && (
-              <p className="due-date">
+              <p className="dashboard-due-date">
                 Due: {formatDate(assignment.due_date)}
                 {!assignment.is_open && (
-                  <span className="deadline-passed"> (Closed)</span>
+                  <span className="dashboard-deadline-passed"> (Closed)</span>
                 )}
               </p>
             )}
@@ -186,15 +186,15 @@ export default function TeacherReviewDashboard() {
       <div className="reviews-section">
         <h3>All Reviews ({reviews.length})</h3>
         {reviews.length === 0 ? (
-          <div className="no-reviews">
+          <div className="dashboard-no-reviews">
             <p>No peer reviews have been assigned for this assignment yet.</p>
           </div>
         ) : (
-          <div className="reviews-list">
+          <div className="dashboard-reviews-list">
             {reviews.map((review) => (
               <div
                 key={review.id}
-                className={`review-item ${review.completed ? 'completed' : 'incomplete'}`}
+                className={`dashboard-review-item ${review.completed ? 'completed' : 'incomplete'}`}
               >
                 <div
                   className="review-summary"
@@ -213,15 +213,15 @@ export default function TeacherReviewDashboard() {
                       <span className="email">({review.reviewee.email})</span>
                     </div>
                   </div>
-                  <div className="review-status">
-                    <span className={`badge ${review.completed ? 'completed' : 'pending'}`}>
-                      {review.completed ? '✓ Completed' : 'Pending'}
+                  <div className="dashboard-review-status">
+                    <span className={`dashboard-badge ${review.completed ? 'completed' : 'pending'}`}>
+                      {review.completed ? 'Completed' : 'Pending'}
                     </span>
                     <span className="criteria-count">
-                      {review.criteria_count} criteria submitted
+                      {review.criteria_count} criteria
                     </span>
                     <span className="expand-icon">
-                      {expandedReviewId === review.id ? '▼' : '▶'}
+                      {expandedReviewId === review.id ? '▲' : '▼'}
                     </span>
                   </div>
                 </div>
@@ -229,9 +229,9 @@ export default function TeacherReviewDashboard() {
                 {expandedReviewId === review.id && (
                   <div className="review-details">
                     {review.criteria.length === 0 ? (
-                      <p className="no-criteria">No criteria submitted yet.</p>
+                      <p className="dashboard-no-criteria">No criteria submitted yet.</p>
                     ) : (
-                      <div className="criteria-list">
+                      <div className="dashboard-criteria-list">
                         <h4>Submitted Feedback:</h4>
                         {review.criteria.map((criterion) => (
                           <div key={criterion.id} className="criterion-detail">
@@ -244,7 +244,7 @@ export default function TeacherReviewDashboard() {
                               </span>
                             </div>
                             {criterion.comments && (
-                              <div className="criterion-comments">
+                              <div className="dashboard-criterion-comments">
                                 <strong>Comments:</strong>
                                 <p>{criterion.comments}</p>
                               </div>

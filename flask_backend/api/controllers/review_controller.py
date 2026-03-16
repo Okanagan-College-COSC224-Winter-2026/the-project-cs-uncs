@@ -220,7 +220,7 @@ def submit_review_feedback(review_id):
     return jsonify({
         "msg": "Review submitted successfully",
         "review": review_schema.dump(review)
-    }, 200)
+    }), 200
 
 
 @bp.route("/status/<int:assignment_id>", methods=["GET"])

@@ -21,7 +21,7 @@ export default function ClassMembers() {
       setMembers(members)
       setClassName(currentClass?.name || null);
     })()
-  }, [])  
+  }, [id])  
 
   return (
     <>

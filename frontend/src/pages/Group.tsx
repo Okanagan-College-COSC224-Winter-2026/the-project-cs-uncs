@@ -138,7 +138,7 @@ export default function Group() {
       }
       setMemberTable(memLocal);
     })();
-  }, []);
+  }, [id]);
 
   // Build tabs array based on user role
   const tabs = [

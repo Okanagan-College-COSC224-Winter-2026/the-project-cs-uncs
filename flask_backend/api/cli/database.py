@@ -17,6 +17,7 @@ from ..models import (
     User_Course
 )
 from ..models.db import db
+from werkzeug.security import generate_password_hash
 
 
 @click.command("init_db")
@@ -552,3 +553,26 @@ def init_app(app):
     app.cli.add_command(create_admin_command)
     app.cli.add_command(ensure_admin_command)
     app.cli.add_command(add_sample_courses_command)
+    # Bulk-create sample users: `flask add_many_users --count 30`
+    @click.command("add_many_users")
+    @click.option("--count", default=30, help="Number of users to create")
+    @with_appcontext
+    def add_many_users_command(count: int):
+        """Add many test users of the form 'Student X' with email studentX@email.com"""
+        click.echo(f"Creating {count} users...")
+        created = 0
+        for i in range(1, count + 1):
+            name = f"Student {i}"
+            email = f"student{i}@email.com"
+            if User.get_by_email(email):
+                click.echo(f"- already exists: {email}")
+                continue
+            hashed = generate_password_hash("123456", method="pbkdf2:sha256")
+            user = User(name=name, email=email, hash_pass=hashed, role="student")
+            User.create_user(user)
+            created += 1
+            click.echo(f"- created: {email}")
+
+        click.echo(f"Done. Created {created} new users.")
+
+    app.cli.add_command(add_many_users_command)

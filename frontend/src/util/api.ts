@@ -730,7 +730,7 @@ export const updateUserAdmin = async (userId: number, data: { name?: string; ema
     try {
       const err = await copyForJson.json();
       throw new Error(err.msg || `Response status: ${resp.status}`);
-    } catch (parseErr) {
+    } catch {
       const text = await copyForText.text();
       throw new Error(text || `Response status: ${resp.status}`);
     }
@@ -756,7 +756,7 @@ export const updateUserRoleAdmin = async (userId: number, role: string) => {
     try {
       const err = await copyForJson.json();
       throw new Error(err.msg || `Response status: ${resp.status}`);
-    } catch (parseErr) {
+    } catch {
       const text = await copyForText.text();
       throw new Error(text || `Response status: ${resp.status}`);
     }
@@ -780,7 +780,7 @@ export const deleteUserAdmin = async (userId: number) => {
     try {
       const err = await copyForJson.json();
       throw new Error(err.msg || `Response status: ${resp.status}`);
-    } catch (parseErr) {
+    } catch {
       const text = await copyForText.text();
       throw new Error(text || `Response status: ${resp.status}`);
     }

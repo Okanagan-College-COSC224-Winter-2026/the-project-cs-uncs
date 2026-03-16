@@ -38,9 +38,10 @@ export default function AdminUsers() {
       const data = await listAllUsers();
       setUsers(data || []);
       setPage(1);
-    } catch (e: any) {
-      console.error(e);
-      setError(e.message || 'Failed to load users');
+    } catch (err: unknown) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -52,22 +53,26 @@ export default function AdminUsers() {
       await createUserAdmin(newName, newEmail, newPassword, newRole, true);
       setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('student');
       await fetchUsers();
-    } catch (e: any) {
-      setError(e.message || 'Create failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || 'Create failed');
     }
   }
+
+  type UpdateUserPayload = { name?: string | null; email?: string | null };
 
   const handleSave = async (userId: number, updated: Partial<User>) => {
     try {
       if (updated.name || updated.email) {
-        await updateUserAdmin(userId, { name: updated.name, email: updated.email } as any);
+        await updateUserAdmin(userId, { name: updated.name ?? null, email: updated.email ?? null } as UpdateUserPayload);
       }
       if (updated.role) {
         await updateUserRoleAdmin(userId, updated.role);
       }
       await fetchUsers();
-    } catch (e: any) {
-      setError(e.message || 'Update failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || 'Update failed');
     }
   }
 
@@ -75,8 +80,8 @@ export default function AdminUsers() {
     try {
       await deleteUserAdmin(userId);
       await fetchUsers();
-    } catch (e: any) {
-      const msg = (e && e.message) ? e.message : '';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       if (/cannot delete user: related records exist/i.test(msg) || /related records exist \(reviews, submissions, etc\./i.test(msg)) {
         setError(`Cannot delete user because related records exist (reviews, submissions, group memberships, or course links).
 
@@ -86,7 +91,7 @@ export default function AdminUsers() {
       } else if (/cannot delete teacher/i.test(msg) || /assigned to one or more courses/i.test(msg)) {
         setError('Cannot delete teacher: this account still owns one or more courses. Reassign or delete those courses before deleting the teacher.');
       } else if (/cannot delete your own account/i.test(msg)) {
-        setError('Cannot delete the account you are currently signed in with. Log in as a different admin to remove this account.');
+          setError('Cannot delete the account you are currently signed in with. Log in as a different admin to remove this account.');
       } else {
         setError(msg || 'Delete failed');
       }
@@ -120,7 +125,7 @@ export default function AdminUsers() {
           <input placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)} required />
           <input placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
           <input placeholder="Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
-          <select value={newRole} onChange={e => setNewRole(e.target.value as any)}>
+          <select value={newRole} onChange={e => setNewRole(e.target.value as User['role'])}>
             <option value="student">student</option>
             <option value="teacher">teacher</option>
             <option value="admin">admin</option>
@@ -215,7 +220,7 @@ function UserRow({ user, onSave, onDelete, currentUserId }: { user: User; onSave
       <td>{editing ? <input value={name} onChange={e => setName(e.target.value)} /> : (<>{name}{currentUserId === user.id ? ' (you)' : ''}</>)}</td>
       <td>{editing ? <input value={email} onChange={e => setEmail(e.target.value)} /> : email}</td>
       <td>{editing ? (
-        <select value={role} onChange={e => setRole(e.target.value as any)}>
+        <select value={role} onChange={e => setRole(e.target.value as User['role'])}>
           <option value="student">student</option>
           <option value="teacher">teacher</option>
           <option value="admin">admin</option>

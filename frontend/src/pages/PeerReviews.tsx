@@ -120,6 +120,10 @@ export default function PeerReviews() {
           {
             label: "Peer Review",
             path: `/assignment/${id}/reviews`,
+          },
+          {
+            label: "My Feedback",
+            path: `/assignment/${id}/feedback`,
           }
         ]}
       />

@@ -163,6 +163,10 @@ export default function Group() {
       label: "Peer Review",
       path: `/assignment/${id}/reviews`,
     });
+    tabs.push({
+      label: "My Feedback",
+      path: `/assignment/${id}/feedback`,
+    });
   }
 
   return (

@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'error' | 'success'>('error');
   const [isRegistered, setIsRegistered] = useState(false);
@@ -28,6 +29,12 @@ export default function RegisterPage() {
     if (!name.trim() || !email.trim() || !password.trim()) {
       setStatusType('error');
       setStatusMessage('All fields are required');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatusType('error');
+      setStatusMessage('Passwords do not match');
       return;
     }
 
@@ -142,7 +149,6 @@ export default function RegisterPage() {
 
   return (
     <div className="RegisterPage">
-      {error && <StatusMessage message={error} type="error" className="RegisterError" />}
       <div className="RegisterBlock">
         <h1>Register</h1>
 
@@ -191,47 +197,25 @@ export default function RegisterPage() {
               />
             </div>
 
-        <div className="FormGroup">
-          <label>Full Name</label>
-          <Textbox
-            placeholder="Enter your full name"
-            onInput={setName}
-            className="RegisterInput"
-          />
+            <StatusMessage message={statusMessage} type={statusType} />
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+              <Button
+                onClick={handleRegister}
+                disabled={!name.trim() || !email.trim() || !password.trim()}
+              >
+                Register
+              </Button>
+              <Button
+                type="secondary"
+                onClick={() => navigate('/')}
+              >
+                Login
+              </Button>
+            </div>
+          </div>
         </div>
-
-        <div className="FormGroup">
-          <label>Email</label>
-          <Textbox
-            placeholder="Enter your email"
-            onInput={setEmail}
-            className="RegisterInput"
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button
-            onClick={()=> attemptRegister()}
-            children="Register"
-          />
-          <Button
-            onClick={() => navigate('/')}
-            type='secondary'
-            children="Login"
-          />
-        </div>
-
-        <StatusMessage message={statusMessage} type={statusType} />
-
-        <Button
-          onClick={handleRegister}
-          disabled={!name.trim() || !email.trim() || !password.trim()}
-        >
-          Register
-        </Button>
       </div>
-        </div>
-    </div>
     </div>
   );
 }

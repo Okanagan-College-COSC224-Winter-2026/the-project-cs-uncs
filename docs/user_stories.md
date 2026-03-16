@@ -120,6 +120,28 @@
 
 ---
 
+## US24 – Admin Manage User Accounts — **Backlog**
+
+**As an administrator, I want to manage user accounts from the admin dashboard so that I can keep the user base accurate and up to date.**
+
+### Assumptions and Details
+
+- Admin is signed in and on the admin dashboard  
+- System exposes CRUD operations over users via the frontend (create, read, update, deactivate/delete)  
+- Role-based access control enforces that only admins can perform these actions  
+- Deleting a user is distinct from deactivating; deactivation preserves data and is preferred for reversible actions  
+
+### Capabilities and Acceptance Criteria
+
+- [ ] Admin can view a paginated or filterable list of all users  
+- [ ] Admin can create a new user and assign an initial role  
+- [ ] Admin can edit an existing user’s name, email, or role  
+- [ ] Admin can deactivate or delete a user, with safeguards against self-deletion (admin cannot delete their own account and must confirm destructive actions)  
+- [ ] Admin receives success or error feedback for each action (toasts or inline messages)  
+- [ ] All actions go through the frontend admin page and persist to the backend
+
+---
+
 ## US7 – User Registration — **Complete**
 
 **As a user, I want to create an account using my name, email, and password so that I can securely log in to the peer review platform.**

@@ -665,16 +665,18 @@ export const createGroup = async(assignmentID: number, name: string, id: number)
   return await response.json();
 }
 
-// Admin - Create Teacher Account
-export const createTeacherAccount = async (name: string, email: string, password: string) => {
+// Deprecated: use `createUserAdmin` for creating users of any role (teachers included).
+
+// Admin - Generic Create User (any role)
+export const createUserAdmin = async (name: string, email: string, password: string, role: string = 'student', mustChangePassword: boolean = false) => {
   const response = await fetch(`${BASE_URL}/admin/users/create`, {
     method: 'POST',
     body: JSON.stringify({ 
-      name, 
-      email, 
+      name,
+      email,
       password,
-      role: 'teacher',
-      must_change_password: true
+      role,
+      must_change_password: mustChangePassword
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -690,6 +692,101 @@ export const createTeacherAccount = async (name: string, email: string, password
   }
 
   return await response.json();
+}
+
+// Admin - List all users
+export const listAllUsers = async () => {
+  const resp = await fetch(`${BASE_URL}/admin/users`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`);
+  }
+
+  return await resp.json();
+}
+
+// Admin - Update user details (name/email)
+export const updateUserAdmin = async (userId: number, data: { name?: string; email?: string }) => {
+  const resp = await fetch(`${BASE_URL}/admin/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    // Some error responses may be HTML (debug pages). Clone the response
+    // so we can attempt JSON parse and fall back to text without consuming
+    // the original body stream twice.
+    const copyForJson = resp.clone();
+    const copyForText = resp.clone();
+    try {
+      const err = await copyForJson.json();
+      throw new Error(err.msg || `Response status: ${resp.status}`);
+    } catch {
+      const text = await copyForText.text();
+      throw new Error(text || `Response status: ${resp.status}`);
+    }
+  }
+
+  return await resp.json();
+}
+
+// Admin - Update user role
+export const updateUserRoleAdmin = async (userId: number, role: string) => {
+  const resp = await fetch(`${BASE_URL}/admin/users/${userId}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    const copyForJson = resp.clone();
+    const copyForText = resp.clone();
+    try {
+      const err = await copyForJson.json();
+      throw new Error(err.msg || `Response status: ${resp.status}`);
+    } catch {
+      const text = await copyForText.text();
+      throw new Error(text || `Response status: ${resp.status}`);
+    }
+  }
+
+  return await resp.json();
+}
+
+// Admin - Delete user
+export const deleteUserAdmin = async (userId: number) => {
+  const resp = await fetch(`${BASE_URL}/admin/users/${userId}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(resp);
+
+  if (!resp.ok) {
+    const copyForJson = resp.clone();
+    const copyForText = resp.clone();
+    try {
+      const err = await copyForJson.json();
+      throw new Error(err.msg || `Response status: ${resp.status}`);
+    } catch {
+      const text = await copyForText.text();
+      throw new Error(text || `Response status: ${resp.status}`);
+    }
+  }
+
+  return await resp.json();
 }
 
 // User - Change Password

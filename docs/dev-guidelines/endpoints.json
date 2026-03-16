@@ -205,6 +205,46 @@
     },
     {
       "method": "GET",
+      "path": "/admin/users",
+      "params": null,
+      "query": { "page": "number (optional)", "filter": "string (optional)" },
+      "body": null,
+      "response": "Array<User> (admin-only)",
+      "authRequired": true,
+      "notes": "Lists all users. Admin blueprint at /admin implements this. Pagination/filtering is frontend-side; backend currently returns all users."
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/create",
+      "params": null,
+      "query": null,
+      "body": { "name": "string", "email": "string", "password": "string", "role": "string (student|teacher|admin)", "must_change_password": "boolean (optional)" },
+      "response": "201 { msg, user } or 400 { msg }",
+      "authRequired": true,
+      "notes": "Creates a new user. Admin-only."
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/users/:user_id/role",
+      "params": { "user_id": "number" },
+      "query": null,
+      "body": { "role": "string (student|teacher|admin)" },
+      "response": "200 { msg, user } or 400/404",
+      "authRequired": true,
+      "notes": "Update a user's role. Prevents self-demotion of current admin."
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/users/:user_id",
+      "params": { "user_id": "number" },
+      "query": null,
+      "body": null,
+      "response": "200 { msg } or 400/404",
+      "authRequired": true,
+      "notes": "Deletes a user. Prevents self-deletion. NOTE: soft-delete/deactivate not currently implemented in backend; consider adding an 'active' flag for reversible deactivation."
+    },
+    {
+      "method": "GET",
       "path": "/next_groupid",
       "params": null,
       "query": null,

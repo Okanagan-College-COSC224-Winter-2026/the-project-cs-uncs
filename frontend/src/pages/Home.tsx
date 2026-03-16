@@ -140,8 +140,8 @@ export default function Home() {
           <h2>Create Class</h2>
         </div>}
         
-        {isAdmin() && <div className="ClassCreateButton" onClick={() => window.location.href = '/admin/create-teacher'}>
-          <h2>Create Teacher</h2>
+        {isAdmin() && <div className="ClassCreateButton" onClick={() => window.location.href = '/admin/users'}>
+          <h2>Manage Users</h2>
         </div>}
       </div>
     </div>

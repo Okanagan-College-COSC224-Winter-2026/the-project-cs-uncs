@@ -1,0 +1,7 @@
+.AdminUsers { padding: 16px; }
+.AdminUsers h1 { margin-bottom: 12px; }
+.NewUser form { display:flex; gap:8px; margin-bottom:12px; }
+.NewUser input, .NewUser select { padding:6px; }
+.UsersList table { width:100%; border-collapse:collapse; }
+.UsersList th, .UsersList td { border:1px solid #ddd; padding:8px; }
+.Error { color: red; margin-bottom:8px; }

@@ -14,7 +14,8 @@ import Assignment from "./pages/Assignment";
 import Group from "./pages/Group";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePassword from "./pages/ChangePassword";
-import CreateTeacher from "./pages/CreateTeacher";
+// CreateTeacher removed in favor of AdminUsers
+import AdminUsers from "./pages/AdminUsers";
 import PeerReviews from "./pages/PeerReviews";
 import ReviewSubmission from "./pages/ReviewSubmission";
 import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
@@ -42,9 +43,11 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/admin/create-teacher" element={
+          {/* /admin/create-teacher removed; use /admin/users */}
+
+          <Route path="/admin/users" element={
             <ProtectedRoute>
-              <CreateTeacher />
+              <AdminUsers />
             </ProtectedRoute>
           } />
 

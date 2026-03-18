@@ -6,10 +6,19 @@ from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
-from ..models import Course, Assignment, User, AssignmentSchema, db
+from ..models import Course, Assignment, Submission, User, User_Course, AssignmentSchema, db
 from .auth_controller import jwt_teacher_required, jwt_role_required
 
 bp = Blueprint("assignment", __name__, url_prefix="/assignment")
+
+
+def _original_filename_from_storage_name(storage_name: str | None) -> str | None:
+    if not storage_name:
+        return None
+    # We store submissions as: <uuidhex>__<secure_filename>
+    if "__" in storage_name:
+        return storage_name.split("__", 1)[1]
+    return storage_name
 
 @bp.route("/create_assignment", methods=["POST"])
 @jwt_teacher_required
@@ -267,6 +276,180 @@ def download_assignment_attachment(assignment_id):
         assignment.attachment_storage_name,
         as_attachment=True,
         download_name=assignment.attachment_original_name or assignment.attachment_storage_name,
+    )
+
+
+@bp.route("/my_submission/<int:assignment_id>", methods=["GET"])
+@jwt_role_required("student")
+def get_my_submission(assignment_id):
+    """Get the current student's submission metadata for an assignment (if any)."""
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    enrollment = User_Course.get(user.id, assignment.courseID)
+    if not enrollment:
+        return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
+
+    submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+    if not submission:
+        return jsonify({"submission": None}), 200
+
+    storage_name = Path(submission.path).name if submission.path else None
+    file_name = _original_filename_from_storage_name(storage_name)
+    return jsonify({"submission": {"id": submission.id, "file_name": file_name}}), 200
+
+
+@bp.route("/submit/<int:assignment_id>", methods=["POST"])
+@jwt_role_required("student")
+def upload_submission(assignment_id):
+    """Upload or replace the current student's submission for an assignment."""
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    enrollment = User_Course.get(user.id, assignment.courseID)
+    if not enrollment:
+        return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
+
+    uploaded_file = request.files.get("file")
+    if not uploaded_file or not uploaded_file.filename:
+        return jsonify({"msg": "File is required"}), 400
+
+    uploads_root = Path(current_app.instance_path) / "uploads"
+    rel_dir = Path("submissions") / str(assignment.id) / str(user.id)
+    abs_dir = uploads_root / rel_dir
+    abs_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = secure_filename(uploaded_file.filename)
+    if not safe_name:
+        safe_name = "submission"
+
+    storage_name = f"{uuid4().hex}__{safe_name}"
+    abs_path = abs_dir / storage_name
+
+    submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+    if submission and submission.path:
+        try:
+            (uploads_root / submission.path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    uploaded_file.save(str(abs_path))
+    rel_path = (rel_dir / storage_name).as_posix()
+
+    if not submission:
+        submission = Submission(path=rel_path, studentID=user.id, assignmentID=assignment.id)
+        db.session.add(submission)
+    else:
+        submission.path = rel_path
+
+    db.session.commit()
+
+    return jsonify({"msg": "Submission uploaded", "submission": {"id": submission.id}}), 200
+
+
+@bp.route("/submissions/<int:assignment_id>", methods=["GET"])
+@jwt_role_required("teacher", "admin")
+def list_submissions(assignment_id):
+    """List all submissions for an assignment (teacher/admin only)."""
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    if not user.is_admin() and course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized: You are not the teacher of this class or an admin"}), 403
+
+    submissions = (
+        Submission.query.filter_by(assignmentID=assignment.id)
+        .join(User, Submission.studentID == User.id)
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    results = []
+    for sub in submissions:
+        student = sub.student
+        storage_name = Path(sub.path).name if sub.path else None
+        file_name = _original_filename_from_storage_name(storage_name)
+        results.append(
+            {
+                "id": sub.id,
+                "student": {
+                    "id": student.id if student else sub.studentID,
+                    "name": student.name if student else None,
+                    "email": student.email if student else None,
+                },
+                "file_name": file_name,
+            }
+        )
+
+    return jsonify({"submissions": results}), 200
+
+
+@bp.route("/submission/download/<int:submission_id>", methods=["GET"])
+@jwt_required()
+def download_submission(submission_id):
+    """Download a submission file.
+
+    Allowed for:
+    - The submitting student
+    - The course teacher
+    - Admins
+    """
+    submission = Submission.get_by_id(submission_id)
+    if not submission:
+        return jsonify({"msg": "Submission not found"}), 404
+
+    assignment = Assignment.get_by_id(submission.assignmentID)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    is_owner_student = user.is_student() and submission.studentID == user.id
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+    if not (user.is_admin() or is_owner_student or is_course_teacher):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    if not submission.path:
+        return jsonify({"msg": "No file for this submission"}), 404
+
+    storage_name = Path(submission.path).name
+    download_name = _original_filename_from_storage_name(storage_name) or storage_name
+
+    uploads_root = Path(current_app.instance_path) / "uploads"
+    return send_from_directory(
+        str(uploads_root),
+        submission.path,
+        as_attachment=True,
+        download_name=download_name,
     )
     
 

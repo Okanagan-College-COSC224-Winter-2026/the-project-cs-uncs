@@ -177,6 +177,29 @@ export const importStudentsForCourse = async (courseID: number, students: string
 
 }
 
+export const enrollStudentsByEmail = async (courseID: number, emails: string) => {
+  const response = await fetch(`${BASE_URL}/class/enroll_students_emails`, {
+    method: 'POST',
+    body: JSON.stringify({
+      emails,
+      class_id: courseID,
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${response.status}`)
+  }
+
+  return await response.json()
+}
+
 export const listAssignments = async (classId: string) => {
   const resp = await fetch(`${BASE_URL}/assignment/`+classId, {
     method: 'GET',
@@ -247,7 +270,7 @@ export const listUnassignedGroups = async (assignmentId : number) => {
 }
 
 export const listCourseMembers = async (classId: string) => {
-  const resp = await fetch(`${BASE_URL}/classes/members`, {
+  const resp = await fetch(`${BASE_URL}/class/members`, {
     method: 'POST',
     body: JSON.stringify({
       id: classId,
@@ -266,6 +289,28 @@ export const listCourseMembers = async (classId: string) => {
   
   return await resp.json()
 } 
+
+export const removeCourseMember = async (classId: number, userId: number) => {
+  const resp = await fetch(`${BASE_URL}/class/remove_member`, {
+    method: 'POST',
+    body: JSON.stringify({
+      class_id: classId,
+      user_id: userId,
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  const json = await resp.json().catch(() => ({} as any))
+  if (!resp.ok) {
+    throw new Error(json.msg || `Response status: ${resp.status}`)
+  }
+  return json
+}
 
 
 
@@ -578,6 +623,67 @@ export const getAssignmentDetails = async (assignmentId: number) => {
 
 export const getAssignmentAttachmentUrl = (assignmentId: number) => {
   return `${BASE_URL}/assignment/attachment/${assignmentId}`
+}
+
+export const getSubmissionDownloadUrl = (submissionId: number) => {
+  return `${BASE_URL}/assignment/submission/download/${submissionId}`
+}
+
+export const getMySubmission = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/assignment/my_submission/${assignmentId}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (resp.status === 403) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    return { submission: null, forbidden: true, msg: errorData.msg }
+  }
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const uploadMySubmission = async (assignmentId: number, formData: FormData) => {
+  const resp = await fetch(`${BASE_URL}/assignment/submit/${assignmentId}`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const listSubmissions = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/assignment/submissions/${assignmentId}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (resp.status === 403) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    return { submissions: [], forbidden: true, msg: errorData.msg }
+  }
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
 }
 
 export const updateAssignmentDetails = async (assignmentId: number, formData: FormData) => {

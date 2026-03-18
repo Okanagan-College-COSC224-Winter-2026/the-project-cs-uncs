@@ -3,7 +3,7 @@ import TabNavigation from "../components/TabNavigation";
 import { useEffect, useState } from "react";
 import Button from "../components/Button";
 import { importCSV } from "../util/csv";
-import { listCourseMembers, listClasses } from "../util/api";
+import { enrollStudentsByEmail, listCourseMembers, listClasses, removeCourseMember } from "../util/api";
 
 import './ClassMembers.css'
 import { isTeacher } from "../util/login";
@@ -12,6 +12,10 @@ export default function ClassMembers() {
   const { id } = useParams()
   const [members, setMembers] = useState<User[]>([])
   const [className, setClassName] = useState<string | null>(null);
+  const [showAddStudents, setShowAddStudents] = useState(false);
+  const [emailsText, setEmailsText] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
 
   useEffect(() => {
     ;(async () => {
@@ -23,6 +27,43 @@ export default function ClassMembers() {
     })()
   }, [id])  
 
+  const handleAddStudents = async () => {
+    if (!id) return;
+    if (!emailsText.trim()) {
+      alert("Please enter at least one email.");
+      return;
+    }
+
+    try {
+      setAdding(true);
+      const result = await enrollStudentsByEmail(Number(id), emailsText);
+      alert(result.msg || "Students added successfully!");
+      setEmailsText("");
+      setShowAddStudents(false);
+      const refreshed = await listCourseMembers(id as string);
+      setMembers(refreshed);
+    } catch (error) {
+      alert("Error: " + error);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId: number) => {
+    if (!id) return;
+    if (!window.confirm('Remove this student from the class?')) return;
+
+    try {
+      setRemovingMemberId(userId);
+      await removeCourseMember(Number(id), userId);
+      setMembers((prev) => prev.filter((m) => m.id !== userId));
+    } catch (error) {
+      alert('Error: ' + error);
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
   return (
     <>
       <div className="ClassHeader">
@@ -32,10 +73,41 @@ export default function ClassMembers() {
 
         <div className="ClassHeaderRight">
           {isTeacher() ? (
-            <Button onClick={() => importCSV(id as string)}>Add Students via CSV</Button>
+            <>
+              <Button onClick={() => importCSV(id as string)}>Add Students via CSV</Button>
+              <Button
+                type="secondary"
+                onClick={() => setShowAddStudents((v) => !v)}
+                disabled={adding}
+              >
+                {showAddStudents ? "Cancel" : "Add Students by Email"}
+              </Button>
+            </>
           ) : null}
         </div>
       </div>
+
+      {isTeacher() && showAddStudents ? (
+        <div className="AddStudentsPanel">
+          <label className="AddStudentsLabel">
+            Student emails (comma / space / newline separated)
+            <textarea
+              className="AddStudentsTextarea"
+              rows={4}
+              value={emailsText}
+              onChange={(e) => setEmailsText(e.target.value)}
+              placeholder="student1@example.com, student2@example.com"
+              disabled={adding}
+            />
+          </label>
+
+          <div className="AddStudentsActions">
+            <Button onClick={handleAddStudents} disabled={adding}>
+              {adding ? "Adding..." : "Add"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <TabNavigation
         tabs={[
@@ -55,7 +127,18 @@ export default function ClassMembers() {
           members.map(member => {
             return (
               <div key={member.id} className="Member">
-                {member.name} ({member.id})
+                <div className="MemberName">{member.name}</div>
+                {isTeacher() ? (
+                  <button
+                    className="MemberRemoveBtn"
+                    onClick={() => handleRemoveMember(member.id)}
+                    disabled={removingMemberId === member.id}
+                    title="Remove student"
+                    aria-label="Remove student"
+                  >
+                    🗑️
+                  </button>
+                ) : null}
               </div>
             )
           })

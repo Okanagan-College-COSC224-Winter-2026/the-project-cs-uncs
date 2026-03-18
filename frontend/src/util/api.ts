@@ -562,26 +562,69 @@ export const getRubric = async (rubricID: number) => {
   return await resp.json();
 }
 
+export const getAssignmentDetails = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/assignment/details/${assignmentId}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const getAssignmentAttachmentUrl = (assignmentId: number) => {
+  return `${BASE_URL}/assignment/attachment/${assignmentId}`
+}
+
+export const updateAssignmentDetails = async (assignmentId: number, formData: FormData) => {
+  const resp = await fetch(`${BASE_URL}/assignment/edit_details/${assignmentId}`, {
+    method: 'PATCH',
+    body: formData,
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
 
 // typed request body for creating an assignment
 export type CreateAssignmentRequest = {
   courseID: number;
   name: string;
+  description?: string;
   due_date?: string;
 };
 
-export const createAssignment = async (courseID: number, name: string, due_date?: string)=> {
-  const body: CreateAssignmentRequest = { courseID, name };
-  if (due_date) {
-    body.due_date = due_date;
-  }
+export function createAssignment(courseID: number, name: string, due_date?: string): Promise<any>;
+export function createAssignment(formData: FormData): Promise<any>;
+export async function createAssignment(arg1: number | FormData, name?: string, due_date?: string) {
+  const isMultipart = arg1 instanceof FormData;
 
   const response = await fetch(`${BASE_URL}/assignment/create_assignment`, {
     method: 'POST',
-    body: JSON.stringify(body),
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    body: isMultipart
+      ? arg1
+      : JSON.stringify({
+          courseID: arg1,
+          name: name || '',
+          due_date,
+        } satisfies CreateAssignmentRequest),
+    headers: isMultipart
+      ? undefined
+      : {
+          'Content-Type': 'application/json',
+        },
     credentials: 'include'
   })
   

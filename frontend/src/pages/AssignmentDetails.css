@@ -1,0 +1,72 @@
+.assignment-details-container {
+  width: 100%;
+}
+
+.assignment-details-content {
+  padding: var(--spacing-md);
+  background-color: var(--background-primary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+}
+
+.assignment-details-content h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.assignment-details-content h3:not(:first-child) {
+  margin-top: var(--spacing-lg);
+}
+
+.assignment-details-sectionHeader {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.assignment-details-sectionHeader h3 {
+  margin: 0;
+}
+
+.assignment-description {
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+.assignment-details-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.assignment-details-textarea {
+  padding: var(--spacing-sm);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.assignment-details-file {
+  margin-top: var(--spacing-xs);
+}
+
+.assignment-details-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.assignment-details-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-md);
+}

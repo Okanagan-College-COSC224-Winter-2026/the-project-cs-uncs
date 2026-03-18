@@ -20,6 +20,8 @@ import PeerReviews from "./pages/PeerReviews";
 import ReviewSubmission from "./pages/ReviewSubmission";
 import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
 import ReceivedFeedback from "./pages/ReceivedFeedback";
+import CreateAssignment from "./pages/CreateAssignment";
+import AssignmentDetails from "./pages/AssignmentDetails";
 
 function AppContent() {
   const location = useLocation();
@@ -76,6 +78,12 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
+          <Route path="/classes/:id/create-assignment" element={
+            <ProtectedRoute>
+              <CreateAssignment />
+            </ProtectedRoute>
+          } />
+
           <Route path="/assignments/:id" element={
             <ProtectedRoute>
               <Assignment />
@@ -85,6 +93,12 @@ function AppContent() {
           <Route path="/assignment/:id" element={
             <ProtectedRoute>
               <Assignment />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/details" element={
+            <ProtectedRoute>
+              <AssignmentDetails />
             </ProtectedRoute>
           } />
 

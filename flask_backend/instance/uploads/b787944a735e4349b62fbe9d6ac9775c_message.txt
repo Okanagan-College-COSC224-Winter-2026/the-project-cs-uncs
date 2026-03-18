@@ -1,0 +1,179 @@
+Lecture 1-11
+Lecture 1
+- CIA Triad
+	- Know what they mean and how they work together
+- bad actor
+	- Be able to give examples
+- Vulnerability
+	- Why a Zero day vulnerability is bad
+
+Lecture 2
+- Know the difference between data in transit vs rest
+	- What encryption you use and and able to identify
+		- symmetric encryption for at rest
+		- asymmetric encryption in transit
+- Caesar and Polyalphabetic ciphers
+	- Issue of frequency analysis in this context
+		- Can brute force
+	- know what they are
+		- Caesar move character over
+		- Polyalphabetic, multiple Caesars
+- One Time Pad (OTP)
+	- what is the guarantee and its requirements
+		- key only used once
+		- key is as long as the plain text
+		- it must be truly random
+
+Lecture 3
+- OTP cont...
+	- Why brute forcing doesn't work
+		- infinite keys and messages
+- Entropy
+	- Why important to security
+		- OPT wont be unbreakable without it
+	- Sources and benefits and drawback
+		- Atomic decay
+			- Slow
+		- Chaotic Systems
+			- So complicated that the chances of it being reproducible is very low
+			- Lava Lamp
+			- Fish in fish tank
+- Pseudorandom
+	- Why these do no create entropy
+	- Why its useful in creating other cryptographic systems
+		- Stream cyphers 
+			- Always produce the same output with the same input
+
+Lecture 4
+- Stream cypher
+	- How it functions including input, output, key, plaintext, cipher text
+		- input a key into a PRNG to get a value
+		- use Plaintext and PRNG value to XOR for Cipher text 
+		- XOR cipher text and PRNG value again to get plaintext
+	- Know Examples
+		- RC4
+		- A51
+		- A52
+		- ChaCha20
+- XOR
+	- How works
+		- TF > T
+		- FT > T
+		- TT > F
+		- FF > F
+	- Why use?
+		- True 50/50
+		- Easy reversable by XOR again
+		- Fast
+- OTP and Stream Cipher
+	- What is the relationship between
+		- Imperfect OTP since it not unbreakable but operates the same
+
+Lecture 5
+- Block Cipher
+	 - Block cipher vs Stream cipher
+		 - In block cipher it gets chopped into blocks and encryption done on each block
+	- Why block cipher more favored
+		- Less likely to leak key
+- Mode of operation
+	- ECB Electronic code block
+		- Takes Plain text, key and block for cipher
+		- Each block is individually encrypted with the same key
+			- not good for images
+	- CBC Cipher Block Chaining
+		- Takes Plain, Key, and IV for cipher and next block mixed with plain and key
+		- sometimes the same key
+	- CTR Counter Mode
+		- turn the block cipher into a stream cipher
+
+Lecture 6
+- Block Encryption function
+	- Mixes very well
+- Cryptographic primitive
+	- Small pieces of larger security systems
+- Good mixing functions
+	- What make it
+		- Even mixing
+		- small input change make big output change
+			- avalanche
+- DES
+	- How and why it got broken
+		- Short key length
+		- Replace with AES
+
+Lecture 7
+- AES
+	- What does the internal state grid look
+		- 2D array, 4x4 grid
+	- Describe the three steps
+		- Substitution
+		- Shift
+		- Mix Column
+	- Explain the number of mixing rounds
+		- Changing the key size changes the number of mixing
+		- 256 bit key is 10 round
+		- 512 bit key is 14 rounds
+		- blocks don't change size
+	- Why use
+		- Hasn't been broken
+		- Well documented standard
+- Side-channel Attack
+	- They go around the cryptography
+	- Bad AES can leak
+
+Lecture 8
+- Padding
+	- Why good
+	- why need
+		- to fill the rest of empty space
+	- types
+		- Zero padding
+			- How know length of padding
+		- PKCS
+		- ANSI
+- Securing a Communication Channel
+	- Symmetric cryptography need
+- Public key vs Private key
+	- How derived
+- Diffie Hellman Exchange
+	- Able to explain and diagram
+
+Lecture 9
+- Elliptic Curve Cryptography
+	- Basic concept
+	- Explain Trapdoor function
+		- One way function that is hard to reverse
+	- Weaknesses
+		- Cooked/backdoor curves
+- ECDHE
+	- what ephemeral mean
+		- Temp key
+		- always generates a new one incase it gets broken
+- RSA
+	- What used for
+		- Signing
+	- How diff from DHE
+
+Lecture 10
+- Hash
+	- A good hash function
+		- Uniform
+		- collision
+		- Resistance
+		- Avalanche
+- TLS
+	- How get A and I of CIA
+		- RSA + Hashing
+	- make a diagram
+	- Provide example of implementation and cypto stack
+
+Lecture 11
+- Why wireless harder
+	- eases-dropping
+	- broadcasting
+- WPA2
+	- what the cover and what they don't do
+		- The prevent people not on the network from sniffing and not get on the network
+		- Doesn't cover people in network
+- ARP attack
+	- all msgs send and final result

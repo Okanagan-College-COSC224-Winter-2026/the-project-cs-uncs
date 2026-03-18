@@ -7,7 +7,7 @@ import TabNavigation from "../components/TabNavigation";
 import { isTeacher } from "../util/login";
 
 import { 
-  getUserId
+  getAssignmentDetails,
 } from "../util/api";
 
 interface SelectedCriterion {
@@ -18,14 +18,15 @@ interface SelectedCriterion {
 export default function Assignment() {
   const { id } = useParams();
   const [selectedCriteria, setSelectedCriteria] = useState<SelectedCriterion[]>([]);
+  const [assignmentName, setAssignmentName] = useState<string | null>(null);
 
   useEffect(() => {
       (async () => {
         try {
-          const stuID = await getUserId();
-          // Review data is now handled in the PeerReviews component
-          // This is just a placeholder for future use
-          console.log('Current user ID:', stuID);
+          if (id) {
+            const details = await getAssignmentDetails(Number(id));
+            setAssignmentName(details?.name ?? null);
+          }
         } catch (error) {
           console.error('Error in Assignment page:', error);
         }
@@ -61,6 +62,10 @@ export default function Assignment() {
       path: `/assignment/${id}`,
     },
     {
+      label: "Details",
+      path: `/assignment/${id}/details`,
+    },
+    {
       label: "Group",
       path: `/assignment/${id}/group`,
     }
@@ -86,7 +91,7 @@ export default function Assignment() {
   return (
     <>
       <div className="AssignmentHeader">
-        <h2>Assignment {id}</h2>
+        <h2>{assignmentName || `Assignment ${id}`}</h2>
       </div>
 
       <TabNavigation tabs={tabs} />

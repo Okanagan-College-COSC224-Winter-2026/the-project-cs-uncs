@@ -134,6 +134,10 @@ export default function TeacherReviewDashboard() {
             path: `/assignment/${id}`,
           },
           {
+            label: "Details",
+            path: `/assignment/${id}/details`,
+          },
+          {
             label: "Group",
             path: `/assignment/${id}/group`,
           },

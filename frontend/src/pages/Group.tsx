@@ -147,6 +147,10 @@ export default function Group() {
       path: `/assignment/${id}`,
     },
     {
+      label: "Details",
+      path: `/assignment/${id}/details`,
+    },
+    {
       label: "Group",
       path: `/assignment/${id}/group`,
     }

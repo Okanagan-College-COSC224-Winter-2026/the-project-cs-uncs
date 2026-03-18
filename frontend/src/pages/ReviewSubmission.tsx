@@ -234,6 +234,10 @@ export default function ReviewSubmission() {
             path: `/assignment/${assignmentId}`,
           },
           {
+            label: "Details",
+            path: `/assignment/${assignmentId}/details`,
+          },
+          {
             label: "Group",
             path: `/assignment/${assignmentId}/group`,
           },

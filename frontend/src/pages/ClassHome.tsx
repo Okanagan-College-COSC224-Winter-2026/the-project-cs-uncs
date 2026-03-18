@@ -1,23 +1,19 @@
 import AssignmentCard from "../components/AssignmentCard";
 import Button from "../components/Button";
 import "./ClassHome.css";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { listAssignments, listClasses, createAssignment, deleteAssignment } from "../util/api";
+import { listAssignments, listClasses, deleteAssignment } from "../util/api";
 import TabNavigation from "../components/TabNavigation";
 import { importCSV } from "../util/csv";
-import Textbox from "../components/Textbox";
 import StatusMessage from "../components/StatusMessage";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function ClassHome() {
   const { id } = useParams();
-  const idNew = Number(id)
+  const navigate = useNavigate();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [newAssignmentName, setNewAssignmentName] = useState("");
-  const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
   const [className, setClassName] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'error' | 'success'>('error');
 
@@ -45,44 +41,6 @@ export default function ClassHome() {
       }
     }
   };
-    
-    const tryCreateAssingment = async () => {
-      // client‑side validation before sending
-      if (!newAssignmentName.trim()) {
-        setStatusType('error');
-        setStatusMessage('Assignment name is required');
-        return;
-      }
-      if (newAssignmentDueDate) {
-        const parsed = Date.parse(newAssignmentDueDate);
-        if (isNaN(parsed)) {
-          setStatusType('error');
-          setStatusMessage('Invalid due date');
-          return;
-        }
-      }
-
-      try {
-        setStatusMessage('');
-        const response = await createAssignment(idNew, newAssignmentName, newAssignmentDueDate || undefined);
-        const createdAssignment = response?.assignment;
-
-        if (!createdAssignment?.id) {
-          throw new Error('Failed to create assignment');
-        }
-
-        setAssignments((prev) => [...prev, createdAssignment]);
-        setNewAssignmentName("");
-        setNewAssignmentDueDate("");
-        setStatusType('success');
-        setStatusMessage('Assignment created successfully!');
-        setShowModal(false);
-      } catch (error) {
-        console.error('Error creating assignment:', error);
-        setStatusType('error');
-        setStatusMessage('Error creating assignment.');
-      }
-    };
     
     return (
       <>
@@ -135,52 +93,11 @@ export default function ClassHome() {
 
         {isTeacher() ? (
           <div className="AssInputChunk">
-            <Button onClick={() => setShowModal(true)}>
+            <Button onClick={() => navigate(`/classes/${id}/create-assignment`)}>
               Create Assignment
             </Button>
           </div>
         ) : null}
-
-        {showModal && (
-          <div className="ModalOverlay">
-            <div className="ModalContent">
-              <h3>Create Assignment</h3>
-              <div>
-                <label htmlFor="assignment-name-input">Name:</label>
-                <Textbox
-                  placeholder="New Assignment..."
-                  onInput={setNewAssignmentName}
-                  className="AssignmentInput"
-                />
-              </div>
-              <div>
-                <label htmlFor="assignment-due-input">Due Date:</label>
-                <input
-                  id="assignment-due-input"
-                  type="date"
-                  value={newAssignmentDueDate}
-                  onChange={(e) => setNewAssignmentDueDate(e.target.value)}
-                  className="AssignmentInput"
-                />
-              </div>
-              <div className="ModalButtons">
-                <Button
-                  onClick={() => tryCreateAssingment()}
-                  disabled={
-                    newAssignmentName.trim() === "" ||
-                    (!!newAssignmentDueDate && isNaN(Date.parse(newAssignmentDueDate)))
-                  }
-                >
-                  Add
-                </Button>
-                <Button type="secondary" onClick={() => setShowModal(false)}>
-                  Cancel
-                </Button>
-              </div>
-              <StatusMessage message={statusMessage} type={statusType} />
-            </div>
-          </div>
-        )}
 
       </div>
     </>

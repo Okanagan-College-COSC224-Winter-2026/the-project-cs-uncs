@@ -2,8 +2,8 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from ..models import Course, Assignment, User, AssignmentSchema
-from .auth_controller import jwt_teacher_required
+from ..models import Course, Assignment, User, AssignmentSchema, db
+from .auth_controller import jwt_teacher_required, jwt_role_required
 
 bp = Blueprint("assignment", __name__, url_prefix="/assignment")
 
@@ -73,9 +73,6 @@ def edit_assignment(assignment_id):
     if course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
-    if not assignment.can_modify():
-        return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
-
     assignment.name = data.get("name", assignment.name)
     assignment.rubric_text = data.get("rubric", assignment.rubric_text)
     due_date = data.get("due_date")
@@ -93,9 +90,9 @@ def edit_assignment(assignment_id):
         200,
     )
 @bp.route("/delete_assignment/<int:assignment_id>", methods=["DELETE"])
-@jwt_teacher_required
+@jwt_role_required('teacher', 'admin')
 def delete_assignment(assignment_id):
-    """Delete an existing assignment if the authenticated user is the teacher of the class and the due date has not passed"""
+    """Delete an existing assignment if the authenticated user is a teacher or admin"""
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
@@ -108,15 +105,15 @@ def delete_assignment(assignment_id):
     course = Course.get_by_id(assignment.courseID)
     if not course:
         return jsonify({"msg": "Course not found"}), 404
-    
-    if course.teacherID != user.id:
-        return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
-    if not assignment.can_modify():
-        return jsonify({"msg": "Assignment cannot be deleted after its due date"}), 400
+    # Only allow the course teacher or an admin to delete the assignment
+    if not user.is_admin() and course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized: You are not the teacher of this class or an admin"}), 403
 
-    assignment.delete()
-    return jsonify({"msg": "Assignment deleted"}), 200
+    db.session.delete(assignment)
+    db.session.commit()
+
+    return jsonify({"msg": "Assignment deleted successfully"}), 200
     
 
 # the following routes are for getting the assignments for a given course

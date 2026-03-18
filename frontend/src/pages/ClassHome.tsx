@@ -3,12 +3,12 @@ import Button from "../components/Button";
 import "./ClassHome.css";
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { listAssignments, listClasses, createAssignment } from "../util/api";
+import { listAssignments, listClasses, createAssignment, deleteAssignment } from "../util/api";
 import TabNavigation from "../components/TabNavigation";
 import { importCSV } from "../util/csv";
 import Textbox from "../components/Textbox";
 import StatusMessage from "../components/StatusMessage";
-import { isTeacher } from "../util/login";
+import { isTeacher, isAdmin } from "../util/login";
 
 export default function ClassHome() {
   const { id } = useParams();
@@ -30,6 +30,21 @@ export default function ClassHome() {
       setClassName(currentClass?.name || null);
     })();
   }, [id]);
+
+  const handleDeleteAssignment = async (assignmentId: number | string) => {
+    if (window.confirm('Are you sure you want to delete this assignment?')) {
+      try {
+        await deleteAssignment(Number(assignmentId));
+        setAssignments(assignments.filter(a => a.id !== assignmentId));
+        setStatusType('success');
+        setStatusMessage('Assignment deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting assignment:', error);
+        setStatusType('error');
+        setStatusMessage('Error deleting assignment.');
+      }
+    }
+  };
     
     const tryCreateAssingment = async () => {
       // client‑side validation before sending
@@ -110,6 +125,7 @@ export default function ClassHome() {
                     id={assignment.id}
                     name={assignment.name}
                     due_date={assignment.due_date}
+                    onDelete={(isTeacher() || isAdmin()) ? handleDeleteAssignment : undefined}
                   />
                 </li>
               );

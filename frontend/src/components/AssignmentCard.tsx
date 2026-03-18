@@ -5,6 +5,7 @@ interface Props {
   id: number | string
   name: string
   due_date?: string
+  onDelete?: (id: number | string) => void;
 }
 
 function getAssignmentStatus(dueDate?: string): { status: string; label: string; color: string } {
@@ -43,10 +44,21 @@ function formatDate(dateString?: string): string {
 export default function AssignmentCard(props: Props) {
   const statusInfo = getAssignmentStatus(props.due_date);
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the card's onClick from firing
+    if (props.onDelete) {
+      props.onDelete(props.id);
+    }
+  };
+
   return (
     <div
       onClick={() => {
-        window.location.href = `/assignment/${props.id}`
+        if (props.onClick) {
+          props.onClick();
+        } else {
+          window.location.href = `/assignment/${props.id}`
+        }
       }}
       className='A_Card'
     >
@@ -61,6 +73,11 @@ export default function AssignmentCard(props: Props) {
           </span>
         </div>
       </div>
+      {props.onDelete && (
+        <button onClick={handleDelete} className="delete-assignment-btn">
+          🗑️
+        </button>
+      )}
     </div>
   )
 }

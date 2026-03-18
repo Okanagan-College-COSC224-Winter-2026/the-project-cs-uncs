@@ -13,12 +13,12 @@ class Review(db.Model):
     __tablename__ = "Review"
 
     id = db.Column(db.Integer, primary_key=True)
-    assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
-    reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
-    revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
-    completed = db.Column(db.Boolean, default=False, nullable=False)
+    assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), index=True)
+    reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), index=True)
+    revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), index=True)
+    completed = db.Column(db.Boolean, default=False)
 
-    # relationships - using lazy='joined' for commonly accessed foreign entities
+    # relationships
     assignment = db.relationship("Assignment", back_populates="reviews", lazy="joined")
     reviewer = db.relationship(
         "User", foreign_keys=[reviewerID], back_populates="reviews_made", lazy="joined"
@@ -37,7 +37,7 @@ class Review(db.Model):
         self.completed = completed
 
     def __repr__(self):
-        return f"<Review id={self.id} assignmentID={self.assignmentID}>"
+        return f"<Review id={self.id}>"
 
     @classmethod
     def get_by_id(cls, review_id):

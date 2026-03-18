@@ -85,6 +85,25 @@ export const getCurrentUser = async () => {
   return await response.json();
 }
 
+export const deleteAssignment = async (assignmentId: number) => {
+  const response = await fetch(`${BASE_URL}/assignment/delete_assignment/${assignmentId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.msg || `Failed to delete assignment: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
 export const createClass = async (name: string) => {
   const response = await fetch(`${BASE_URL}/class/create_class`, {
     method: 'POST',

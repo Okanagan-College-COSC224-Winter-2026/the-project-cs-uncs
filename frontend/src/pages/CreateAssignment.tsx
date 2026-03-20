@@ -20,6 +20,14 @@ export default function CreateAssignment() {
   const [statusMessage, setStatusMessage] = useState('')
   const [statusType, setStatusType] = useState<'error' | 'success'>('error')
 
+  const todayMinDate = (() => {
+    const now = new Date()
+    const yyyy = String(now.getFullYear())
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  })()
+
   const attemptCreateAssignment = async () => {
     if (!id) {
       setStatusType('error')
@@ -33,6 +41,15 @@ export default function CreateAssignment() {
       return
     }
 
+    if (dueDate) {
+      // Date-only input (YYYY-MM-DD). Lexicographic comparison works for ISO date strings.
+      if (dueDate < todayMinDate) {
+        setStatusType('error')
+        setStatusMessage('Due date cannot be in the past')
+        return
+      }
+    }
+
     try {
       setStatusMessage('')
 
@@ -41,7 +58,7 @@ export default function CreateAssignment() {
       formData.append('name', title)
       formData.append('description', description)
       if (dueDate) {
-        // Backend accepts YYYY-MM-DD (Python fromisoformat)
+        // Send as YYYY-MM-DD to avoid timezone shifting on the frontend.
         formData.append('due_date', dueDate)
       }
       if (attachedFile) {
@@ -84,7 +101,17 @@ export default function CreateAssignment() {
       />
 
       <h2>Due Date</h2>
-      <Textbox type="date" onInput={setDueDate} />
+      <Textbox
+        type="date"
+        value={dueDate}
+        min={todayMinDate}
+        onInput={(v) => {
+          setDueDate(v)
+          if (statusMessage) {
+            setStatusMessage('')
+          }
+        }}
+      />
 
       <h2>Attachment</h2>
       <input

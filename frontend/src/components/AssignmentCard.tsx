@@ -16,16 +16,19 @@ function getAssignmentStatus(dueDate?: string): { status: string; label: string;
 
   const now = new Date();
   const due = new Date(dueDate);
-  const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dueStart = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilDue = Math.round((dueStart.getTime() - nowStart.getTime()) / msPerDay);
 
   if (daysUntilDue < 0) {
     return { status: 'overdue', label: 'Overdue', color: 'red' };
   } else if (daysUntilDue === 0) {
     return { status: 'due-today', label: 'Due Today', color: 'orange' };
   } else if (daysUntilDue <= 3) {
-    return { status: 'due-soon', label: `Due in ${daysUntilDue} days`, color: 'yellow' };
+    return { status: 'due-soon', label: `Due in ${daysUntilDue} ${daysUntilDue === 1 ? 'day' : 'days'}`, color: 'yellow' };
   } else {
-    return { status: 'upcoming', label: `Due in ${daysUntilDue} days`, color: 'green' };
+    return { status: 'upcoming', label: `Due in ${daysUntilDue} ${daysUntilDue === 1 ? 'day' : 'days'}`, color: 'green' };
   }
 }
 

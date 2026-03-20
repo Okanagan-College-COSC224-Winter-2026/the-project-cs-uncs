@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -70,9 +70,24 @@ def create_assignment():
         due_date = None
     else:
         try:
-            due_date = datetime.fromisoformat(due_date)
+            raw_due_date = str(due_date)
+            if raw_due_date.endswith("Z"):
+                raw_due_date = raw_due_date[:-1] + "+00:00"
+
+            # If the frontend sends a date-only value, interpret it as end-of-day.
+            # This prevents "today" from being treated as already past (midnight).
+            if len(raw_due_date) == 10 and raw_due_date.count("-") == 2:
+                raw_due_date = f"{raw_due_date}T23:59:59"
+
+            due_date = datetime.fromisoformat(raw_due_date)
+
+            if due_date.tzinfo is not None:
+                due_date = due_date.astimezone(timezone.utc).replace(tzinfo=None)
         except (ValueError, TypeError):
             return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
+
+        if due_date < datetime.utcnow():
+            return jsonify({"msg": "Due date cannot be in the past"}), 400
 
     if not course_id:
         return jsonify({"msg": "Course ID is required"}), 400

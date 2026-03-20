@@ -1,4 +1,4 @@
-import { logout } from '../util/login'
+import { getUserRole, logout } from '../util/login'
 import { useTheme } from '../context/ThemeContext'
 import './Sidebar.css'
 
@@ -6,6 +6,9 @@ export default function Sidebar() {
   // Check which page we are on
   const location = window.location.pathname
   const { theme, toggleTheme } = useTheme()
+
+  const role = getUserRole()
+  const dashboardLabel = role === 'teacher' ? 'Teacher Dashboard' : role === 'admin' ? 'Admin Dashboard' : role === 'student' ? 'Student Dashboard' : 'Dashboard'
 
   return (
     <div className="Sidebar">
@@ -23,7 +26,7 @@ export default function Sidebar() {
         </SidebarRow>
 
         <SidebarRow selected={location === '/home'} href="/home">
-          Home
+          {dashboardLabel}
         </SidebarRow>
         
         { /* TODO: make this ID match who is logged in */ }

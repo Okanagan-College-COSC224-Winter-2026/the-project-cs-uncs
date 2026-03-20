@@ -40,6 +40,10 @@
   flex: 1;
 }
 
+.MemberGroup {
+  color: var(--text-secondary);
+}
+
 .MemberRemoveBtn {
   margin-left: auto;
 }

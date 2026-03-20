@@ -163,7 +163,7 @@ def add_users_command():
     else:
         click.echo(f"✓ All students already enrolled")
 
-    # Create assignment with due date 7 days in the future
+    # Create assignment with due date ~1 month in the future
     assignment_name = "Essay Peer Review Assignment"
     assignment = Assignment.query.filter_by(
         courseID=course.id,
@@ -171,7 +171,7 @@ def add_users_command():
     ).first()
 
     if not assignment:
-        due_date = datetime.now(timezone.utc) + timedelta(days=7)
+        due_date = datetime.now(timezone.utc) + timedelta(days=37)
         assignment = Assignment(
             courseID=course.id,
             name=assignment_name,
@@ -683,28 +683,28 @@ def add_users_command():
             "course": cosc_224,
             "name": "Week 1 Project Proposal",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=14),
+            "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Submit your proposal as a PDF.",
         },
         {
             "course": cosc_224,
             "name": "Sprint Checkpoint",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=2),
+            "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Short progress update and next steps.",
         },
         {
             "course": cosc_224,
             "name": "Individual Peer Evaluation",
             "assignment_type": "peer_eval_individual",
-            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=1))),
+            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=31))),
             "rubric_text": "Rate each teammate using the rubric.",
         },
         {
             "course": cosc_224,
             "name": "Group Peer Evaluation",
             "assignment_type": "peer_eval_group",
-            "due_date": _date_only_end_of_day(datetime.now().date()),
+            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=30))),
             "rubric_text": "As a group, evaluate the other groups using the rubric.",
         },
         {
@@ -725,14 +725,14 @@ def add_users_command():
             "course": cosc_205,
             "name": "Homework 1",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=14),
+            "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Homework submission.",
         },
         {
             "course": cosc_205,
             "name": "Homework 2",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=2),
+            "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Second homework submission.",
         },
         {
@@ -746,21 +746,21 @@ def add_users_command():
             "course": cosc_211,
             "name": "Lab 1",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=2),
+            "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Lab submission.",
         },
         {
             "course": cosc_211,
             "name": "Lab 2",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=14),
+            "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Second lab submission.",
         },
         {
             "course": cosc_211,
             "name": "Checkpoint Quiz",
             "assignment_type": "standard",
-            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=1))),
+            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=31))),
             "rubric_text": "Quick quiz (due tomorrow).",
         },
         {
@@ -774,14 +774,14 @@ def add_users_command():
             "course": cosc_232,
             "name": "Problem Set 1",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=14),
+            "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Problem set submission.",
         },
         {
             "course": cosc_232,
             "name": "Problem Set 2",
             "assignment_type": "standard",
-            "due_date": _utc_now_naive() + timedelta(days=2),
+            "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Second problem set submission.",
         },
     ]

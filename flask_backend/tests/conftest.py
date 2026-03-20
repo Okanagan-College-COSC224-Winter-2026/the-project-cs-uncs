@@ -1,4 +1,5 @@
 import pytest
+import os
 from werkzeug.security import generate_password_hash
 
 from api import create_app
@@ -10,7 +11,7 @@ TEMP_PATH = "/tmp/sqlalchemy-media"
 
 
 @pytest.fixture(scope="session")
-def app():
+def app(tmp_path_factory):
     """Create application for the tests."""
     _app = create_app(
         {
@@ -21,6 +22,11 @@ def app():
             "JWT_SECRET_KEY": "test-jwt-secret",
         }
     )
+
+    # Ensure per-run isolation for anything stored under the Flask instance
+    # folder (e.g., uploaded profile photos).
+    _app.instance_path = str(tmp_path_factory.mktemp("flask_instance"))
+    os.makedirs(_app.instance_path, exist_ok=True)
 
     # Create the database and tables
     with _app.app_context():

@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import ClassCard from "../components/ClassCard";
 
 import './Home.css'
-import { listClasses, listAssignments } from "../util/api";
+import { listClasses, listAssignments, searchClasses } from "../util/api";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function Home() {
   const [courses, setCourses] = useState<CourseWithAssignments[]>([]);
+  const [allCourses, setAllCourses] = useState<CourseWithAssignments[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +38,7 @@ export default function Home() {
         );
         
         setCourses(coursesWithAssignments);
+        setAllCourses(coursesWithAssignments);
       } catch (error) {
         console.error("Error fetching courses:", error);
       } finally {
@@ -48,7 +50,13 @@ export default function Home() {
   const handleSearch = async (q: string) => {
     setSearchQuery(q);
     if (!q || q.trim() === "") {
-      // If empty query, reload the user's classes without toggling global loading
+      // If empty query, restore the cached full list (avoids re-fetching every course + assignments).
+      if (allCourses) {
+        setCourses(allCourses);
+        return;
+      }
+
+      // Fallback if cache wasn't populated for some reason.
       try {
         const coursesResp = await listClasses();
         const coursesWithAssignments = await Promise.all(
@@ -70,13 +78,14 @@ export default function Home() {
           })
         );
         setCourses(coursesWithAssignments);
+        setAllCourses(coursesWithAssignments);
       } catch (e) {
         console.error(e);
       }
       return;
     }
     try {
-      const resp = await (await import("../util/api")).searchClasses(q);
+      const resp = await searchClasses(q);
       const results = resp.results || [];
       // Map to CourseWithAssignments shape (no assignments fetched here)
       const mapped = results.map((r: { id: number; name: string }) => ({ id: r.id, name: r.name, assignments: [], assignmentCount: 0 }));

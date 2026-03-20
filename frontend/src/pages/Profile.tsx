@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import BackArrow from '../components/BackArrow'
 import StatusMessage from '../components/StatusMessage'
 import './Profile.css'
 import { getCurrentUser, getCurrentUserPhotoUrl, uploadCurrentUserPhoto } from '../util/api'
@@ -57,8 +56,6 @@ export default function Profile() {
 
   return (
     <div className="Profile Page">
-      <BackArrow />
-
       <StatusMessage message={statusMessage} type={statusType} />
 
       <div className="profile-hero">

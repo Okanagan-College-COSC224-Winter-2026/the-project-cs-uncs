@@ -57,18 +57,24 @@ export default function Assignment() {
               return;
             }
 
-            const rubricResp = await getRubricForAssignment(Number(id));
-            const rid = rubricResp?.rubric?.id;
-            setRubricId(typeof rid === "number" ? rid : null);
-
             const critResp = await getRubricCriteria(Number(id));
+            let derivedRubricId: number | null = null;
             if (Array.isArray(critResp)) {
               setCriteria(critResp);
-              if (!rid && critResp.length > 0 && typeof critResp[0]?.rubricID === "number") {
-                setRubricId(critResp[0].rubricID);
+              if (critResp.length > 0 && typeof critResp[0]?.rubricID === "number") {
+                derivedRubricId = critResp[0].rubricID;
               }
             } else {
               setCriteria([]);
+            }
+
+            // If criteria already exist, they include rubricID, so we can skip the extra fetch.
+            if (typeof derivedRubricId === "number") {
+              setRubricId(derivedRubricId);
+            } else {
+              const rubricResp = await getRubricForAssignment(Number(id));
+              const rid = rubricResp?.rubric?.id;
+              setRubricId(typeof rid === "number" ? rid : null);
             }
           }
         } catch (error) {
@@ -172,45 +178,48 @@ export default function Assignment() {
     }
   };
 
-  // Build tabs array based on user role
+  if (loading) {
+    const loadingTabs = [{ label: "Details", path: `/assignment/${id}/details` }] as { label: string; path: string }[];
+    if (isTeacherOrAdmin) {
+      loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    }
+
+    return (
+      <div className="Page">
+        <BackArrow />
+        <div className="AssignmentHeader">
+          <h2>
+            <HeaderTitle title={null} loading={true} fallback="Assignment" />
+          </h2>
+        </div>
+
+        <TabNavigation tabs={loadingTabs} />
+        <div className="TabPageContent">
+          <div className="PageStatusText">Loading…</div>
+        </div>
+      </div>
+    );
+  }
+
+  const isPeerEval = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
   const tabs = [] as { label: string; path: string }[];
 
-  if (isTeacherOrAdmin) {
-    tabs.push({
-      label: "Rubric",
-      path: `/assignment/${id}`,
-    });
+  if (isTeacherOrAdmin && isPeerEval) {
+    tabs.push({ label: "Rubric", path: `/assignment/${id}` });
   }
 
-  tabs.push({
-    label: "Details",
-    path: `/assignment/${id}/details`,
-  });
+  tabs.push({ label: "Details", path: `/assignment/${id}/details` });
 
   if (isTeacherOrAdmin) {
-    tabs.push({
-      label: "Group Submissions",
-      path: `/assignment/${id}/group-submissions`,
-    });
-  }
-
-  // Add role-specific review tab
-  if (isTeacherOrAdmin) {
-    if (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") {
-      tabs.push({
-        label: "Peer Reviews",
-        path: `/assignment/${id}/teacher-reviews`,
-      });
+    tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    if (isPeerEval) {
+      tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
     }
   } else {
-    tabs.push({
-      label: "Peer Review",
-      path: `/assignment/${id}/reviews`,
-    });
-    tabs.push({
-      label: "My Feedback",
-      path: `/assignment/${id}/feedback`,
-    });
+    if (isPeerEval) {
+      tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
+      tabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+    }
   }
 
   return (
@@ -218,31 +227,35 @@ export default function Assignment() {
       <BackArrow />
       <div className="AssignmentHeader">
         <h2>
-          <HeaderTitle title={assignmentName} loading={loading} fallback="Assignment" />
+          <HeaderTitle title={assignmentName} loading={false} fallback="Assignment" />
         </h2>
       </div>
 
-      {loading ? null : <TabNavigation tabs={tabs} />}
+      <TabNavigation tabs={tabs} />
 
       {error ? <div className="error-message">{error}</div> : null}
 
-      <div className="assignment-details-sectionHeader assignment-rubric-sectionHeader">
-        <h3>Rubric</h3>
-        {canEditRubric ? (
-          editMode ? (
-            <Button className="outline-success" onClick={cancelEdit} disabled={saving}>
-              Cancel
-            </Button>
-          ) : (
-            <Button className="outline-success" onClick={startEdit} disabled={saving}>
-              Edit
-            </Button>
-          )
-        ) : null}
-      </div>
-
       <div className='assignmentRubricDisplay'>
-        <RubricDisplay key={refreshKey} rubricId={Number(id)} grades={[]} readOnly />
+        <RubricDisplay
+          key={refreshKey}
+          rubricId={Number(id)}
+          criteriaOverride={criteria}
+          grades={[]}
+          readOnly
+          headerActions={
+            canEditRubric ?
+              (editMode ? (
+                <Button className="outline-success" onClick={cancelEdit} disabled={saving}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button className="outline-success" onClick={startEdit} disabled={saving}>
+                  Edit
+                </Button>
+              ))
+            : null
+          }
+        />
       </div>
 
       {canEditRubric && editMode ? (

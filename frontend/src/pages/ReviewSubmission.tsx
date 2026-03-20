@@ -176,8 +176,8 @@ export default function ReviewSubmission() {
 
       // Navigate back to the peer reviews list after a short delay
       setTimeout(() => {
-        navigate(`/assignment/${assignmentId}/reviews`);
-      }, 2000);
+        navigate(`/assignment/${assignmentId}/reviews`, { replace: true });
+      }, 1000);
     } catch (err) {
       console.error('Error submitting review:', err);
       setError((err as Error).message || 'Failed to submit review. Please try again.');

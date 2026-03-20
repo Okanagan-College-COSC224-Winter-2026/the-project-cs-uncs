@@ -4,7 +4,7 @@ import TabNavigation from "../components/TabNavigation";
 import { useEffect, useState } from "react";
 import Button from "../components/Button";
 import { importCSV } from "../util/csv";
-import { enrollStudentsByEmail, listCourseMembers, listClasses, removeCourseMember } from "../util/api";
+import { enrollStudentsByEmail, listCourseGroups, listCourseMembers, listClasses, removeCourseMember, type CourseGroup } from "../util/api";
 import HeaderTitle from "../components/HeaderTitle";
 
 import './ClassMembers.css'
@@ -18,6 +18,7 @@ export default function ClassMembers() {
   }
 
   const [members, setMembers] = useState<User[]>([])
+  const [groupNameByUserId, setGroupNameByUserId] = useState<Record<number, string>>({})
   const [className, setClassName] = useState<string | null>(null);
   const [loadingHeader, setLoadingHeader] = useState(true);
   const [showAddStudents, setShowAddStudents] = useState(false);
@@ -33,6 +34,27 @@ export default function ClassMembers() {
       const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
       setMembers(members)
       setClassName(currentClass?.name || null);
+
+      try {
+        if (id) {
+          const groups: CourseGroup[] = await listCourseGroups(Number(id))
+          const map: Record<number, string> = {}
+          for (const g of groups) {
+            for (const m of g.members || []) {
+              if (typeof m.id !== 'number') continue
+              // If a student somehow appears in multiple groups, keep the first name.
+              if (!map[m.id]) {
+                map[m.id] = g.name
+              }
+            }
+          }
+          setGroupNameByUserId(map)
+        }
+      } catch (e) {
+        console.error('Failed to load groups for course:', e)
+        setGroupNameByUserId({})
+      }
+
       setLoadingHeader(false);
     })()
   }, [id])  
@@ -142,9 +164,13 @@ export default function ClassMembers() {
       <div className="ClassMemberList">
         {
           members.map(member => {
+            const groupName = groupNameByUserId[member.id]
             return (
               <div key={member.id} className="Member">
-                <div className="MemberName">{member.name}</div>
+                <div className="MemberName">
+                  {member.name}
+                  {groupName ? <span className="MemberGroup"> [{groupName}]</span> : null}
+                </div>
                 {isTeacher() ? (
                   <Button
                     type="secondary"

@@ -59,6 +59,7 @@ export default function PeerReviews() {
   const [groupDraft, setGroupDraft] = useState<Record<number, Record<number, number>>>({});
   const [groupAdditionalComments, setGroupAdditionalComments] = useState<Record<number, string>>({});
   const [submittingGroup, setSubmittingGroup] = useState(false);
+  const [showSubmittedGroupSubmission, setShowSubmittedGroupSubmission] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,6 +86,7 @@ export default function PeerReviews() {
         if (type === 'peer_eval_group') {
           const gs = await getGroupPeerEvalStatus(Number(id));
           setGroupStatus(gs);
+          setShowSubmittedGroupSubmission(false);
           setAssignment({ id: gs.assignment.id, name: gs.assignment.name, due_date: details?.due_date ?? null, can_submit: !gs.submitted });
           setReviews([]);
           setStatus(null);
@@ -192,6 +194,7 @@ export default function PeerReviews() {
 
       const refreshed = await getGroupPeerEvalStatus(Number(id));
       setGroupStatus(refreshed);
+      setShowSubmittedGroupSubmission(false);
       setAssignment((prev) => (prev ? { ...prev, can_submit: !refreshed.submitted } : prev));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to submit group peer evaluation.');
@@ -309,7 +312,15 @@ export default function PeerReviews() {
                   <p>Your group has already submitted the peer evaluation.</p>
                 </div>
 
-                {groupStatus.submission?.evaluations?.length ? (
+                {groupStatus.submission?.evaluations?.length && !showSubmittedGroupSubmission ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+                    <Button onClick={() => setShowSubmittedGroupSubmission(true)}>
+                      View submission
+                    </Button>
+                  </div>
+                ) : null}
+
+                {groupStatus.submission?.evaluations?.length && showSubmittedGroupSubmission ? (
                   <>
                     <h3>Submitted Evaluation</h3>
                     <p>This is what your group submitted (read-only).</p>

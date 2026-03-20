@@ -225,25 +225,34 @@ export const enrollStudentsByEmail = async (courseID: number, emails: string) =>
   return await response.json()
 }
 
+const assignmentsListInFlight = new Map<string, Promise<any>>()
+
 export const listAssignments = async (classId: string) => {
-  const resp = await fetch(`${BASE_URL}/assignment/`+classId, {
-    method: 'GET',
-    headers: {
-       'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  })
-  
-  maybeHandleExpire(resp);
+  const existing = assignmentsListInFlight.get(classId)
+  if (existing) return existing
 
-  if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
-  }
+  const request = (async () => {
+    const resp = await fetch(`${BASE_URL}/assignment/` + classId, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    })
 
-  return await resp.json()
+    maybeHandleExpire(resp)
+
+    if (!resp.ok) {
+      throw new Error(`Response status: ${resp.status}`)
+    }
+
+    return await resp.json()
+  })()
+
+  assignmentsListInFlight.set(classId, request)
+  request.finally(() => assignmentsListInFlight.delete(classId))
+  return request
 }
-
-
 
 export const listCourseMembers = async (classId: string) => {
   const resp = await fetch(`${BASE_URL}/class/members`, {
@@ -765,18 +774,29 @@ export const getRubric = async (rubricID: number) => {
   return await resp.json();
 }
 
+const assignmentDetailsInFlight = new Map<number, Promise<any>>()
+
 export const getAssignmentDetails = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/assignment/details/${assignmentId}`, {
-    credentials: 'include'
-  })
+  const existing = assignmentDetailsInFlight.get(assignmentId)
+  if (existing) return existing
 
-  maybeHandleExpire(resp)
+  const request = (async () => {
+    const resp = await fetch(`${BASE_URL}/assignment/details/${assignmentId}`, {
+      credentials: 'include'
+    })
 
-  if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`)
-  }
+    maybeHandleExpire(resp)
 
-  return await resp.json()
+    if (!resp.ok) {
+      throw new Error(`Response status: ${resp.status}`)
+    }
+
+    return await resp.json()
+  })()
+
+  assignmentDetailsInFlight.set(assignmentId, request)
+  request.finally(() => assignmentDetailsInFlight.delete(assignmentId))
+  return request
 }
 
 export const getAssignmentAttachmentUrl = (assignmentId: number) => {

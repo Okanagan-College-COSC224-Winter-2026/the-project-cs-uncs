@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getAssignmentDetails, getReceivedFeedback } from '../util/api';
+import { getAssignmentDetails, getReceivedFeedback, getReceivedGroupPeerEvalFeedback } from '../util/api';
 import { hasRole } from '../util/login';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
+import HeaderTitle from '../components/HeaderTitle';
 import './ReceivedFeedback.css';
 
 interface CriterionFeedback {
@@ -23,7 +24,7 @@ interface ReviewFeedback {
 interface AssignmentInfo {
   id: number;
   name: string;
-  due_date: string | null;
+  due_date?: string | null;
 }
 
 export default function ReceivedFeedback() {
@@ -42,12 +43,24 @@ export default function ReceivedFeedback() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getReceivedFeedback(Number(assignmentId));
-        setAssignment(data.assignment);
-        setFeedback(data.feedback);
-
         const details = await getAssignmentDetails(Number(assignmentId));
-        setAssignmentType(details?.assignment_type ?? null);
+        const type = details?.assignment_type ?? null;
+        setAssignmentType(type);
+
+        if (type === 'peer_eval_group') {
+          const data = await getReceivedGroupPeerEvalFeedback(Number(assignmentId));
+          setAssignment(data.assignment);
+          setFeedback(
+            (data.feedback ?? []).map((f) => ({
+              review_id: f.target_id,
+              criteria: f.criteria,
+            }))
+          );
+        } else {
+          const data = await getReceivedFeedback(Number(assignmentId));
+          setAssignment(data.assignment);
+          setFeedback(data.feedback);
+        }
       } catch (err) {
         setError((err as Error).message || 'Failed to load feedback. Please try again.');
       } finally {
@@ -61,7 +74,7 @@ export default function ReceivedFeedback() {
   const isTeacherOrAdmin = hasRole('teacher', 'admin');
 
   const tabs: { label: string; path: string }[] = [];
-  const showRubricTab = assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual';
+  const showRubricTab = isTeacherOrAdmin && (assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual');
   if (showRubricTab) {
     tabs.push({ label: 'Rubric', path: `/assignment/${assignmentId}` });
   }
@@ -69,31 +82,55 @@ export default function ReceivedFeedback() {
 
   if (isTeacherOrAdmin) {
     tabs.push({ label: 'Group Submissions', path: `/assignment/${assignmentId}/group-submissions` });
-    tabs.push({ label: 'Peer Reviews', path: `/assignment/${assignmentId}/teacher-reviews` });
+    if (assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual') {
+      tabs.push({ label: 'Peer Reviews', path: `/assignment/${assignmentId}/teacher-reviews` });
+    }
   } else {
-    tabs.push({ label: 'Peer Review', path: `/assignment/${assignmentId}/reviews` });
-    tabs.push({ label: 'My Feedback', path: `/assignment/${assignmentId}/feedback` });
+    if (assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual') {
+      tabs.push({ label: 'Peer Review', path: `/assignment/${assignmentId}/reviews` });
+      tabs.push({ label: 'My Feedback', path: `/assignment/${assignmentId}/feedback` });
+    }
   }
 
   if (loading) {
     return (
-      <div className="received-feedback-container">
+      <div className="received-feedback-container Page">
         <BackArrow />
-        <p>Loading feedback...</p>
+
+        <div className="AssignmentHeader">
+          <h2>
+            <HeaderTitle title={null} loading={true} fallback="Assignment" />
+          </h2>
+        </div>
+
+        <TabNavigation
+          tabs={[
+            {
+              label: 'Details',
+              path: `/assignment/${assignmentId}/details`,
+            },
+          ]}
+        />
+
+        <div className="TabPageContent">
+          <div className="PageStatusText">Loading…</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="received-feedback-container">
+    <div className="received-feedback-container Page">
       <BackArrow />
       <div className="AssignmentHeader">
-        <h2>{assignment?.name ?? `Assignment ${assignmentId}`}</h2>
+        <h2>
+          <HeaderTitle title={assignment?.name} loading={loading} fallback="Assignment" />
+        </h2>
       </div>
 
       <TabNavigation tabs={tabs} />
 
-      <div className="received-feedback-content">
+      <div className="received-feedback-content TabPageContent">
         <div className="feedback-page-header">
           <h2>My Received Feedback</h2>
         </div>

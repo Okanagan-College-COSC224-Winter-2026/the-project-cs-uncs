@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Button from "../components/Button";
 import { importCSV } from "../util/csv";
 import { enrollStudentsByEmail, listCourseMembers, listClasses, removeCourseMember } from "../util/api";
+import HeaderTitle from "../components/HeaderTitle";
 
 import './ClassMembers.css'
 import { isAdmin, isTeacher } from "../util/login";
@@ -74,11 +75,13 @@ export default function ClassMembers() {
   };
 
   return (
-    <>
+    <div className="Page">
       <BackArrow />
       <div className="ClassHeader">
         <div className="ClassHeaderLeft">
-          <h2>{className ?? (loadingHeader ? 'Loading…' : 'Class')}</h2>
+          <h2>
+            <HeaderTitle title={className} loading={loadingHeader} fallback="Class" />
+          </h2>
         </div>
 
         <div className="ClassHeaderRight">
@@ -157,6 +160,6 @@ export default function ClassMembers() {
           })
         }
       </div>
-    </>
+    </div>
   );
 }

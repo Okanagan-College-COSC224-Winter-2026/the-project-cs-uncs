@@ -99,9 +99,8 @@ def create_criteria():
     data = request.get_json()
     rubric_id = data.get("rubricID")
     question = data.get("question")
-    # UI requirement: rubric criteria are always out of 5 marks.
-    score_max = 5
-    has_score = True
+    score_max = data.get("scoreMax", 5)
+    has_score = data.get("hasScore", True)
     
     if not rubric_id:
         return jsonify({"msg": "Rubric ID is required"}), 400
@@ -128,11 +127,23 @@ def create_criteria():
     if not question or not str(question).strip():
         return jsonify({"msg": "Question is required"}), 400
 
+    try:
+        has_score = bool(has_score)
+        score_max = int(score_max) if score_max is not None else 0
+    except (TypeError, ValueError):
+        return jsonify({"msg": "Invalid scoreMax"}), 400
+
+    if score_max < 0:
+        return jsonify({"msg": "scoreMax must be 0 or greater"}), 400
+
+    if not has_score:
+        score_max = 0
+
     new_criterion = CriteriaDescription(
         rubricID=rubric_id, 
         question=str(question).strip(),
         scoreMax=score_max, 
-        hasScore=has_score
+        hasScore=has_score,
     )
     
     try:
@@ -141,6 +152,80 @@ def create_criteria():
         # checked model: create_criteria_description(cls, criteria_description)
         CriteriaDescription.create_criteria_description(new_criterion)
         return jsonify({"message": "Criteria created", "id": new_criterion.id}), 201
+    except Exception as e:
+        return jsonify({"msg": str(e)}), 500
+
+
+@bp.route("/update_criteria/<int:criteria_id>", methods=["PATCH"])
+@jwt_teacher_required
+def update_criteria(criteria_id):
+    """Update a single criteria description (question/scoreMax/hasScore)."""
+    criterion = CriteriaDescription.query.get(criteria_id)
+    if not criterion:
+        return jsonify({"msg": "Criteria not found"}), 404
+
+    rubric = Rubric.query.get(criterion.rubricID)
+    if not rubric:
+        return jsonify({"msg": "Rubric not found"}), 404
+
+    assignment = Assignment.query.get(rubric.assignmentID)
+    if not assignment:
+        return jsonify({"msg": "Assignment associated with rubric not found"}), 404
+
+    course = Course.query.get(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course associated with assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    next_question = data.get("question", None)
+    next_score_max = data.get("scoreMax", None)
+    next_has_score = data.get("hasScore", None)
+
+    if next_question is None and next_score_max is None and next_has_score is None:
+        return jsonify({"msg": "No fields to update"}), 400
+
+    if next_question is not None:
+        if not str(next_question).strip():
+            return jsonify({"msg": "Question is required"}), 400
+        criterion.question = str(next_question).strip()
+
+    if next_has_score is not None:
+        criterion.hasScore = bool(next_has_score)
+
+    if next_score_max is not None:
+        try:
+            next_score_max = int(next_score_max) if next_score_max is not None else 0
+        except (TypeError, ValueError):
+            return jsonify({"msg": "Invalid scoreMax"}), 400
+        if next_score_max < 0:
+            return jsonify({"msg": "scoreMax must be 0 or greater"}), 400
+        criterion.scoreMax = next_score_max
+
+    if not criterion.hasScore:
+        criterion.scoreMax = 0
+
+    try:
+        criterion.update()
+        return (
+            jsonify(
+                {
+                    "message": "Criteria updated",
+                    "criteria": {
+                        "id": criterion.id,
+                        "rubricID": criterion.rubricID,
+                        "question": criterion.question,
+                        "scoreMax": criterion.scoreMax,
+                        "hasScore": criterion.hasScore,
+                    },
+                }
+            ),
+            200,
+        )
     except Exception as e:
         return jsonify({"msg": str(e)}), 500
 

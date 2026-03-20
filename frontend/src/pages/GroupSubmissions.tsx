@@ -3,13 +3,17 @@ import { Navigate, useParams } from "react-router-dom";
 import BackArrow from "../components/BackArrow";
 import Button from "../components/Button";
 import TabNavigation from "../components/TabNavigation";
+import Criteria from "../components/Criteria";
+import HeaderTitle from "../components/HeaderTitle";
 import { hasRole } from "../util/login";
 import {
   CourseGroup,
+  getTeacherGroupPeerEvalOverview,
   listCourseGroups,
   listSubmissions,
   getAssignmentDetails,
   getSubmissionDownloadUrl,
+  type TeacherGroupPeerEvalOverviewResponse,
 } from "../util/api";
 import "./Groups.css";
 
@@ -36,6 +40,7 @@ export default function GroupSubmissions() {
 
   const [groups, setGroups] = useState<CourseGroup[]>([]);
   const [submissionsByStudentId, setSubmissionsByStudentId] = useState<Record<number, Submission>>({});
+  const [groupPeerEvalByGroupId, setGroupPeerEvalByGroupId] = useState<Record<number, TeacherGroupPeerEvalOverviewResponse["submissions"][number]>>({});
 
   const [selectedGroup, setSelectedGroup] = useState<CourseGroup | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,16 +49,16 @@ export default function GroupSubmissions() {
   const isTeacherOrAdmin = hasRole("teacher", "admin");
 
   const tabs = useMemo(() => {
-    const showRubricTab = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
+    const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && isTeacherOrAdmin;
+    const showTeacherPeerReviewsTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && isTeacherOrAdmin;
     const tabsForTeacher = [
       ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
       { label: "Group Submissions", path: `/assignment/${id}/group-submissions` },
-      { label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` },
+      ...(showTeacherPeerReviewsTab ? [{ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` }] : []),
     ];
 
     const tabsForStudent = [
-      ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
       { label: "Peer Review", path: `/assignment/${id}/reviews` },
       { label: "My Feedback", path: `/assignment/${id}/feedback` },
@@ -106,20 +111,34 @@ export default function GroupSubmissions() {
       if (!courseId) return;
 
       try {
-        const [groupsResp, submissionsResp] = await Promise.all([
-          listCourseGroups(courseId),
-          listSubmissions(Number(id)),
-        ]);
+        const groupsResp = await listCourseGroups(courseId);
         if (cancelled) return;
 
         setGroups(groupsResp);
 
-        const submissions = (submissionsResp?.submissions ?? []) as Submission[];
-        const map: Record<number, Submission> = {};
-        for (const sub of submissions) {
-          if (sub?.student?.id) map[sub.student.id] = sub;
+        if (assignmentType === "peer_eval_group") {
+          const overview = await getTeacherGroupPeerEvalOverview(Number(id));
+          if (cancelled) return;
+
+          const map: Record<number, TeacherGroupPeerEvalOverviewResponse["submissions"][number]> = {};
+          for (const sub of overview.submissions ?? []) {
+            const groupId = sub?.reviewer_group?.id;
+            if (typeof groupId === "number") map[groupId] = sub;
+          }
+          setGroupPeerEvalByGroupId(map);
+          setSubmissionsByStudentId({});
+        } else {
+          const submissionsResp = await listSubmissions(Number(id));
+          if (cancelled) return;
+
+          const submissions = (submissionsResp?.submissions ?? []) as Submission[];
+          const map: Record<number, Submission> = {};
+          for (const sub of submissions) {
+            if (sub?.student?.id) map[sub.student.id] = sub;
+          }
+          setSubmissionsByStudentId(map);
+          setGroupPeerEvalByGroupId({});
         }
-        setSubmissionsByStudentId(map);
       } catch (e: unknown) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : String(e);
@@ -133,6 +152,9 @@ export default function GroupSubmissions() {
   }, [courseId, id]);
 
   const submittedCountForGroup = (group: CourseGroup) => {
+    if (assignmentType === "peer_eval_group") {
+      return groupPeerEvalByGroupId[group.id] ? 1 : 0;
+    }
     return (group.members ?? []).reduce((count, member) => {
       return submissionsByStudentId[member.id] ? count + 1 : count;
     }, 0);
@@ -146,12 +168,18 @@ export default function GroupSubmissions() {
     return null;
   };
 
+  const getGroupPeerEvalSubmission = (group: CourseGroup) => {
+    return groupPeerEvalByGroupId[group.id] ?? null;
+  };
+
   return (
-    <>
+    <div className="Page">
       <BackArrow />
       <div className="ClassHeader">
         <div className="ClassHeaderLeft">
-          <h2>{assignmentName || `Assignment ${id}`}</h2>
+          <h2>
+            <HeaderTitle title={assignmentName} loading={loading} fallback="Assignment" />
+          </h2>
         </div>
       </div>
 
@@ -159,7 +187,7 @@ export default function GroupSubmissions() {
 
       <div className="GroupsPage">
         {error ? <div className="GroupsError">{error}</div> : null}
-        {loading ? <div className="GroupsMuted">Loading…</div> : null}
+        {loading ? <div className="PageStatusText">Loading…</div> : null}
 
         <div className="GroupsPanel">
           {selectedGroup ? (
@@ -186,6 +214,60 @@ export default function GroupSubmissions() {
 
               <h4>Submission</h4>
               {(() => {
+                if (assignmentType === "peer_eval_group") {
+                  const groupSubmission = getGroupPeerEvalSubmission(selectedGroup);
+                  if (!groupSubmission) {
+                    return <div className="GroupsMuted">No peer evaluation submitted yet.</div>;
+                  }
+
+                  return (
+                    <div className="GroupsDetailList">
+                      {(groupSubmission.evaluations ?? []).length === 0 ? (
+                        <div className="GroupsMuted">No peer reviews yet.</div>
+                      ) : (
+                        groupSubmission.evaluations?.map((ev: any, idx: number) => {
+                          const sorted = [...((ev?.criteria ?? []) as any[])].sort(
+                            (a: any, b: any) => Number(a.criterionRowID) - Number(b.criterionRowID)
+                          );
+
+                          const questions = sorted.map((c: any) => c.question);
+                          const scoreMaxes = sorted.map((c: any) => (c.scoreMax == null ? 0 : c.scoreMax));
+                          const hasScores = sorted.map((c: any) => c.hasScore);
+                          const grades = sorted.map((c: any) => c.grade ?? 0);
+
+                          return (
+                            <div key={ev?.reviewee_group?.id ?? idx} className="GroupsDetailRow">
+                              <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                                Evaluated: {ev?.reviewee_group?.name}
+                              </div>
+                              <Criteria
+                                questions={questions}
+                                scoreMaxes={scoreMaxes}
+                                hasScores={hasScores}
+                                canComment={false}
+                                onCriterionSelect={() => { /* read-only */ }}
+                                grades={grades}
+                                readOnly
+                              />
+
+                              {sorted.some((c: any) => (c.comments ?? "").trim().length > 0) ? (
+                                <div className="GroupsDetailList" style={{ marginTop: 8 }}>
+                                  {sorted.map((c: any) => (
+                                    <div key={c.criterionRowID} className="GroupsDetailRow">
+                                      <div style={{ fontWeight: 600 }}>{c.question}</div>
+                                      <div className="GroupsMuted">{(c.comments ?? "").trim() || "No comments"}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                }
+
                 const groupSubmission = getGroupSubmission(selectedGroup);
                 if (!groupSubmission) {
                   return <div className="GroupsMuted">No submission uploaded yet.</div>;
@@ -216,15 +298,16 @@ export default function GroupSubmissions() {
                     const submittedCount = submittedCountForGroup(group);
 
                     return (
-                      <button
-                        key={group.id}
-                        className="GroupItem"
-                        onClick={() => setSelectedGroup(group)}
-                        type="button"
-                      >
-                        <div className="GroupItemName">{group.name}</div>
-                        <div className="GroupItemMeta">{submittedCount > 0 ? "Submitted" : "No submission"}</div>
-                      </button>
+                      <div key={group.id} className="GroupItem">
+                        <button
+                          className="GroupItemMain"
+                          onClick={() => setSelectedGroup(group)}
+                          type="button"
+                        >
+                          <div className="GroupItemName">{group.name}</div>
+                          <div className="GroupItemMeta">{submittedCount > 0 ? "Submitted" : "No submission"}</div>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -233,6 +316,6 @@ export default function GroupSubmissions() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

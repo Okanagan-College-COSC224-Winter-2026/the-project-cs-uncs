@@ -9,6 +9,7 @@ import TabNavigation from "../components/TabNavigation";
 import { importCSV } from "../util/csv";
 import StatusMessage from "../components/StatusMessage";
 import { isTeacher, isAdmin } from "../util/login";
+import HeaderTitle from "../components/HeaderTitle";
 
 export default function ClassHome() {
   const { id } = useParams();
@@ -73,11 +74,13 @@ export default function ClassHome() {
   };
     
     return (
-      <>
+      <div className="Page">
         <BackArrow />
         <div className="ClassHeader">
           <div className="ClassHeaderLeft">
-            <h2>{className ?? (loadingHeader ? 'Loading…' : 'Class')}</h2>
+            <h2>
+              <HeaderTitle title={className} loading={loadingHeader} fallback="Class" />
+            </h2>
           </div>
 
         <div className="ClassHeaderRight">
@@ -164,6 +167,6 @@ export default function ClassHome() {
         ) : null}
 
       </div>
-    </>
+    </div>
   );
 }

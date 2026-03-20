@@ -89,15 +89,15 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="Home">
+      <div className="Home Page">
         <h1>Peer Review Dashboard</h1>
-        <p>Loading courses...</p>
+        <p className="PageStatusText">Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="Home">
+    <div className="Home Page">
       <h1>Peer Review Dashboard</h1>
 
       <div className="Search">

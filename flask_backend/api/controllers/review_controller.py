@@ -5,6 +5,8 @@ Review controller - handles peer review operations for students and teachers
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
+from ..models.db import db
+
 from ..models import (
     Assignment,
     Criterion,
@@ -53,6 +55,32 @@ def get_assigned_reviews(assignment_id):
 
     # Get all reviews where this user is the reviewer
     reviews = Review.get_by_reviewer_and_assignment(user.id, assignment_id)
+
+    # Defensive cleanup: historical duplicates can exist and cause the same
+    # teammate to appear twice in the Assigned Reviews UI.
+    if assignment.assignment_type == "peer_eval_individual" and reviews:
+        by_reviewee = {}
+        duplicates = []
+        for r in sorted(reviews, key=lambda x: x.id):
+            by_reviewee.setdefault(r.revieweeID, []).append(r)
+
+        for reviewee_id, items in by_reviewee.items():
+            if len(items) <= 1:
+                continue
+            keep = next((r for r in items if r.completed), None)
+            if not keep:
+                keep = next((r for r in items if r.criteria.count() > 0), None)
+            keep = keep or items[0]
+            for r in items:
+                if r.id != keep.id:
+                    duplicates.append(r)
+
+        if duplicates:
+            deleted_ids = {d.id for d in duplicates}
+            for r in duplicates:
+                db.session.delete(r)
+            db.session.commit()
+            reviews = [r for r in reviews if r.id not in deleted_ids]
 
     # Build response with additional context
     result = []
@@ -119,15 +147,11 @@ def get_review_submission(review_id):
             assignmentID=review.assignmentID
         ).first()
 
-        if not submission:
-            print(f"[DEBUG] No submission found")
-            return jsonify({"msg": "Submission not found"}), 404
-
         print(f"[DEBUG] Returning submission data successfully")
         return jsonify({
-            "submission": submission_schema.dump(submission),
+            "submission": submission_schema.dump(submission) if submission else None,
             "review": review_schema.dump(review),
-            "reviewee_name": review.reviewee.name  # For display purposes (keeping anonymous per US3)
+            "reviewee_name": review.reviewee.name,
         }), 200
 
     except Exception as e:

@@ -184,7 +184,75 @@ class TestPeerEvalGroup:
 
         status2 = test_client.get(f"/peer_eval/group/status/{assignment_id}")
         assert status2.status_code == 200
-        assert status2.get_json()["submitted"] is True
+        status2_data = status2.get_json()
+        assert status2_data["submitted"] is True
+
+        # Status should include what was submitted so the student UI can show it read-only.
+        assert status2_data.get("submission") is not None
+        assert isinstance(status2_data["submission"].get("evaluations"), list)
+        assert {e["reviewee_group"]["id"] for e in status2_data["submission"]["evaluations"]} == {g2.id, g3.id}
+
+        # Ensure at least one criterion response is persisted.
+        first_eval = status2_data["submission"]["evaluations"][0]
+        assert isinstance(first_eval.get("criteria"), list)
+        assert len(first_eval["criteria"]) == len(status_data["criteria"])
+
+    def test_group_peer_eval_submit_rejected_after_deadline(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "deadline_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "deadline_s1@test.com", "student")
+        s2 = _create_user("Student 2", "deadline_s2@test.com", "student")
+        s3 = _create_user("Student 3", "deadline_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "DG1")
+        g2 = _create_group(course.id, "DG2")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "deadline_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval Deadline",
+                "assignment_type": "peer_eval_group",
+                "included_group_ids": [g1.id, g2.id],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        # Force due date into the past.
+        from api.models import Assignment
+        from datetime import datetime, timedelta, timezone
+
+        assignment = Assignment.get_by_id(assignment_id)
+        assignment.due_date = datetime.now(timezone.utc) - timedelta(days=1)
+        assignment.update()
+
+        login_as(test_client, "deadline_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        status_data = status.get_json()
+
+        criteria_payload = []
+        for c in status_data["criteria"]:
+                        item = {"criterionRowID": c["id"], "comments": "ok"}
+                        if c["hasScore"]:
+                                item["grade"] = 0
+                        criteria_payload.append(item)
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert submit.status_code == 403
 
     def test_group_change_affects_eligibility_immediately(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher2@test.com", "teacher")
@@ -253,6 +321,151 @@ class TestPeerEvalGroup:
             },
         )
         assert submit2.status_code == 200
+
+    def test_teacher_can_view_group_peer_eval_submissions_after_student_submit(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher_view@test.com", "teacher")
+        s1 = _create_user("Student 1", "tv_s1@test.com", "student")
+        s2 = _create_user("Student 2", "tv_s2@test.com", "student")
+        s3 = _create_user("Student 3", "tv_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "teacher_view@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval",
+                "assignment_type": "peer_eval_group",
+                "included_group_ids": [g1.id, g2.id],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        # Student submits for their group.
+        login_as(test_client, "tv_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        criteria_payload = []
+        for c in status.get_json()["criteria"]:
+            item = {"criterionRowID": c["id"], "comments": "ok"}
+            if c["hasScore"]:
+                item["grade"] = 0
+            criteria_payload.append(item)
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert submit.status_code == 200
+
+        # Teacher can see the submission in the overview.
+        login_as(test_client, "teacher_view@test.com")
+        overview = test_client.get(f"/peer_eval/group/assignment/{assignment_id}/all")
+        assert overview.status_code == 200
+        data = overview.get_json()
+        assert data["assignment"]["id"] == assignment_id
+        assert data["total_submissions"] == 1
+        assert len(data["submissions"]) == 1
+        assert data["submissions"][0]["reviewer_group"]["id"] == g1.id
+        assert {ev["reviewee_group"]["id"] for ev in data["submissions"][0]["evaluations"]} == {g2.id}
+
+    def test_teacher_group_peer_eval_summary_returns_totals_per_group(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher_summary@test.com", "teacher")
+        s1 = _create_user("Student 1", "ts_s1@test.com", "student")
+        s2 = _create_user("Student 2", "ts_s2@test.com", "student")
+        s3 = _create_user("Student 3", "ts_s3@test.com", "student")
+        s4 = _create_user("Student 4", "ts_s4@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+        g3 = _create_group(course.id, "G3")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+        GroupMember.add_member(g3.id, s4.id)
+
+        login_as(test_client, "teacher_summary@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval",
+                "assignment_type": "peer_eval_group",
+                "included_group_ids": [g1.id, g2.id, g3.id],
+                "rubric_criteria": [
+                    {"question": "Q1", "scoreMax": 5, "hasScore": True},
+                    {"question": "Q2", "scoreMax": 5, "hasScore": True},
+                ],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        # Student submits grades: for g2 -> 3+4, for g3 -> 1+5
+        login_as(test_client, "ts_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        crit_rows = status.get_json()["criteria"]
+        assert len(crit_rows) == 2
+
+        row1 = crit_rows[0]["id"]
+        row2 = crit_rows[1]["id"]
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {
+                        "reviewee_group_id": g2.id,
+                        "criteria": [
+                            {"criterionRowID": row1, "grade": 3, "comments": "ok"},
+                            {"criterionRowID": row2, "grade": 4, "comments": "ok"},
+                        ],
+                    },
+                    {
+                        "reviewee_group_id": g3.id,
+                        "criteria": [
+                            {"criterionRowID": row1, "grade": 1, "comments": "ok"},
+                            {"criterionRowID": row2, "grade": 5, "comments": "ok"},
+                        ],
+                    },
+                ]
+            },
+        )
+        assert submit.status_code == 200
+
+        login_as(test_client, "teacher_summary@test.com")
+        summary = test_client.get(f"/peer_eval/group/assignment/{assignment_id}/summary")
+        assert summary.status_code == 200
+        data = summary.get_json()
+        assert data["max_per_review"] == 10
+
+        by_id = {g["group"]["id"]: g for g in data["groups"]}
+        assert by_id[g1.id]["reviews_received"] == 0
+        assert by_id[g1.id]["total_received"] == 0
+        assert by_id[g1.id]["max_possible"] == 0
+
+        assert by_id[g2.id]["reviews_received"] == 1
+        assert by_id[g2.id]["total_received"] == 7
+        assert by_id[g2.id]["max_possible"] == 10
+
+        assert by_id[g3.id]["reviews_received"] == 1
+        assert by_id[g3.id]["total_received"] == 6
+        assert by_id[g3.id]["max_possible"] == 10
 
 
 class TestPeerEvalIndividualEligibility:

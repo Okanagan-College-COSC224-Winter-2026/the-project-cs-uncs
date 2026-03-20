@@ -1,3 +1,5 @@
+import { useLocation, useNavigate } from 'react-router-dom'
+
 import './TabNavigation.css'
 
 interface Props {
@@ -8,6 +10,9 @@ interface Props {
 }
 
 export default function TabNavigation(props: Props) {
+  const location = useLocation()
+  const navigate = useNavigate()
+
   return (
     <div className="TabNav">
       {
@@ -15,8 +20,8 @@ export default function TabNavigation(props: Props) {
           return (
             <div
               key={tab.path}
-              className={`Tab ${tab.path === window.location.pathname ? 'active' : ''}`}
-              onClick={() => window.location.href = tab.path}
+              className={`Tab ${tab.path === location.pathname ? 'active' : ''}`}
+              onClick={() => navigate(tab.path)}
             >
               {tab.label}
             </div>

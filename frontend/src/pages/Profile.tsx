@@ -18,7 +18,7 @@ export default function Profile() {
   // }, [])
 
   return (
-    <div className="Profile">
+    <div className="Profile Page">
       <BackArrow />
       <div className="profile-image">
         <img src={`https://placehold.co/200x200`} alt="profile" />

@@ -4,12 +4,12 @@ import BackArrow from '../components/BackArrow'
 import Button from '../components/Button'
 import StatusMessage from '../components/StatusMessage'
 import Textbox from '../components/Textbox'
+import RubricCriteriaEditor, { type RubricCriterionDraft } from '../components/RubricCriteriaEditor'
 import { createAssignment, listCourseGroups, type CourseGroup } from '../util/api'
 import './CreateAssignment.css'
 import '../components/RubricCreator.css'
 
 type AssignmentType = 'standard' | 'peer_eval_group' | 'peer_eval_individual'
-type RubricCriterionDraft = { question: string; hasScore: boolean; scoreMax: number }
 
 const defaultRubricFor = (assignmentType: AssignmentType): RubricCriterionDraft[] => {
   if (assignmentType === 'peer_eval_individual') {
@@ -212,7 +212,7 @@ export default function CreateAssignment() {
   }
 
   return (
-    <div className="CreateAssignment">
+    <div className="CreateAssignment Page">
       <BackArrow />
       <h1>Create Assignment</h1>
 
@@ -263,68 +263,7 @@ export default function CreateAssignment() {
         <div className="RubricCreator">
           <h2>Rubric</h2>
 
-          {rubricCriteria.map((item, index) => (
-            <div key={index} className="criteria-input-section">
-              <input
-                type="text"
-                value={item.question}
-                onChange={(e) => {
-                  const updated = [...rubricCriteria]
-                  updated[index] = { ...updated[index], question: e.target.value }
-                  setRubricCriteria(updated)
-                }}
-                placeholder="Enter question"
-              />
-              <label>
-                Has score:
-                <input
-                  type="checkbox"
-                  checked={item.hasScore}
-                  onChange={(e) => {
-                    const updated = [...rubricCriteria]
-                    const nextHasScore = e.target.checked
-                    updated[index] = {
-                      ...updated[index],
-                      hasScore: nextHasScore,
-                      scoreMax: nextHasScore ? Math.max(0, updated[index].scoreMax || 0) : 0,
-                    }
-                    setRubricCriteria(updated)
-                  }}
-                />
-              </label>
-              {item.hasScore ? (
-                <input
-                  type="number"
-                  min="0"
-                  value={item.scoreMax}
-                  onChange={(e) => {
-                    const updated = [...rubricCriteria]
-                    updated[index] = { ...updated[index], scoreMax: Math.max(0, Number(e.target.value)) }
-                    setRubricCriteria(updated)
-                  }}
-                  placeholder="Enter score max"
-                />
-              ) : null}
-              <Button
-                type="secondary"
-                onClick={() => setRubricCriteria((prev) => prev.filter((_, i) => i !== index))}
-                disabled={rubricCriteria.length <= 1}
-              >
-                Remove Criterion
-              </Button>
-            </div>
-          ))}
-
-          <div className="button-group">
-            <Button
-              type="secondary"
-              onClick={() =>
-                setRubricCriteria((prev) => [...prev, { question: '', scoreMax: 5, hasScore: true }])
-              }
-            >
-              Add New Criterion
-            </Button>
-          </div>
+          <RubricCriteriaEditor criteria={rubricCriteria} onChange={setRubricCriteria} />
         </div>
       ) : null}
 

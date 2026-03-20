@@ -3,6 +3,7 @@ import { Navigate, useLocation, useParams } from "react-router-dom";
 import BackArrow from "../components/BackArrow";
 import Button from "../components/Button";
 import TabNavigation from "../components/TabNavigation";
+import HeaderTitle from "../components/HeaderTitle";
 import { isAdmin, isTeacher } from "../util/login";
 import {
     addCourseGroupMember,
@@ -213,7 +214,7 @@ export default function Groups() {
     );
 
     const assignmentTabs = useMemo(() => {
-        const showRubricTab = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
+        const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && (isTeacher() || isAdmin());
         const tabs = [
             ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
             { label: "Details", path: `/assignment/${id}/details` },
@@ -221,22 +222,30 @@ export default function Groups() {
         ];
 
         if (isTeacher()) {
-            tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
+            if (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") {
+                tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
+            }
         } else {
-            tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
-            tabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+            if (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") {
+                tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
+                tabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+            }
         }
 
         return tabs;
     }, [assignmentType, id]);
 
     return (
-        <>
+        <div className="Page">
             <BackArrow />
             <div className="ClassHeader">
                 <div className="ClassHeaderLeft">
                     <h2>
-                        {headerTitle ?? (loading ? "Loading…" : isAssignmentRoute ? "Assignment" : "Class")}
+                        <HeaderTitle
+                            title={headerTitle}
+                            loading={loading}
+                            fallback={isAssignmentRoute ? "Assignment" : "Class"}
+                        />
                     </h2>
                 </div>
                 <div className="ClassHeaderRight">
@@ -253,7 +262,7 @@ export default function Groups() {
             <div className="GroupsPage">
                 {error ? <div className="GroupsError">{error}</div> : null}
 
-                {loading ? <div className="GroupsMuted">Loading…</div> : null}
+                {loading ? <div className="PageStatusText">Loading…</div> : null}
 
                 {showCreateGroup && isTeacher() ? (
                     <div className="GroupsPanel">
@@ -387,6 +396,6 @@ export default function Groups() {
                     )}
                 </div>
             </div>
-        </>
+        </div>
     );
 }

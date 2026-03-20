@@ -31,7 +31,7 @@ export default function CreateClass() {
   };
 
   return (
-    <div className="CreateClass">
+    <div className="CreateClass Page">
       <BackArrow />
       <h1>Create Class</h1>
 

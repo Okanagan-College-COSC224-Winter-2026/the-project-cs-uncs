@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import TabNavigation from "../components/TabNavigation";
 import Button from "../components/Button";
 import BackArrow from "../components/BackArrow";
+import HeaderTitle from "../components/HeaderTitle";
 import { isAdmin, isStudent, isTeacher } from "../util/login";
 import {
   getAssignmentAttachmentUrl,
@@ -109,7 +110,9 @@ export default function AssignmentDetails() {
         setSubmissionForbidden(false);
         setSubmissionForbiddenMessage(null);
 
-        if (isStudent()) {
+        const assignmentType = details?.assignment_type ?? null;
+
+        if (isStudent() && assignmentType !== "peer_eval_group" && assignmentType !== "peer_eval_individual") {
           const resp = await getMySubmission(Number(id));
           const typed = resp as MySubmissionResponse;
 
@@ -119,12 +122,10 @@ export default function AssignmentDetails() {
             setMySubmission(null);
           } else if (typed?.locked) {
             setSubmissionForbidden(true);
-            setSubmissionForbiddenMessage(
-              typed?.msg ?? "Your group has already submitted."
-            );
+            setSubmissionForbiddenMessage(typed?.msg ?? "Your group has already submitted.");
             setMySubmission(typed?.submission ?? null);
           } else {
-            setMySubmission(resp?.submission ?? null);
+            setMySubmission(typed?.submission ?? null);
           }
         }
       } catch (err) {
@@ -137,6 +138,28 @@ export default function AssignmentDetails() {
 
     fetchDetails();
   }, [id]);
+
+  if (loading) {
+    const loadingTabs = [{ label: "Details", path: `/assignment/${id}/details` }] as { label: string; path: string }[];
+    if (isTeacher() || isAdmin()) {
+      loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    }
+
+    return (
+      <div className="assignment-details-container Page">
+        <BackArrow />
+        <div className="AssignmentHeader">
+          <h2>
+            <HeaderTitle title={null} loading={true} fallback="Assignment" />
+          </h2>
+        </div>
+        <TabNavigation tabs={loadingTabs} />
+        <div className="TabPageContent">
+          <div className="PageStatusText">Loading…</div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSave = async () => {
     if (!id) return;
@@ -189,7 +212,8 @@ export default function AssignmentDetails() {
   const tabs = [] as { label: string; path: string }[];
 
   const assignmentType = assignment?.assignment_type ?? null;
-  const showRubricTab = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
+  const isPeerEval = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
+  const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && (isTeacher() || isAdmin());
 
   if (showRubricTab) {
     tabs.push({ label: "Rubric", path: `/assignment/${id}` });
@@ -202,10 +226,14 @@ export default function AssignmentDetails() {
   }
 
   if (isTeacher() || isAdmin()) {
-    tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
+    if (isPeerEval) {
+      tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
+    }
   } else {
-    tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
-    tabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+    if (isPeerEval) {
+      tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
+      tabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+    }
   }
 
   const hasAttachment = !!assignment?.attachment_storage_name;
@@ -259,21 +287,22 @@ export default function AssignmentDetails() {
   };
 
   return (
-    <div className="assignment-details-container">
+    <div className="assignment-details-container Page">
       <BackArrow />
       <div className="AssignmentHeader">
-        <h2>{assignment?.name ?? "Loading…"}</h2>
+        <h2>
+          <HeaderTitle title={assignment?.name} loading={false} fallback="Assignment" />
+        </h2>
       </div>
 
       <TabNavigation tabs={tabs} />
 
-      {loading ? (
-        <p>Loading assignment details...</p>
-      ) : error ? (
+      {error ? (
         <div className="error-message">{error}</div>
       ) : (
-        <div className="assignment-details-content">
-          {successMessage ? <div className="success-message">{successMessage}</div> : null}
+        <div className="TabPageContent">
+          <div className="assignment-details-content">
+            {successMessage ? <div className="success-message">{successMessage}</div> : null}
 
           <div className="assignment-details-sectionHeader">
             <h3>Description</h3>
@@ -285,16 +314,20 @@ export default function AssignmentDetails() {
           </div>
           {description ? <p className="assignment-description">{description}</p> : <p>No description provided.</p>}
 
-          <h3>Attachment</h3>
-          {hasAttachment && id ? (
-            <a href={getAssignmentAttachmentUrl(Number(id))} target="_blank" rel="noreferrer">
-              Download{assignment?.attachment_original_name ? `: ${assignment.attachment_original_name}` : " attachment"}
-            </a>
-          ) : (
-            <p>No attachment.</p>
-          )}
+          {!isPeerEval ? (
+            <>
+              <h3>Attachment</h3>
+              {hasAttachment && id ? (
+                <a href={getAssignmentAttachmentUrl(Number(id))} target="_blank" rel="noreferrer">
+                  Download{assignment?.attachment_original_name ? `: ${assignment.attachment_original_name}` : " attachment"}
+                </a>
+              ) : (
+                <p>No attachment.</p>
+              )}
+            </>
+          ) : null}
 
-          {isStudent() ? (
+          {isStudent() && !isPeerEval ? (
             <>
               <h3>Your Submission</h3>
               {submissionForbidden ? (
@@ -369,24 +402,28 @@ export default function AssignmentDetails() {
                     />
                   </label>
 
-                  <label className="assignment-details-label">
-                    Replace attachment
-                    <input
-                      className="assignment-details-file"
-                      type="file"
-                      onChange={(e) => setNewFile(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
+                  {!isPeerEval ? (
+                    <>
+                      <label className="assignment-details-label">
+                        Replace attachment
+                        <input
+                          className="assignment-details-file"
+                          type="file"
+                          onChange={(e) => setNewFile(e.target.files?.[0] ?? null)}
+                        />
+                      </label>
 
-                  {hasAttachment ? (
-                    <label className="assignment-details-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={removeAttachment}
-                        onChange={(e) => setRemoveAttachment(e.target.checked)}
-                      />
-                      Remove current attachment
-                    </label>
+                      {hasAttachment ? (
+                        <label className="assignment-details-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={removeAttachment}
+                            onChange={(e) => setRemoveAttachment(e.target.checked)}
+                          />
+                          Remove current attachment
+                        </label>
+                      ) : null}
+                    </>
                   ) : null}
 
                   <div className="assignment-details-actions">
@@ -415,8 +452,9 @@ export default function AssignmentDetails() {
             </>
           ) : null}
 
-          <h3>Due Date</h3>
-          <p>{formatDueDate(assignment?.due_date ?? null)}</p>
+            <h3>Due Date</h3>
+            <p>{formatDueDate(assignment?.due_date ?? null)}</p>
+          </div>
         </div>
       )}
     </div>

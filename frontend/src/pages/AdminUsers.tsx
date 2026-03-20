@@ -99,7 +99,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="AdminUsers">
+    <div className="AdminUsers Page">
       <BackArrow />
       <h1>Admin — Manage Users</h1>
 
@@ -137,7 +137,7 @@ export default function AdminUsers() {
 
       <section className="UsersList">
         <h2>Existing users</h2>
-        {loading ? <p>Loading...</p> : (
+        {loading ? <p className="PageStatusText">Loading…</p> : (
           <table>
             <thead>
               <tr>

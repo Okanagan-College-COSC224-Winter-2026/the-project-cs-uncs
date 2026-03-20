@@ -4,15 +4,20 @@ import "./Assignment.css";
 import BackArrow from "../components/BackArrow";
 import RubricDisplay from "../components/RubricDisplay";
 import TabNavigation from "../components/TabNavigation";
+import HeaderTitle from "../components/HeaderTitle";
 import { hasRole } from "../util/login";
 import Button from "../components/Button";
+import RubricCriteriaEditor, { type RubricCriterionDraft } from "../components/RubricCriteriaEditor";
+import "../components/RubricCreator.css";
 
 import { 
   getAssignmentDetails,
   createCriteria,
+  createRubric,
   deleteCriteriaDescription,
   getRubricCriteria,
   getRubricForAssignment,
+  updateCriteriaDescription,
 } from "../util/api";
 
 export default function Assignment() {
@@ -25,7 +30,7 @@ export default function Assignment() {
   const [editMode, setEditMode] = useState(false);
   const [criteria, setCriteria] = useState<Array<{ id: number; rubricID: number; question: string; scoreMax: number; hasScore: boolean }>>([]);
   const [rubricId, setRubricId] = useState<number | null>(null);
-  const [newQuestion, setNewQuestion] = useState("");
+  const [draftCriteria, setDraftCriteria] = useState<RubricCriterionDraft[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -41,6 +46,13 @@ export default function Assignment() {
             setAssignmentType(details?.assignment_type ?? null);
 
             if (details?.assignment_type === "standard") {
+              navigate(`/assignment/${id}/details`, { replace: true });
+              return;
+            }
+
+            // Students shouldn't have a standalone Rubric tab/page.
+            // They fill the rubric while submitting each assigned peer review.
+            if (!isTeacherOrAdmin) {
               navigate(`/assignment/${id}/details`, { replace: true });
               return;
             }
@@ -66,61 +78,114 @@ export default function Assignment() {
           setLoading(false);
         }
       })();
-  }, [id, navigate]);
+  }, [id, navigate, isTeacherOrAdmin]);
 
   const canEditRubric = hasRole("teacher", "admin") && (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual");
 
-  const handleRemoveCriterion = async (criteriaId: number) => {
-    try {
-      setSaving(true);
-      setError(null);
-      await deleteCriteriaDescription(criteriaId);
-      setCriteria((prev) => prev.filter((c) => c.id !== criteriaId));
-      setRefreshKey((k) => k + 1);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to remove criterion.");
-    } finally {
-      setSaving(false);
-    }
+  const startEdit = () => {
+    setError(null);
+    setDraftCriteria(
+      (criteria.length > 0
+        ? criteria
+        : [{ id: undefined, question: "", hasScore: true, scoreMax: 5 }]
+      ).map((c) => ({
+        id: c.id,
+        question: c.question,
+        hasScore: c.hasScore,
+        scoreMax: c.hasScore ? c.scoreMax : 0,
+      }))
+    );
+    setEditMode(true);
   };
 
-  const handleAddCriterion = async () => {
-    const question = newQuestion.trim();
-    if (!question) {
-      setError("Criterion text is required.");
+  const cancelEdit = () => {
+    setError(null);
+    setDraftCriteria(null);
+    setEditMode(false);
+  };
+
+  const saveChanges = async () => {
+    if (!id) return;
+    if (!draftCriteria) return;
+
+    const normalized = draftCriteria.map((c) => ({
+      ...c,
+      question: c.question.trim(),
+      scoreMax: c.hasScore ? Math.max(0, c.scoreMax || 0) : 0,
+    }));
+
+    if (normalized.length === 0 || normalized.some((c) => !c.question)) {
+      setError("Rubric must have at least one criterion with a question.");
       return;
     }
-    if (!rubricId) {
-      setError("Rubric not found for this assignment.");
-      return;
-    }
+
+    let effectiveRubricId = rubricId;
 
     try {
       setSaving(true);
       setError(null);
-      await createCriteria(rubricId, question, 5, true, true);
-      setNewQuestion("");
+
+      if (!effectiveRubricId) {
+        const created = await createRubric(Number(id), Number(id), true);
+        effectiveRubricId = created.id;
+        setRubricId(created.id);
+      }
+
+      const originalById = new Map(criteria.map((c) => [c.id, c] as const));
+      const originalIds = new Set(criteria.map((c) => c.id));
+      const nextExistingIds = new Set(normalized.filter((c) => typeof c.id === "number").map((c) => c.id as number));
+
+      const deletions = Array.from(originalIds).filter((cid) => !nextExistingIds.has(cid));
+      const creations = normalized.filter((c) => typeof c.id !== "number");
+      const updates = normalized
+        .filter((c) => typeof c.id === "number")
+        .map((c) => {
+          const prev = originalById.get(c.id as number);
+          if (!prev) return null;
+          const nextScoreMax = c.hasScore ? c.scoreMax : 0;
+          const changed =
+            prev.question !== c.question ||
+            prev.hasScore !== c.hasScore ||
+            (prev.hasScore ? prev.scoreMax : 0) !== nextScoreMax;
+          if (!changed) return null;
+          return {
+            id: c.id as number,
+            payload: { question: c.question, hasScore: c.hasScore, scoreMax: nextScoreMax },
+          };
+        })
+        .filter((x): x is { id: number; payload: { question: string; scoreMax: number; hasScore: boolean } } => Boolean(x));
+
+      await Promise.all(deletions.map((cid) => deleteCriteriaDescription(cid)));
+      await Promise.all(updates.map((u) => updateCriteriaDescription(u.id, u.payload)));
+      await Promise.all(
+        creations.map((c) => createCriteria(effectiveRubricId as number, c.question, c.scoreMax, true, c.hasScore))
+      );
+
       const critResp = await getRubricCriteria(Number(id));
       setCriteria(Array.isArray(critResp) ? critResp : []);
       setRefreshKey((k) => k + 1);
+      cancelEdit();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to add criterion.");
+      setError(e instanceof Error ? e.message : "Failed to save rubric changes.");
     } finally {
       setSaving(false);
     }
   };
 
   // Build tabs array based on user role
-  const tabs = [
-    {
+  const tabs = [] as { label: string; path: string }[];
+
+  if (isTeacherOrAdmin) {
+    tabs.push({
       label: "Rubric",
       path: `/assignment/${id}`,
-    },
-    {
-      label: "Details",
-      path: `/assignment/${id}/details`,
-    },
-  ];
+    });
+  }
+
+  tabs.push({
+    label: "Details",
+    path: `/assignment/${id}/details`,
+  });
 
   if (isTeacherOrAdmin) {
     tabs.push({
@@ -131,10 +196,12 @@ export default function Assignment() {
 
   // Add role-specific review tab
   if (isTeacherOrAdmin) {
-    tabs.push({
-      label: "Peer Reviews",
-      path: `/assignment/${id}/teacher-reviews`,
-    });
+    if (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") {
+      tabs.push({
+        label: "Peer Reviews",
+        path: `/assignment/${id}/teacher-reviews`,
+      });
+    }
   } else {
     tabs.push({
       label: "Peer Review",
@@ -147,10 +214,12 @@ export default function Assignment() {
   }
 
   return (
-    <>
+    <div className="Page">
       <BackArrow />
       <div className="AssignmentHeader">
-        <h2>{assignmentName ?? "Loading…"}</h2>
+        <h2>
+          <HeaderTitle title={assignmentName} loading={loading} fallback="Assignment" />
+        </h2>
       </div>
 
       {loading ? null : <TabNavigation tabs={tabs} />}
@@ -160,9 +229,15 @@ export default function Assignment() {
       <div className="assignment-details-sectionHeader assignment-rubric-sectionHeader">
         <h3>Rubric</h3>
         {canEditRubric ? (
-          <Button className="outline-success" onClick={() => setEditMode((v) => !v)} disabled={saving}>
-            {editMode ? "Done" : "Edit"}
-          </Button>
+          editMode ? (
+            <Button className="outline-success" onClick={cancelEdit} disabled={saving}>
+              Cancel
+            </Button>
+          ) : (
+            <Button className="outline-success" onClick={startEdit} disabled={saving}>
+              Edit
+            </Button>
+          )
         ) : null}
       </div>
 
@@ -171,44 +246,24 @@ export default function Assignment() {
       </div>
 
       {canEditRubric && editMode ? (
-        <div className='assignmentRubric'>
+        <div className="RubricCreator">
           <h3>Edit Rubric</h3>
 
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", marginBottom: 6 }}>
-              Add criterion (always out of 5)
-            </label>
-            <input
-              className="Textbox"
-              type="text"
-              value={newQuestion}
-              onChange={(e) => setNewQuestion(e.target.value)}
-              placeholder="e.g., Contributed consistently to the group"
-              disabled={saving}
-            />
-            <div style={{ marginTop: 8 }}>
-              <Button onClick={handleAddCriterion} disabled={saving}>Add</Button>
-            </div>
-          </div>
+          {draftCriteria ? (
+            <RubricCriteriaEditor criteria={draftCriteria} onChange={setDraftCriteria} disabled={saving} />
+          ) : null}
 
-          <h4>Existing criteria</h4>
-          {criteria.length === 0 ? (
-            <p>No criteria yet.</p>
-          ) : (
-            <div>
-              {criteria.map((c) => (
-                <div key={c.id} style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ flex: 1 }}>{c.question}</div>
-                  <Button type="secondary" onClick={() => handleRemoveCriterion(c.id)} disabled={saving}>
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="button-group">
+            <Button onClick={saveChanges} disabled={saving || !draftCriteria}>
+              Save
+            </Button>
+            <Button type="secondary" onClick={cancelEdit} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 

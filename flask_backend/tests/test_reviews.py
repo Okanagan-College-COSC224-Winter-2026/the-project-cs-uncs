@@ -199,6 +199,44 @@ class TestGetAssignedReviews:
         response = test_client.get('/review/assigned/99999')
         assert response.status_code == 404
 
+    def test_get_assigned_reviews_dedupes_peer_eval_individual(self, test_client, students, reviews_assigned):
+        """Assigned reviews should not show the same teammate twice for peer_eval_individual."""
+        assignment_id = reviews_assigned[0].assignmentID
+        assignment = Assignment.get_by_id(assignment_id)
+        assignment.assignment_type = 'peer_eval_individual'
+        assignment.update()
+
+        # Create a historical duplicate review row for the same teammate.
+        duplicate = Review(
+            assignmentID=assignment_id,
+            reviewerID=students[0].id,
+            revieweeID=students[1].id,
+        )
+        Review.create_review(duplicate)
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        response = test_client.get(f'/review/assigned/{assignment_id}')
+        assert response.status_code == 200
+        data = response.get_json()
+
+        # Only one review per teammate should be returned.
+        reviewee_ids = [r['reviewee']['id'] for r in data['reviews']]
+        assert len(reviewee_ids) == len(set(reviewee_ids))
+        assert data['total_count'] == 2
+
+        # And duplicates should be cleaned from the DB.
+        remaining = Review.query.filter_by(
+            assignmentID=assignment_id,
+            reviewerID=students[0].id,
+            revieweeID=students[1].id,
+        ).all()
+        assert len(remaining) == 1
+
 
 class TestGetReviewSubmission:
     """Test GET /review/submission/<review_id>"""
@@ -253,7 +291,7 @@ class TestGetReviewSubmission:
         assert 'submission' in data
 
     def test_get_submission_not_found(self, test_client, students, reviews_assigned, submissions):
-        """Returns 404 when submission doesn't exist"""
+        """Returns 200 with submission=null when submission doesn't exist"""
         # Create a review without a submission
         _, assignment = reviews_assigned[0].assignment, reviews_assigned[0].assignmentID
         review_no_sub = Review(
@@ -270,7 +308,11 @@ class TestGetReviewSubmission:
         assert response.status_code == 200
 
         response = test_client.get(f'/review/submission/{review_no_sub.id}')
-        assert response.status_code == 404
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert 'submission' in data
+        assert data['submission'] is None
 
 
 class TestSubmitReviewFeedback:

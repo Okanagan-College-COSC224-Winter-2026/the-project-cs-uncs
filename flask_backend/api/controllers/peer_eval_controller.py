@@ -82,6 +82,37 @@ def group_status(assignment_id: int):
 
     target_groups = [g for g in included_groups if g.id != my_group.id]
 
+    submitted_evaluations = None
+    if submission is not None:
+        evaluations = []
+        for t in submission.targets.all():
+            crit_list = []
+            for crit in t.criteria.all():
+                crit_list.append(
+                    {
+                        "criterionRowID": crit.criterionRowID,
+                        "grade": crit.grade,
+                        "comments": crit.comments,
+                    }
+                )
+
+            evaluations.append(
+                {
+                    "reviewee_group": {
+                        "id": t.reviewee_group.id,
+                        "name": t.reviewee_group.name,
+                    },
+                    "criteria": crit_list,
+                }
+            )
+
+        submitted_evaluations = {
+            "id": submission.id,
+            "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
+            "submitted_by_user_id": submission.submitted_by_user_id,
+            "evaluations": evaluations,
+        }
+
     return jsonify(
         {
             "assignment": {"id": assignment.id, "name": assignment.name},
@@ -97,6 +128,7 @@ def group_status(assignment_id: int):
                 }
                 for c in criteria
             ],
+            "submission": submitted_evaluations,
         }
     ), 200
 
@@ -110,6 +142,10 @@ def submit_group_peer_eval(assignment_id: int):
 
     if assignment.assignment_type != "peer_eval_group":
         return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
+
+    # Respect assignment deadline.
+    if assignment.due_date and not assignment.can_modify():
+        return jsonify({"msg": "The review period has ended. Submissions are no longer accepted."}), 403
 
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
@@ -366,6 +402,95 @@ def teacher_group_overview(assignment_id: int):
     ), 200
 
 
+@bp.route("/group/assignment/<int:assignment_id>/summary", methods=["GET"])
+@jwt_role_required("teacher", "admin")
+def teacher_group_summary(assignment_id: int):
+    """Return easy-to-display totals of scores received per group for group peer eval."""
+    assignment, err = _assignment_or_404(assignment_id)
+    if err:
+        return err
+
+    if assignment.assignment_type != "peer_eval_group":
+        return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
+
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    if user.is_teacher() and course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    included = AssignmentIncludedGroup.query.filter_by(assignment_id=assignment.id).all()
+    included_ids = [row.group_id for row in included]
+    groups = Group.query.filter(Group.id.in_(included_ids)).all() if included_ids else []
+
+    # Determine max score for a single evaluation (scored criteria only).
+    rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
+    max_per_review = 0
+    if rubric:
+        rows = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
+        for r in rows:
+            if r.hasScore:
+                try:
+                    max_per_review += int(r.scoreMax or 0)
+                except (ValueError, TypeError):
+                    max_per_review += 0
+
+    by_group_id = {
+        g.id: {
+            "group": {"id": g.id, "name": g.name},
+            "reviews_received": 0,
+            "total_received": 0,
+            "max_possible": 0,
+        }
+        for g in groups
+    }
+
+    # Aggregate all targets where a group was evaluated.
+    targets = (
+        GroupEvaluationTarget.query.join(
+            GroupEvaluationSubmission,
+            GroupEvaluationSubmission.id == GroupEvaluationTarget.submission_id,
+        )
+        .filter(GroupEvaluationSubmission.assignment_id == assignment.id)
+        .all()
+    )
+
+    for t in targets:
+        agg = by_group_id.get(t.reviewee_group_id)
+        if not agg:
+            continue
+
+        score = 0
+        for crit in t.criteria.all():
+            if crit.grade is None:
+                continue
+            try:
+                score += int(crit.grade)
+            except (ValueError, TypeError):
+                continue
+
+        agg["reviews_received"] += 1
+        agg["total_received"] += score
+        agg["max_possible"] += max_per_review
+
+    summary = list(by_group_id.values())
+    summary.sort(key=lambda x: x["group"]["name"])
+
+    return jsonify(
+        {
+            "assignment": {"id": assignment.id, "name": assignment.name, "course_id": course.id},
+            "max_per_review": max_per_review,
+            "groups": summary,
+        }
+    ), 200
+
+
 @bp.route("/individual/sync/<int:assignment_id>", methods=["POST"])
 @jwt_role_required("student")
 def sync_individual_reviews(assignment_id: int):
@@ -391,10 +516,31 @@ def sync_individual_reviews(assignment_id: int):
 
     member_ids = [m.user_id for m in my_group.members]
     created = 0
+    deduped = 0
 
     for reviewee_id in member_ids:
         if int(reviewee_id) == int(user.id):
             continue
+
+        # Clean up any historical duplicates so the UI can't show the same teammate twice.
+        dupes = (
+            Review.query.filter_by(
+                reviewerID=user.id,
+                revieweeID=reviewee_id,
+                assignmentID=assignment.id,
+            )
+            .order_by(Review.id.asc())
+            .all()
+        )
+        if len(dupes) > 1:
+            keep = next((r for r in dupes if r.completed), None) or dupes[0]
+            for r in dupes:
+                if r.id == keep.id:
+                    continue
+                db.session.delete(r)
+                deduped += 1
+            db.session.commit()
+
         existing = Review.get_by_reviewer_reviewee_assignment(user.id, reviewee_id, assignment.id)
         if existing:
             continue
@@ -402,4 +548,4 @@ def sync_individual_reviews(assignment_id: int):
         Review.create_review(review)
         created += 1
 
-    return jsonify({"msg": "Synced", "created": created}), 200
+    return jsonify({"msg": "Synced", "created": created, "deduped": deduped}), 200

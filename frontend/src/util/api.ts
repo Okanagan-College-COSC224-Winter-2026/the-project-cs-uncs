@@ -526,6 +526,29 @@ export const deleteCriteriaDescription = async (criteriaId: number) => {
   return await resp.json().catch(() => ({} as any))
 }
 
+export const updateCriteriaDescription = async (
+  criteriaId: number,
+  payload: { question?: string; scoreMax?: number; hasScore?: boolean }
+) => {
+  const resp = await fetch(`${BASE_URL}/update_criteria/${criteriaId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json().catch(() => ({} as any))
+}
+
 // ============================================================
 // REVIEW ENDPOINTS - Student Peer Review Features
 // ============================================================
@@ -558,6 +581,10 @@ export const getReviewSubmission = async (reviewId: number) => {
   });
 
   maybeHandleExpire(response);
+
+  if (response.status === 404) {
+    return { submission: null } as any;
+  }
 
   if (!response.ok) {
     throw new Error(`Response status: ${response.status}`);
@@ -759,6 +786,179 @@ export const uploadMySubmission = async (assignmentId: number, formData: FormDat
   const resp = await fetch(`${BASE_URL}/assignment/submit/${assignmentId}`, {
     method: 'POST',
     body: formData,
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export type PeerEvalGroupStatusResponse = {
+  assignment: { id: number; name: string };
+  reviewer_group: { id: number; name: string };
+  submitted: boolean;
+  targets: Array<{ id: number; name: string }>;
+  criteria: Array<{ id: number; question: string; scoreMax: number; hasScore: boolean }>;
+  submission?: {
+    id: number;
+    submitted_at: string | null;
+    submitted_by_user_id: number;
+    evaluations: Array<{
+      reviewee_group: { id: number; name: string };
+      criteria: Array<{ criterionRowID: number; grade: number | null; comments: string | null }>;
+    }>;
+  } | null;
+};
+
+export const getGroupPeerEvalStatus = async (assignmentId: number): Promise<PeerEvalGroupStatusResponse> => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/status/${assignmentId}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export type PeerEvalSubmittedCriterion = {
+  criterionRowID: number;
+  grade: number | null;
+  comments: string | null;
+}
+
+export type PeerEvalGroupEvaluation = {
+  reviewee_group_id: number;
+  criteria: PeerEvalSubmittedCriterion[];
+}
+
+export const submitGroupPeerEval = async (assignmentId: number, evaluations: PeerEvalGroupEvaluation[]) => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/submit/${assignmentId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ evaluations }),
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export type PeerEvalGroupReceivedResponse = {
+  assignment: { id: number; name: string };
+  feedback: Array<{
+    target_id: number;
+    criteria: Array<{
+      criterionRowID: number;
+      question: string;
+      scoreMax: number | null;
+      hasScore: boolean;
+      grade: number | null;
+      comments: string | null;
+    }>;
+  }>;
+  total_reviews: number;
+}
+
+export const getReceivedGroupPeerEvalFeedback = async (assignmentId: number): Promise<PeerEvalGroupReceivedResponse> => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/received/${assignmentId}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export type TeacherGroupPeerEvalOverviewResponse = {
+  assignment: { id: number; name: string; course_id: number };
+  submissions: Array<{
+    id: number;
+    reviewer_group: { id: number; name: string };
+    submitted_by: { id: number; name: string | null };
+    submitted_at: string | null;
+    evaluations: Array<{
+      reviewee_group: { id: number; name: string };
+      criteria: Array<{
+        criterionRowID: number;
+        question: string;
+        scoreMax: number | null;
+        hasScore: boolean;
+        grade: number | null;
+        comments: string | null;
+      }>;
+    }>;
+  }>;
+  total_submissions: number;
+}
+
+export const getTeacherGroupPeerEvalOverview = async (assignmentId: number): Promise<TeacherGroupPeerEvalOverviewResponse> => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/assignment/${assignmentId}/all`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export type TeacherGroupPeerEvalSummaryResponse = {
+  assignment: { id: number; name: string; course_id: number };
+  max_per_review: number;
+  groups: Array<{
+    group: { id: number; name: string };
+    reviews_received: number;
+    total_received: number;
+    max_possible: number;
+  }>;
+}
+
+export const getTeacherGroupPeerEvalSummary = async (assignmentId: number): Promise<TeacherGroupPeerEvalSummaryResponse> => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/assignment/${assignmentId}/summary`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const syncIndividualPeerEvalReviews = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/individual/sync/${assignmentId}`, {
+    method: 'POST',
     credentials: 'include'
   })
 

@@ -17,6 +17,16 @@
     gap: var(--spacing-md);
 }
 
+@media (min-width: 1100px) {
+    .GroupsPanel {
+        max-width: 1100px;
+    }
+
+    .GroupsError {
+        max-width: 1100px;
+    }
+}
+
 .GroupsError {
     width: 100%;
     max-width: 800px;
@@ -101,12 +111,11 @@
     align-items: center;
     gap: var(--spacing-md);
     width: 100%;
-    padding: var(--spacing-md);
+    padding: 0;
     border-radius: var(--border-radius);
     border: 2px solid var(--border-color);
     background-color: var(--background-primary);
     transition: var(--transition-base);
-    cursor: pointer;
     text-align: left;
 }
 
@@ -114,6 +123,24 @@
     background-color: var(--background-secondary);
     border-color: var(--accent-primary);
     box-shadow: var(--shadow-md);
+}
+
+.GroupItemMain {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+    background: transparent;
+    border: none;
+    padding: var(--spacing-md);
+    text-align: left;
+    cursor: pointer;
+}
+
+.GroupItemDelete {
+    flex-shrink: 0;
 }
 
 .GroupItemName {

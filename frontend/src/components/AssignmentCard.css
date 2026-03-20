@@ -81,7 +81,7 @@
 }
 
 .A_Card_Status_due-soon {
-  background-color: var(--color-warn);
+  background-color: var(--warning);
   color: #333;
 }
 
@@ -107,14 +107,5 @@
 }
 
 .delete-assignment-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.5rem;
   margin-left: auto;
-}
-
-.delete-assignment-btn:hover {
-  color: var(--color-error);
 }

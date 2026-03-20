@@ -1,4 +1,5 @@
 import './AssignmentCard.css'
+import Button from './Button'
 
 interface Props {
   onClick?: () => void
@@ -74,9 +75,14 @@ export default function AssignmentCard(props: Props) {
         </div>
       </div>
       {props.onDelete && (
-        <button onClick={handleDelete} className="delete-assignment-btn">
-          🗑️
-        </button>
+        <Button
+          type="secondary"
+          className="delete-assignment-btn"
+          onClick={handleDelete}
+          htmlType="button"
+        >
+          Delete
+        </Button>
       )}
     </div>
   )

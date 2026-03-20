@@ -1,7 +1,7 @@
 import './Button.css'
 
 interface Props {
-  onClick?: () => void
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
   children?: React.ReactNode
   type?: 'regular' | 'secondary'
   htmlType?: 'button' | 'submit' | 'reset'

@@ -143,15 +143,14 @@ export default function ClassMembers() {
               <div key={member.id} className="Member">
                 <div className="MemberName">{member.name}</div>
                 {isTeacher() ? (
-                  <button
+                  <Button
+                    type="secondary"
                     className="MemberRemoveBtn"
                     onClick={() => handleRemoveMember(member.id)}
                     disabled={removingMemberId === member.id}
-                    title="Remove student"
-                    aria-label="Remove student"
                   >
-                    🗑️
-                  </button>
+                    Remove
+                  </Button>
                 ) : null}
               </div>
             )

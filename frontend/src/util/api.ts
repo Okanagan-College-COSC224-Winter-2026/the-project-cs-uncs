@@ -336,6 +336,22 @@ export const removeCourseGroupMember = async (groupId: number, userId: number): 
   return json
 }
 
+export const deleteCourseGroup = async (groupId: number): Promise<{ msg?: string }> => {
+  const resp = await fetch(`${BASE_URL}/groups/${groupId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  const json = await resp.json().catch(() => ({} as any))
+  if (!resp.ok) {
+    throw new Error(json.msg || `Failed to delete group: ${resp.status}`)
+  }
+
+  return json
+}
+
 export const removeCourseMember = async (classId: number, userId: number) => {
   const resp = await fetch(`${BASE_URL}/class/remove_member`, {
     method: 'POST',

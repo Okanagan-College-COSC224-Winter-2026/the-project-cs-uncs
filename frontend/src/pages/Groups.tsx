@@ -7,6 +7,7 @@ import { isAdmin, isTeacher } from "../util/login";
 import {
     addCourseGroupMember,
     createCourseGroup,
+    deleteCourseGroup,
     listCourseGroups,
     listCourseMembers,
     listClasses,
@@ -42,6 +43,7 @@ export default function Groups() {
     const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [memberToAdd, setMemberToAdd] = useState<number | null>(null);
+    const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -168,6 +170,26 @@ export default function Groups() {
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             setError(msg || "Failed to remove student");
+        }
+    };
+
+    const handleDeleteGroup = async (groupId: number) => {
+        if (!window.confirm("Delete this group?")) return;
+
+        try {
+            setError(null);
+            setDeletingGroupId(groupId);
+            await deleteCourseGroup(groupId);
+            await refreshGroups();
+
+            if (selectedGroup?.id === groupId) {
+                setSelectedGroup(null);
+            }
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setError(msg || "Failed to delete group");
+        } finally {
+            setDeletingGroupId(null);
         }
     };
 
@@ -335,15 +357,26 @@ export default function Groups() {
                             ) : (
                                 <div className="GroupsList">
                                     {groups.map((group) => (
-                                        <button
-                                            key={group.id}
-                                            className="GroupItem"
-                                            onClick={() => setSelectedGroup(group)}
-                                            type="button"
-                                        >
-                                            <div className="GroupItemName">{group.name}</div>
-                                            <div className="GroupItemMeta">{group.members?.length ?? 0} members</div>
-                                        </button>
+                                        <div key={group.id} className="GroupItem">
+                                            <button
+                                                className="GroupItemMain"
+                                                onClick={() => setSelectedGroup(group)}
+                                                type="button"
+                                            >
+                                                <div className="GroupItemName">{group.name}</div>
+                                                <div className="GroupItemMeta">{group.members?.length ?? 0} members</div>
+                                            </button>
+
+                                            <Button
+                                                type="secondary"
+                                                htmlType="button"
+                                                className="GroupItemDelete"
+                                                onClick={() => handleDeleteGroup(group.id)}
+                                                disabled={deletingGroupId === group.id}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </div>
                                     ))}
                                 </div>
                             )}

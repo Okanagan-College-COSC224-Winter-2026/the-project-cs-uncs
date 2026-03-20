@@ -3,7 +3,8 @@
 }
 
 .teacher-dashboard-content {
-  max-width: 1200px;
+  width: 100%;
+  max-width: min(1600px, 100%);
   margin: 0 auto;
   padding: 0 2rem 2rem 2rem;
 }

@@ -14,6 +14,7 @@ import {
   getAssignmentDetails,
   getSubmissionDownloadUrl,
   type TeacherGroupPeerEvalOverviewResponse,
+  peekAssignmentDetails,
 } from "../util/api";
 import "./Groups.css";
 
@@ -67,11 +68,8 @@ export default function GroupSubmissions() {
     return isTeacherOrAdmin ? tabsForTeacher : tabsForStudent;
   }, [assignmentType, id, isTeacherOrAdmin]);
 
-  if (!isTeacherOrAdmin) {
-    return <Navigate to={`/assignment/${id}`} replace />;
-  }
-
   useEffect(() => {
+    if (!isTeacherOrAdmin) return
     let cancelled = false;
 
     (async () => {
@@ -80,6 +78,13 @@ export default function GroupSubmissions() {
 
       try {
         if (!id) return;
+
+        // Seed from cache so the tab bar doesn't jump while the network request is in flight.
+        const cached = peekAssignmentDetails(Number(id));
+        if (cached) {
+          setAssignmentName((cached as any)?.name ?? null);
+          setAssignmentType((cached as any)?.assignment_type ?? null);
+        }
 
         const details = (await getAssignmentDetails(Number(id))) as AssignmentDetails;
         if (cancelled) return;
@@ -101,14 +106,16 @@ export default function GroupSubmissions() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, isTeacherOrAdmin]);
 
   useEffect(() => {
+    if (!isTeacherOrAdmin) return
     let cancelled = false;
 
     (async () => {
       if (!id) return;
       if (!courseId) return;
+      if (!assignmentType) return;
 
       try {
         const groupsResp = await listCourseGroups(courseId);
@@ -149,7 +156,11 @@ export default function GroupSubmissions() {
     return () => {
       cancelled = true;
     };
-  }, [courseId, id]);
+  }, [assignmentType, courseId, id, isTeacherOrAdmin]);
+
+  if (!isTeacherOrAdmin) {
+    return <Navigate to={`/assignment/${id}`} replace />;
+  }
 
   const submittedCountForGroup = (group: CourseGroup) => {
     if (assignmentType === "peer_eval_group") {

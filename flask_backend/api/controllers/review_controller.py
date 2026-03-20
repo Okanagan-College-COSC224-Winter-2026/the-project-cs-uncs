@@ -1,9 +1,12 @@
-"""
-Review controller - handles peer review operations for students and teachers
-"""
+"""Review controller - handles peer review operations for students and teachers"""
+
+import logging
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
+
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from ..models.db import db
 
@@ -24,6 +27,8 @@ from ..models import (
 from .auth_controller import jwt_role_required
 
 bp = Blueprint("review", __name__, url_prefix="/review")
+
+logger = logging.getLogger(__name__)
 
 # Schema instances
 review_schema = ReviewSchema()
@@ -82,24 +87,38 @@ def get_assigned_reviews(assignment_id):
             db.session.commit()
             reviews = [r for r in reviews if r.id not in deleted_ids]
 
+    # Bulk-fetch submissions and criterion counts to avoid N+1 query patterns.
+    reviewee_ids = {r.revieweeID for r in reviews}
+    submissions_by_student_id = {}
+    if reviewee_ids:
+        submissions = Submission.query.filter(
+            Submission.assignmentID == assignment_id,
+            Submission.studentID.in_(reviewee_ids),
+        ).all()
+        submissions_by_student_id = {s.studentID: s for s in submissions}
+
+    review_ids = [r.id for r in reviews]
+    criteria_count_by_review_id = {}
+    if review_ids:
+        rows = (
+            db.session.query(Criterion.reviewID, func.count(Criterion.id))
+            .filter(Criterion.reviewID.in_(review_ids))
+            .group_by(Criterion.reviewID)
+            .all()
+        )
+        criteria_count_by_review_id = {int(rid): int(cnt) for rid, cnt in rows}
+
     # Build response with additional context
     result = []
     for review in reviews:
         review_data = review_schema.dump(review)
 
         # Add submission information for the reviewee
-        submission = Submission.query.filter_by(
-            studentID=review.revieweeID,
-            assignmentID=assignment_id
-        ).first()
-
-        if submission:
-            review_data["submission"] = submission_schema.dump(submission)
-        else:
-            review_data["submission"] = None
+        submission = submissions_by_student_id.get(review.revieweeID)
+        review_data["submission"] = submission_schema.dump(submission) if submission else None
 
         # Add completion status and criteria count
-        review_data["criteria_count"] = review.criteria.count()
+        review_data["criteria_count"] = criteria_count_by_review_id.get(review.id, 0)
 
         result.append(review_data)
 
@@ -129,16 +148,20 @@ def get_review_submission(review_id):
         current_email = get_jwt_identity()
         user = User.get_by_email(current_email)
 
-        print(f"[DEBUG] get_review_submission: review_id={review_id}, user={user.email}")
+        logger.debug("get_review_submission: review_id=%s user=%s", review_id, user.email)
 
         review = Review.get_by_id(review_id)
         if not review:
-            print(f"[DEBUG] Review {review_id} not found")
+            logger.debug("get_review_submission: review_id=%s not found", review_id)
             return jsonify({"msg": "Review not found"}), 404
 
         # Check permission: must be the reviewer or a teacher/admin
         if review.reviewerID != user.id and not user.has_role("teacher", "admin"):
-            print(f"[DEBUG] Unauthorized access attempt")
+            logger.debug(
+                "get_review_submission: unauthorized user_id=%s review_id=%s",
+                user.id,
+                review_id,
+            )
             return jsonify({"msg": "You are not authorized to view this submission"}), 403
 
         # Get the submission
@@ -147,7 +170,7 @@ def get_review_submission(review_id):
             assignmentID=review.assignmentID
         ).first()
 
-        print(f"[DEBUG] Returning submission data successfully")
+        logger.debug("get_review_submission: returning submission")
         return jsonify({
             "submission": submission_schema.dump(submission) if submission else None,
             "review": review_schema.dump(review),
@@ -155,9 +178,7 @@ def get_review_submission(review_id):
         }), 200
 
     except Exception as e:
-        print(f"[ERROR] Exception in get_review_submission: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Exception in get_review_submission")
         return jsonify({"msg": f"Server error: {str(e)}"}), 500
 
 
@@ -364,33 +385,36 @@ def get_review(review_id):
         current_email = get_jwt_identity()
         user = User.get_by_email(current_email)
 
-        print(f"[DEBUG] get_review called: review_id={review_id}, user={user.email}")
+        logger.debug("get_review: review_id=%s user=%s", review_id, user.email)
 
         review = Review.get_by_id_with_relations(review_id)
         if not review:
-            print(f"[DEBUG] Review {review_id} not found")
+            logger.debug("get_review: review_id=%s not found", review_id)
             return jsonify({"msg": "Review not found"}), 404
 
 
         if review.reviewerID != user.id and not user.has_role("teacher", "admin"):
-            print(f"[DEBUG] Unauthorized: user {user.id} trying to access review for reviewer {review.reviewerID}")
+            logger.debug(
+                "get_review: unauthorized user_id=%s review_id=%s reviewer_id=%s",
+                user.id,
+                review_id,
+                review.reviewerID,
+            )
             return jsonify({"msg": "You are not authorized to view this review"}), 403
 
         # Get all criteria for this review
         criteria = list(review.criteria.all())
-        print(f"[DEBUG] Found {len(criteria)} criteria for review {review_id}")
+        logger.debug("get_review: found criteria count=%s", len(criteria))
 
         result = {
             "review": review_schema.dump(review),
             "criteria": criterion_schema.dump(criteria, many=True)
         }
-        print(f"[DEBUG] Returning review data successfully")
+        logger.debug("get_review: returning result")
         return jsonify(result), 200
 
     except Exception as e:
-        print(f"[ERROR] Exception in get_review: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Exception in get_review")
         return jsonify({"msg": f"Server error: {str(e)}"}), 500
 
 
@@ -432,11 +456,11 @@ def get_received_feedback(assignment_id):
     current_email = get_jwt_identity()
     user = User.get_by_email(current_email)
 
-    print(f"[DEBUG] get_received_feedback: assignment_id={assignment_id}, user={user.email}")
+    logger.debug("get_received_feedback: assignment_id=%s user=%s", assignment_id, user.email)
 
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
-        print(f"[DEBUG] Assignment {assignment_id} not found")
+        logger.debug("get_received_feedback: assignment_id=%s not found", assignment_id)
         return jsonify({"msg": "Assignment not found"}), 404
 
 
@@ -446,6 +470,17 @@ def get_received_feedback(assignment_id):
         assignmentID=assignment_id,
         completed=True
     ).all()
+
+    review_ids = [r.id for r in reviews]
+    criteria_by_review_id = {}
+    if review_ids:
+        all_criteria = (
+            Criterion.query.filter(Criterion.reviewID.in_(review_ids))
+            .order_by(Criterion.id.asc())
+            .all()
+        )
+        for c in all_criteria:
+            criteria_by_review_id.setdefault(c.reviewID, []).append(c)
 
     # Get criteria descriptions for context (question text and score max)
     rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
@@ -462,7 +497,7 @@ def get_received_feedback(assignment_id):
     feedback_list = []
     for review in reviews:
         criteria_data = []
-        for criterion in review.criteria.all():
+        for criterion in criteria_by_review_id.get(review.id, []):
             desc = criteria_descriptions.get(criterion.criterionRowID, {})
             if not desc:
                 import logging
@@ -530,6 +565,18 @@ def get_all_reviews_for_assignment(assignment_id):
         # Get all reviews for this assignment
         reviews = Review.get_by_assignment(assignment_id)
 
+        review_ids = [r.id for r in reviews]
+        criteria_by_review_id = {}
+        if review_ids:
+            all_criteria = (
+                Criterion.query.options(joinedload(Criterion.criterion_row))
+                .filter(Criterion.reviewID.in_(review_ids))
+                .order_by(Criterion.id.asc())
+                .all()
+            )
+            for c in all_criteria:
+                criteria_by_review_id.setdefault(c.reviewID, []).append(c)
+
         # Build detailed response with criteria for each review
         result = []
         completed_count = 0
@@ -537,7 +584,7 @@ def get_all_reviews_for_assignment(assignment_id):
 
         for review in reviews:
             # Get criteria for this review
-            criteria_list = list(review.criteria.all())
+            criteria_list = criteria_by_review_id.get(review.id, [])
 
             # Enhance criteria with scoreMax from CriteriaDescription
             criteria_with_max = []
@@ -597,9 +644,7 @@ def get_all_reviews_for_assignment(assignment_id):
         }), 200
 
     except Exception as e:
-        print(f"[ERROR] Exception in get_all_reviews_for_assignment: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Exception in get_all_reviews_for_assignment")
         return jsonify({"msg": f"Server error: {str(e)}"}), 500
 
 

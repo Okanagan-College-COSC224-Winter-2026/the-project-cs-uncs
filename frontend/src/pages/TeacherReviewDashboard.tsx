@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getAllReviewsForAssignment, getAssignmentDetails, getTeacherGroupPeerEvalSummary, type TeacherGroupPeerEvalSummaryResponse } from '../util/api';
+import { getAllReviewsForAssignment, getAssignmentDetails, getTeacherGroupPeerEvalSummary, peekAssignmentDetails, type TeacherGroupPeerEvalSummaryResponse } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
 import HeaderTitle from '../components/HeaderTitle';
@@ -58,7 +58,11 @@ interface DashboardData {
 export default function TeacherReviewDashboard() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [assignmentType, setAssignmentType] = useState<string | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(() => {
+    if (!id) return null
+    const cached = peekAssignmentDetails(Number(id))
+    return (cached as any)?.assignment_type ?? null
+  });
   const [groupSummary, setGroupSummary] = useState<TeacherGroupPeerEvalSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +75,12 @@ export default function TeacherReviewDashboard() {
       try {
         setLoading(true);
         setError(null);
+
+        const cached = peekAssignmentDetails(Number(id))
+        const cachedType = (cached as any)?.assignment_type ?? null
+        if (cachedType) {
+          setAssignmentType(cachedType)
+        }
 
         const details = await getAssignmentDetails(Number(id));
         const type = details?.assignment_type ?? null;
@@ -107,18 +117,31 @@ export default function TeacherReviewDashboard() {
   };
 
   if (loading) {
+    const cached = id ? peekAssignmentDetails(Number(id)) : null
+    const cachedType = (cached as any)?.assignment_type ?? null
+    const cachedIsPeerEval = cachedType === 'peer_eval_group' || cachedType === 'peer_eval_individual'
+    const cachedName = (cached as any)?.name ?? null
+
     return (
       <div className="teacher-dashboard-container Page">
         <BackArrow />
 
         <div className="AssignmentHeader">
           <h2>
-            <HeaderTitle title={null} loading={true} fallback="Assignment" />
+            <HeaderTitle title={cachedName} loading={true} fallback="Assignment" />
           </h2>
         </div>
 
         <TabNavigation
           tabs={[
+            ...(cachedIsPeerEval
+              ? [
+                  {
+                    label: 'Rubric',
+                    path: `/assignment/${id}`,
+                  },
+                ]
+              : []),
             {
               label: "Details",
               path: `/assignment/${id}/details`,
@@ -127,6 +150,14 @@ export default function TeacherReviewDashboard() {
               label: "Group Submissions",
               path: `/assignment/${id}/group-submissions`,
             },
+            ...(cachedIsPeerEval
+              ? [
+                  {
+                    label: 'Peer Reviews',
+                    path: `/assignment/${id}/teacher-reviews`,
+                  },
+                ]
+              : []),
           ]}
         />
 

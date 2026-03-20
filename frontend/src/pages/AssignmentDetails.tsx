@@ -148,12 +148,25 @@ export default function AssignmentDetails() {
     })();
     const cachedIsPeerEval = cachedType === "peer_eval_group" || cachedType === "peer_eval_individual";
 
-    const loadingTabs = [{ label: "Details", path: `/assignment/${id}/details` }] as { label: string; path: string }[];
+    const loadingTabs = [] as { label: string; path: string }[];
+
+    // Teacher/Admin: keep tab set stable while loading to avoid flicker.
     if (isTeacher() || isAdmin()) {
+      if (cachedIsPeerEval) {
+        loadingTabs.push({ label: "Rubric", path: `/assignment/${id}` });
+      }
+      loadingTabs.push({ label: "Details", path: `/assignment/${id}/details` });
       loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
-    } else if (isStudent() && cachedIsPeerEval) {
-      loadingTabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
-      loadingTabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+      if (cachedIsPeerEval) {
+        loadingTabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
+      }
+    } else {
+      // Student: keep peer-eval tabs visible if we can infer type from cache.
+      loadingTabs.push({ label: "Details", path: `/assignment/${id}/details` });
+      if (isStudent() && cachedIsPeerEval) {
+        loadingTabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
+        loadingTabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+      }
     }
 
     return (

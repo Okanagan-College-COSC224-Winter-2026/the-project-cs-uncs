@@ -17,6 +17,7 @@ import {
   deleteCriteriaDescription,
   getRubricCriteria,
   getRubricForAssignment,
+  peekAssignmentDetails,
   updateCriteriaDescription,
 } from "../util/api";
 
@@ -41,6 +42,13 @@ export default function Assignment() {
       (async () => {
         try {
           if (id) {
+            const cached = peekAssignmentDetails(Number(id))
+            if (cached && typeof cached === "object") {
+              const record = cached as Record<string, unknown>
+              setAssignmentName(typeof record.name === "string" ? record.name : null)
+              setAssignmentType(typeof record.assignment_type === "string" ? record.assignment_type : null)
+            }
+
             const details = await getAssignmentDetails(Number(id));
             setAssignmentName(details?.name ?? null);
             setAssignmentType(details?.assignment_type ?? null);
@@ -179,9 +187,31 @@ export default function Assignment() {
   };
 
   if (loading) {
-    const loadingTabs = [{ label: "Details", path: `/assignment/${id}/details` }] as { label: string; path: string }[];
+    const cachedType = (() => {
+      if (!id) return null
+      const cached = peekAssignmentDetails(Number(id))
+      if (!cached || typeof cached !== "object") return null
+      const record = cached as Record<string, unknown>
+      return typeof record.assignment_type === "string" ? record.assignment_type : null
+    })()
+    const cachedIsPeerEval = cachedType === "peer_eval_group" || cachedType === "peer_eval_individual"
+
+    const loadingTabs = [] as { label: string; path: string }[];
     if (isTeacherOrAdmin) {
+      if (cachedIsPeerEval) {
+        loadingTabs.push({ label: "Rubric", path: `/assignment/${id}` });
+      }
+      loadingTabs.push({ label: "Details", path: `/assignment/${id}/details` });
       loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+      if (cachedIsPeerEval) {
+        loadingTabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
+      }
+    } else {
+      loadingTabs.push({ label: "Details", path: `/assignment/${id}/details` });
+      if (cachedIsPeerEval) {
+        loadingTabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
+        loadingTabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
+      }
     }
 
     return (

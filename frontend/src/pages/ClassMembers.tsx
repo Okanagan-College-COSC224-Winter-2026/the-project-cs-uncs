@@ -13,9 +13,7 @@ import { isAdmin, isTeacher } from "../util/login";
 export default function ClassMembers() {
   const { id } = useParams()
 
-  if (!(isTeacher() || isAdmin())) {
-    return <Navigate to={`/classes/${id}/my-group`} replace />;
-  }
+  const teacherOrAdmin = isTeacher() || isAdmin()
 
   const [members, setMembers] = useState<User[]>([])
   const [groupNameByUserId, setGroupNameByUserId] = useState<Record<number, string>>({})
@@ -27,6 +25,9 @@ export default function ClassMembers() {
   const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!teacherOrAdmin) return
+    if (!id) return
+
     ;(async () => {
       setLoadingHeader(true);
       const members = await listCourseMembers(id as string)
@@ -57,7 +58,11 @@ export default function ClassMembers() {
 
       setLoadingHeader(false);
     })()
-  }, [id])  
+  }, [id, teacherOrAdmin])  
+
+  if (!teacherOrAdmin) {
+    return <Navigate to={`/classes/${id}/my-group`} replace />;
+  }
 
   const handleAddStudents = async () => {
     if (!id) return;

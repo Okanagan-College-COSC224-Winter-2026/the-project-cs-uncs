@@ -485,18 +485,29 @@ export const getCriteria = async (assignmentID: number) => {
   return await resp.json()
 }
 
+const rubricCriteriaInFlight = new Map<number, Promise<any>>()
+
 export const getRubricCriteria = async (assignmentID: number) => {
-  const resp = await fetch(`${BASE_URL}/get_criteria/${assignmentID}`, {
-    credentials: 'include'
-  })
+  const existing = rubricCriteriaInFlight.get(assignmentID)
+  if (existing) return existing
 
-  maybeHandleExpire(resp)
+  const request = (async () => {
+    const resp = await fetch(`${BASE_URL}/get_criteria/${assignmentID}`, {
+      credentials: 'include'
+    })
 
-  if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`)
-  }
+    maybeHandleExpire(resp)
 
-  return await resp.json()
+    if (!resp.ok) {
+      throw new Error(`Response status: ${resp.status}`)
+    }
+
+    return await resp.json()
+  })()
+
+  rubricCriteriaInFlight.set(assignmentID, request)
+  request.finally(() => rubricCriteriaInFlight.delete(assignmentID))
+  return request
 }
 
 export const createCriteria = async (rubricID: number, question: string, scoreMax: number, canComment: boolean, hasScore: boolean = true) => {
@@ -599,19 +610,31 @@ export const updateCriteriaDescription = async (
 /**
  * Get all reviews assigned to the current user for a specific assignment
  */
+const assignedReviewsInFlight = new Map<number, Promise<any>>()
+
 export const getAssignedReviews = async (assignmentId: number) => {
-  const response = await fetch(`${BASE_URL}/review/assigned/${assignmentId}`, {
-    method: 'GET',
-    credentials: 'include'
-  });
+  const key = Number(assignmentId)
+  const existing = assignedReviewsInFlight.get(key)
+  if (existing) return existing
 
-  maybeHandleExpire(response);
+  const request = (async () => {
+    const response = await fetch(`${BASE_URL}/review/assigned/${assignmentId}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
 
-  if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
-  }
+    maybeHandleExpire(response);
 
-  return await response.json();
+    if (!response.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
+
+    return await response.json();
+  })()
+
+  assignedReviewsInFlight.set(key, request)
+  request.finally(() => assignedReviewsInFlight.delete(key))
+  return request
 }
 
 /**
@@ -665,19 +688,31 @@ export const submitReviewFeedback = async (
 /**
  * Get review completion status for current user on an assignment
  */
+const reviewStatusInFlight = new Map<number, Promise<any>>()
+
 export const getReviewStatus = async (assignmentId: number) => {
-  const response = await fetch(`${BASE_URL}/review/status/${assignmentId}`, {
-    method: 'GET',
-    credentials: 'include'
-  });
+  const key = Number(assignmentId)
+  const existing = reviewStatusInFlight.get(key)
+  if (existing) return existing
 
-  maybeHandleExpire(response);
+  const request = (async () => {
+    const response = await fetch(`${BASE_URL}/review/status/${assignmentId}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
 
-  if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
-  }
+    maybeHandleExpire(response);
 
-  return await response.json();
+    if (!response.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
+
+    return await response.json();
+  })()
+
+  reviewStatusInFlight.set(key, request)
+  request.finally(() => reviewStatusInFlight.delete(key))
+  return request
 }
 
 /**
@@ -733,20 +768,32 @@ export const createReviewAssignment = async (
  * Get all reviews for an assignment (teacher/admin only)
  * Returns detailed information about all peer reviews including completion stats
  */
+const allReviewsForAssignmentInFlight = new Map<number, Promise<any>>()
+
 export const getAllReviewsForAssignment = async (assignmentId: number) => {
-  const response = await fetch(`${BASE_URL}/review/assignment/${assignmentId}/all`, {
-    method: 'GET',
-    credentials: 'include'
-  });
+  const key = Number(assignmentId)
+  const existing = allReviewsForAssignmentInFlight.get(key)
+  if (existing) return existing
 
-  maybeHandleExpire(response);
+  const request = (async () => {
+    const response = await fetch(`${BASE_URL}/review/assignment/${assignmentId}/all`, {
+      method: 'GET',
+      credentials: 'include'
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Response status: ${response.status}`);
-  }
+    maybeHandleExpire(response);
 
-  return await response.json();
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.msg || `Response status: ${response.status}`);
+    }
+
+    return await response.json();
+  })()
+
+  allReviewsForAssignmentInFlight.set(key, request)
+  request.finally(() => allReviewsForAssignmentInFlight.delete(key))
+  return request
 }
 
 /**
@@ -754,19 +801,31 @@ export const getAllReviewsForAssignment = async (assignmentId: number) => {
  * Returns completed peer reviews where the student is the reviewee,
  * with grades and comments for each criterion. Reviewer identity is anonymous.
  */
+const receivedFeedbackInFlight = new Map<number, Promise<any>>()
+
 export const getReceivedFeedback = async (assignmentId: number) => {
-  const response = await fetch(`${BASE_URL}/review/received/${assignmentId}`, {
-    method: 'GET',
-    credentials: 'include'
-  });
+  const key = Number(assignmentId)
+  const existing = receivedFeedbackInFlight.get(key)
+  if (existing) return existing
 
-  maybeHandleExpire(response);
+  const request = (async () => {
+    const response = await fetch(`${BASE_URL}/review/received/${assignmentId}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
 
-  if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
-  }
+    maybeHandleExpire(response);
 
-  return await response.json();
+    if (!response.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
+
+    return await response.json();
+  })()
+
+  receivedFeedbackInFlight.set(key, request)
+  request.finally(() => receivedFeedbackInFlight.delete(key))
+  return request
 }
 
 export const getRubric = async (rubricID: number) => {
@@ -917,19 +976,31 @@ export type PeerEvalGroupStatusResponse = {
   } | null;
 };
 
+const groupPeerEvalStatusInFlight = new Map<number, Promise<PeerEvalGroupStatusResponse>>()
+
 export const getGroupPeerEvalStatus = async (assignmentId: number): Promise<PeerEvalGroupStatusResponse> => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/status/${assignmentId}`, {
-    credentials: 'include'
-  })
+  const key = Number(assignmentId)
+  const existing = groupPeerEvalStatusInFlight.get(key)
+  if (existing) return existing
 
-  maybeHandleExpire(resp)
+  const request: Promise<PeerEvalGroupStatusResponse> = (async () => {
+    const resp = await fetch(`${BASE_URL}/peer_eval/group/status/${assignmentId}`, {
+      credentials: 'include'
+    })
 
-  if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
-  }
+    maybeHandleExpire(resp)
 
-  return await resp.json()
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({} as any))
+      throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    }
+
+    return await resp.json()
+  })()
+
+  groupPeerEvalStatusInFlight.set(key, request)
+  request.finally(() => groupPeerEvalStatusInFlight.delete(key))
+  return request
 }
 
 export type PeerEvalSubmittedCriterion = {

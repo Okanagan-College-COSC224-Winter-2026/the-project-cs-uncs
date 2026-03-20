@@ -3,7 +3,7 @@ import { useLocation, useParams } from "react-router-dom";
 import BackArrow from "../components/BackArrow";
 import HeaderTitle from "../components/HeaderTitle";
 import TabNavigation from "../components/TabNavigation";
-import { getAssignmentDetails, getMyCourseGroup, listClasses } from "../util/api";
+import { getAssignmentDetails, getMyCourseGroup, listClasses, peekAssignmentDetails } from "../util/api";
 import { isAdmin, isTeacher } from "../util/login";
 import "./MyGroup.css";
 
@@ -31,6 +31,17 @@ export default function MyGroup() {
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const assignmentTypeHint = useMemo(() => {
+    if (!isAssignmentRoute) return null
+    if (!id) return null
+    const cached = peekAssignmentDetails(Number(id))
+    if (!cached || typeof cached !== "object") return null
+    const record = cached as Record<string, unknown>
+    return typeof record.assignment_type === "string" ? record.assignment_type : null
+  }, [id, isAssignmentRoute]);
+
+  const effectiveAssignmentType = assignmentType ?? assignmentTypeHint;
 
   const currentUserId = useMemo(() => {
     try {
@@ -110,7 +121,7 @@ export default function MyGroup() {
   );
 
   const assignmentTabs = useMemo(() => {
-    const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && (isTeacher() || isAdmin());
+    const showRubricTab = (effectiveAssignmentType === "peer_eval_group" || effectiveAssignmentType === "peer_eval_individual") && (isTeacher() || isAdmin());
     const tabs = [
       ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
@@ -118,18 +129,18 @@ export default function MyGroup() {
     ];
 
     if (isTeacher()) {
-      if (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") {
+      if (effectiveAssignmentType === "peer_eval_group" || effectiveAssignmentType === "peer_eval_individual") {
         tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
       }
     } else {
-      if (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") {
+      if (effectiveAssignmentType === "peer_eval_group" || effectiveAssignmentType === "peer_eval_individual") {
         tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
         tabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
       }
     }
 
     return tabs;
-  }, [assignmentType, id]);
+  }, [effectiveAssignmentType, id]);
 
   const otherMembers = useMemo(() => {
     if (!group?.members) return [] as Member[];

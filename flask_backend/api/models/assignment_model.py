@@ -3,7 +3,7 @@ Assignment model for the peer evaluation app.
 """
 
 from .db import db
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 class Assignment(db.Model):
@@ -83,11 +83,32 @@ class Assignment(db.Model):
             return None
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     
-    def can_modify(self):
-        """Check if the assignment can be modified (edited/deleted) at the given time."""
+    def can_modify(self, tz_offset_minutes: int | None = None):
+        """Check if the assignment can be modified (edited/deleted) right now.
+
+        Notes:
+        - For date-only due dates we store an end-of-day timestamp (23:59:59) without tzinfo.
+          Those should behave as a calendar-day cutoff in the requester's local timezone.
+        - For timestamp due dates (including those normalized to UTC), we keep exact time comparison.
+        """
+        if self.due_date is None:
+            return True
+
+        # Date-only (stored as naive 23:59:59) => compare by calendar day.
+        if (
+            self.due_date.tzinfo is None
+            and (self.due_date.hour, self.due_date.minute, self.due_date.second) == (23, 59, 59)
+        ):
+            if tz_offset_minutes is not None:
+                now_utc = datetime.now(timezone.utc)
+                requester_today = (now_utc - timedelta(minutes=tz_offset_minutes)).date()
+            else:
+                requester_today = datetime.now().date()
+            return requester_today <= self.due_date.date()
+
         due = self._ensure_timezone_aware(self.due_date)
         now = self._get_current_utc_time()
-        return (due is None) or (now < due)
+        return now < due
 
     def update(self):
         """Update assignment in the database"""

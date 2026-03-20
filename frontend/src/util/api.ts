@@ -749,9 +749,13 @@ export const listSubmissions = async (assignmentId: number) => {
 }
 
 export const updateAssignmentDetails = async (assignmentId: number, formData: FormData) => {
+  const tzOffset = String(new Date().getTimezoneOffset())
   const resp = await fetch(`${BASE_URL}/assignment/edit_details/${assignmentId}`, {
     method: 'PATCH',
     body: formData,
+    headers: {
+      'X-Timezone-Offset': tzOffset,
+    },
     credentials: 'include'
   })
 
@@ -778,6 +782,7 @@ export function createAssignment(courseID: number, name: string, due_date?: stri
 export function createAssignment(formData: FormData): Promise<any>;
 export async function createAssignment(arg1: number | FormData, name?: string, due_date?: string) {
   const isMultipart = arg1 instanceof FormData;
+  const tzOffset = String(new Date().getTimezoneOffset())
 
   const response = await fetch(`${BASE_URL}/assignment/create_assignment`, {
     method: 'POST',
@@ -789,9 +794,12 @@ export async function createAssignment(arg1: number | FormData, name?: string, d
           due_date,
         } satisfies CreateAssignmentRequest),
     headers: isMultipart
-      ? undefined
+      ? {
+          'X-Timezone-Offset': tzOffset,
+        }
       : {
           'Content-Type': 'application/json',
+          'X-Timezone-Offset': tzOffset,
         },
     credentials: 'include'
   })

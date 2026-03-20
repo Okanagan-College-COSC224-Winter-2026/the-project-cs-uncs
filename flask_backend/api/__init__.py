@@ -104,7 +104,7 @@ def create_app(test_config=None):
         app,
         origins=cors_origins,
         supports_credentials=True,
-        allow_headers=["Content-Type", "X-CSRF-TOKEN"],
+        allow_headers=["Content-Type", "X-CSRF-TOKEN", "X-Timezone-Offset"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 

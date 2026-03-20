@@ -260,6 +260,153 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
     expected_ts = new_due.replace(microsecond=0).astimezone(_tz.utc).timestamp()
     assert abs(parsed_ts - expected_ts) < 2  # within 2 seconds
 
+
+def test_teacher_can_edit_assignment_details_title_and_due_date(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "English 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=14)
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "Essay Draft",
+                "rubric": "Clarity",
+                "due_date": future_due.replace(microsecond=0).isoformat(),
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    new_due_date_only = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=21)).date().isoformat()
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps(
+            {
+                "name": "Essay Final",
+                "due_date": new_due_date_only,
+                "description": "Updated instructions",
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert edit_response.status_code == 200
+    assert edit_response.json["msg"] == "Assignment details updated"
+    assert edit_response.json["assignment"]["name"] == "Essay Final"
+    assert edit_response.json["assignment"]["description"] == "Updated instructions"
+
+    returned_due = edit_response.json["assignment"].get("due_date")
+    assert returned_due is not None
+    # For date-only updates, backend interprets end-of-day and should preserve the same calendar date.
+    assert str(returned_due).startswith(new_due_date_only)
+
+
+def test_teacher_cannot_set_past_due_date_via_edit_details(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Biology 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "Lab 1",
+                "rubric": "Accuracy",
+                "due_date": future_due.replace(microsecond=0).isoformat(),
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    past_date_only = (datetime.datetime.now() - datetime.timedelta(days=1)).date().isoformat()
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps({"due_date": past_date_only}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert edit_response.status_code == 400
+    assert edit_response.json["msg"] == "Due date cannot be in the past"
+
+
+def test_teacher_can_edit_assignment_details_title_and_due_date_multipart(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "CS 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=10)
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "HW 1",
+                "rubric": "Correctness",
+                "due_date": future_due.replace(microsecond=0).isoformat(),
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    new_due_date_only = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=12)).date().isoformat()
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data={
+            "name": "HW 1 (Updated)",
+            "due_date": new_due_date_only,
+            "description": "New description",
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert edit_response.status_code == 200
+    assert edit_response.json["assignment"]["name"] == "HW 1 (Updated)"
+    assert edit_response.json["assignment"]["description"] == "New description"
+    returned_due = edit_response.json["assignment"].get("due_date")
+    assert returned_due is not None
+    assert str(returned_due).startswith(new_due_date_only)
+
 def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin, dbsession):
     """
     GIVEN a teacher user

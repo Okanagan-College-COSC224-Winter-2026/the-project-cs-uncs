@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -10,6 +10,64 @@ from ..models import Course, Assignment, Submission, User, User_Course, Assignme
 from .auth_controller import jwt_teacher_required, jwt_role_required
 
 bp = Blueprint("assignment", __name__, url_prefix="/assignment")
+
+
+def _parse_due_date_input(due_date_value, *, tz_offset_minutes: int | None = None, now_utc=None):
+    """Parse due_date input.
+
+    Accepts:
+    - YYYY-MM-DD (interpreted as local end-of-day)
+    - ISO 8601 datetime (with or without timezone)
+
+    Returns a naive datetime suitable for DB storage.
+    - If input is timezone-aware, it is converted to UTC and tzinfo is stripped.
+    - If input is naive/date-only, it is treated as local time (naive).
+    """
+    if not due_date_value:
+        return None
+
+    raw_due_date = str(due_date_value)
+    if raw_due_date.endswith("Z"):
+        raw_due_date = raw_due_date[:-1] + "+00:00"
+
+    is_date_only = len(raw_due_date) == 10 and raw_due_date.count("-") == 2
+
+    if now_utc is None:
+        now_utc = datetime.now(timezone.utc)
+
+    if is_date_only:
+        parsed_date = date.fromisoformat(raw_due_date)
+
+        # Validate using the requester's local day when provided.
+        if tz_offset_minutes is not None:
+            requester_today = (now_utc - timedelta(minutes=tz_offset_minutes)).date()
+        else:
+            requester_today = datetime.now().date()
+
+        if parsed_date < requester_today:
+            raise ValueError("past")
+
+        # Store date-only values as a floating local end-of-day to avoid timezone shifting.
+        return datetime(parsed_date.year, parsed_date.month, parsed_date.day, 23, 59, 59)
+
+    parsed_due_date = datetime.fromisoformat(raw_due_date)
+
+    # Validate "not in the past" using the same frame of reference:
+    # - aware datetimes compared in UTC
+    # - naive datetimes compared in local time
+    if parsed_due_date.tzinfo is not None:
+        if parsed_due_date.astimezone(timezone.utc) < now_utc:
+            raise ValueError("past")
+        return parsed_due_date.astimezone(timezone.utc).replace(tzinfo=None)
+
+    if tz_offset_minutes is not None:
+        requester_now = (now_utc - timedelta(minutes=tz_offset_minutes)).replace(tzinfo=None)
+        if parsed_due_date < requester_now:
+            raise ValueError("past")
+    else:
+        if parsed_due_date < datetime.now():
+            raise ValueError("past")
+    return parsed_due_date
 
 
 def _original_filename_from_storage_name(storage_name: str | None) -> str | None:
@@ -66,28 +124,23 @@ def create_assignment():
         attachment_original_name = uploaded_file.filename
         attachment_storage_name = f"{uuid4().hex}_{safe_name}" if safe_name else uuid4().hex
         uploaded_file.save(str(uploads_dir / attachment_storage_name))
+    tz_offset_minutes = None
+    tz_offset_header = request.headers.get("X-Timezone-Offset")
+    if tz_offset_header is not None:
+        try:
+            tz_offset_minutes = int(tz_offset_header)
+        except ValueError:
+            tz_offset_minutes = None
+
     if not due_date:
         due_date = None
     else:
         try:
-            raw_due_date = str(due_date)
-            if raw_due_date.endswith("Z"):
-                raw_due_date = raw_due_date[:-1] + "+00:00"
-
-            # If the frontend sends a date-only value, interpret it as end-of-day.
-            # This prevents "today" from being treated as already past (midnight).
-            if len(raw_due_date) == 10 and raw_due_date.count("-") == 2:
-                raw_due_date = f"{raw_due_date}T23:59:59"
-
-            due_date = datetime.fromisoformat(raw_due_date)
-
-            if due_date.tzinfo is not None:
-                due_date = due_date.astimezone(timezone.utc).replace(tzinfo=None)
-        except (ValueError, TypeError):
+            due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
+        except (ValueError, TypeError) as e:
+            if str(e) == "past":
+                return jsonify({"msg": "Due date cannot be in the past"}), 400
             return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
-
-        if due_date < datetime.utcnow():
-            return jsonify({"msg": "Due date cannot be in the past"}), 400
 
     if not course_id:
         return jsonify({"msg": "Course ID is required"}), 400
@@ -146,7 +199,15 @@ def edit_assignment(assignment_id):
     if course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
-    if not assignment.can_modify():
+    tz_offset_minutes = None
+    tz_offset_header = request.headers.get("X-Timezone-Offset")
+    if tz_offset_header is not None:
+        try:
+            tz_offset_minutes = int(tz_offset_header)
+        except ValueError:
+            tz_offset_minutes = None
+
+    if not assignment.can_modify(tz_offset_minutes=tz_offset_minutes):
         return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
 
     assignment.name = data.get("name", assignment.name)
@@ -195,16 +256,48 @@ def edit_assignment_details(assignment_id):
 
     if request.is_json:
         data = request.get_json(silent=True) or {}
+        name = data.get("name", None) if "name" in data else None
+        due_date = data.get("due_date", None) if "due_date" in data else None
         description = data.get("description", None) if "description" in data else None
         remove_attachment = bool(data.get("remove_attachment"))
         uploaded_file = None
     else:
+        name = request.form.get("name")
+        due_date = request.form.get("due_date")
         description = request.form.get("description")
         remove_attachment_value = request.form.get("remove_attachment", "").strip().lower()
         remove_attachment = remove_attachment_value in {"1", "true", "yes", "on"}
         uploaded_file = request.files.get("file")
 
+    tz_offset_minutes = None
+    tz_offset_header = request.headers.get("X-Timezone-Offset")
+    if tz_offset_header is not None:
+        try:
+            tz_offset_minutes = int(tz_offset_header)
+        except ValueError:
+            tz_offset_minutes = None
+
     uploads_dir = Path(current_app.instance_path) / "uploads"
+
+    if (name is not None) or (due_date is not None):
+        if not assignment.can_modify(tz_offset_minutes=tz_offset_minutes):
+            return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
+
+    if name is not None:
+        if not name or not str(name).strip():
+            return jsonify({"msg": "Assignment name is required"}), 400
+        assignment.name = str(name).strip()
+
+    if due_date is not None:
+        if not due_date:
+            assignment.due_date = None
+        else:
+            try:
+                assignment.due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
+            except (ValueError, TypeError) as e:
+                if str(e) == "past":
+                    return jsonify({"msg": "Due date cannot be in the past"}), 400
+                return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     if description is not None:
         assignment.description = description if description and description.strip() else None

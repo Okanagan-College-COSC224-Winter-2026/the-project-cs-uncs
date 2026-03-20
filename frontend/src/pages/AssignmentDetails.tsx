@@ -18,6 +18,7 @@ import "./AssignmentDetails.css";
 interface AssignmentDetailsData {
   id: number;
   name: string;
+  due_date?: string | null;
   description?: string | null;
   attachment_storage_name?: string | null;
   attachment_original_name?: string | null;
@@ -45,6 +46,8 @@ export default function AssignmentDetails() {
 
   const [isEditing, setIsEditing] = useState(false);
 
+  const [editTitle, setEditTitle] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [removeAttachment, setRemoveAttachment] = useState(false);
@@ -58,6 +61,31 @@ export default function AssignmentDetails() {
 
   const canEdit = isTeacher() || isAdmin();
 
+  const todayMinDate = (() => {
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  })();
+
+  const toDateInputValue = (dueDate: string | null | undefined) => {
+    if (!dueDate) return "";
+    const asString = String(dueDate);
+    return asString.length >= 10 ? asString.slice(0, 10) : asString;
+  };
+
+  const formatDueDate = (dueDate: string | null | undefined) => {
+    const datePart = toDateInputValue(dueDate);
+    if (!datePart) return "No due date.";
+
+    const parts = datePart.split("-").map((p) => Number(p));
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return datePart;
+
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d).toLocaleDateString();
+  };
+
   useEffect(() => {
     const fetchDetails = async () => {
       if (!id) return;
@@ -68,6 +96,8 @@ export default function AssignmentDetails() {
         setSuccessMessage(null);
         const details = await getAssignmentDetails(Number(id));
         setAssignment(details);
+        setEditTitle(details?.name ?? "");
+        setEditDueDate(toDateInputValue(details?.due_date ?? null));
         setEditDescription(details?.description ?? "");
         setNewFile(null);
         setRemoveAttachment(false);
@@ -115,7 +145,19 @@ export default function AssignmentDetails() {
       setError(null);
       setSuccessMessage(null);
 
+      if (!editTitle.trim()) {
+        setError("Title is required.");
+        return;
+      }
+
+      if (editDueDate && editDueDate < todayMinDate) {
+        setError("Due date cannot be in the past.");
+        return;
+      }
+
       const formData = new FormData();
+      formData.append("name", editTitle);
+      formData.append("due_date", editDueDate);
       formData.append("description", editDescription);
       if (newFile) {
         formData.append("file", newFile);
@@ -129,6 +171,8 @@ export default function AssignmentDetails() {
 
       const refreshed = await getAssignmentDetails(Number(id));
       setAssignment(refreshed);
+      setEditTitle(refreshed?.name ?? "");
+      setEditDueDate(toDateInputValue(refreshed?.due_date ?? null));
       setEditDescription(refreshed?.description ?? "");
       setNewFile(null);
       setRemoveAttachment(false);
@@ -287,6 +331,28 @@ export default function AssignmentDetails() {
                 <>
                   <h3>Edit</h3>
                   <label className="assignment-details-label">
+                    Title
+                    <input
+                      className="Textbox"
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Assignment title"
+                    />
+                  </label>
+
+                  <label className="assignment-details-label">
+                    Due Date
+                    <input
+                      className="Textbox"
+                      type="date"
+                      value={editDueDate}
+                      min={todayMinDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                    />
+                  </label>
+
+                  <label className="assignment-details-label">
                     Description
                     <textarea
                       className="assignment-details-textarea"
@@ -324,6 +390,8 @@ export default function AssignmentDetails() {
                       type="secondary"
                       onClick={() => {
                         setIsEditing(false);
+                        setEditTitle(assignment?.name ?? "");
+                        setEditDueDate(toDateInputValue(assignment?.due_date ?? null));
                         setEditDescription(assignment?.description ?? "");
                         setNewFile(null);
                         setRemoveAttachment(false);
@@ -339,6 +407,9 @@ export default function AssignmentDetails() {
               ) : null}
             </>
           ) : null}
+
+          <h3>Due Date</h3>
+          <p>{formatDueDate(assignment?.due_date ?? null)}</p>
         </div>
       )}
     </div>

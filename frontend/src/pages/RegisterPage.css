@@ -66,6 +66,8 @@
 
   margin-bottom: var(--spacing-md);
 
+  box-sizing: border-box;
+
   width: 100%;
   gap: var(--spacing-md);
 }

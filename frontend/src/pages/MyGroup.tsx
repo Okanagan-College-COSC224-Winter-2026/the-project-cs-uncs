@@ -100,7 +100,7 @@ export default function MyGroup() {
 
   const classTabs = useMemo(
     () => [
-      { label: "Home", path: `/classes/${courseId ?? id}/home` },
+      { label: "Assignments", path: `/classes/${courseId ?? id}/home` },
       { label: "My Group", path: `/classes/${courseId ?? id}/my-group` },
     ],
     [courseId, id]

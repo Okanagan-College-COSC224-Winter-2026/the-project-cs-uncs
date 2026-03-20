@@ -150,3 +150,42 @@
     border: 2px solid var(--border-color);
     background-color: var(--background-primary);
 }
+
+.GroupsSectionTitle {
+    margin-top: var(--spacing-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.GroupsDetailRowEditable {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.GroupsDetailRowName {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.GroupsDetailRowActions {
+    margin-left: auto;
+}
+
+.GroupsAddRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.GroupsSelect {
+    width: 100%;
+    max-width: 520px;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    padding: var(--spacing-sm);
+}

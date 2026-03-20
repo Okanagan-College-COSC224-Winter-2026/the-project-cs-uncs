@@ -302,6 +302,40 @@ export const getMyCourseGroup = async (courseId: number): Promise<{ group: Cours
   return json
 }
 
+export const addCourseGroupMember = async (groupId: number, userId: number): Promise<CourseGroup> => {
+  const resp = await fetch(`${BASE_URL}/groups/${groupId}/members`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId }),
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  const json = await resp.json().catch(() => ({} as any))
+  if (!resp.ok) {
+    throw new Error(json.msg || `Failed to add group member: ${resp.status}`)
+  }
+
+  return json
+}
+
+export const removeCourseGroupMember = async (groupId: number, userId: number): Promise<CourseGroup> => {
+  const resp = await fetch(`${BASE_URL}/groups/${groupId}/members/${userId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  const json = await resp.json().catch(() => ({} as any))
+  if (!resp.ok) {
+    throw new Error(json.msg || `Failed to remove group member: ${resp.status}`)
+  }
+
+  return json
+}
+
 export const removeCourseMember = async (classId: number, userId: number) => {
   const resp = await fetch(`${BASE_URL}/class/remove_member`, {
     method: 'POST',

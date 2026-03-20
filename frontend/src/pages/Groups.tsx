@@ -3,13 +3,15 @@ import { Navigate, useLocation, useParams } from "react-router-dom";
 import BackArrow from "../components/BackArrow";
 import Button from "../components/Button";
 import TabNavigation from "../components/TabNavigation";
-import { isTeacher } from "../util/login";
+import { isAdmin, isTeacher } from "../util/login";
 import {
+    addCourseGroupMember,
     createCourseGroup,
     listCourseGroups,
     listCourseMembers,
     listClasses,
     getAssignmentDetails,
+    removeCourseGroupMember,
 } from "../util/api";
 import "./Groups.css";
 
@@ -39,10 +41,13 @@ export default function Groups() {
     const [newGroupName, setNewGroupName] = useState("");
     const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+    const [memberToAdd, setMemberToAdd] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    if (!isTeacher()) {
+    const canManage = isTeacher() || isAdmin();
+
+    if (!canManage) {
         return <Navigate to={isAssignmentRoute ? `/assignment/${id}` : `/classes/${id}/my-group`} replace />;
     }
 
@@ -121,14 +126,48 @@ export default function Groups() {
         try {
             setError(null);
             await createCourseGroup(courseId, newGroupName.trim(), selectedMembers);
-            const refreshed = await listCourseGroups(courseId);
-            setGroups(refreshed as Group[]);
+            await refreshGroups();
             setShowCreateGroup(false);
             setNewGroupName("");
             setSelectedMembers([]);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             setError(msg || "Failed to create group");
+        }
+    };
+
+    const refreshGroups = async () => {
+        if (!courseId) return;
+        const refreshed = (await listCourseGroups(courseId)) as Group[];
+        setGroups(refreshed);
+        if (selectedGroup) {
+            const updated = refreshed.find((g) => g.id === selectedGroup.id) ?? null;
+            setSelectedGroup(updated);
+        }
+    };
+
+    const handleAddMemberToGroup = async () => {
+        if (!selectedGroup || memberToAdd == null) return;
+        try {
+            setError(null);
+            await addCourseGroupMember(selectedGroup.id, memberToAdd);
+            await refreshGroups();
+            setMemberToAdd(null);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setError(msg || "Failed to add student");
+        }
+    };
+
+    const handleRemoveMemberFromGroup = async (userId: number) => {
+        if (!selectedGroup) return;
+        try {
+            setError(null);
+            await removeCourseGroupMember(selectedGroup.id, userId);
+            await refreshGroups();
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setError(msg || "Failed to remove student");
         }
     };
 
@@ -142,7 +181,7 @@ export default function Groups() {
 
     const classTabs = useMemo(
         () => [
-            { label: "Home", path: `/classes/${courseId ?? id}/home` },
+            { label: "Assignments", path: `/classes/${courseId ?? id}/home` },
             { label: "Members", path: `/classes/${courseId ?? id}/members` },
             { label: "Groups", path: `/classes/${courseId ?? id}/groups` },
         ],
@@ -171,7 +210,9 @@ export default function Groups() {
             <BackArrow />
             <div className="ClassHeader">
                 <div className="ClassHeaderLeft">
-                    <h2>{headerTitle || (isAssignmentRoute ? `Assignment ${id}` : `Class ${id}`)}</h2>
+                    <h2>
+                        {headerTitle ?? (loading ? "Loading…" : isAssignmentRoute ? "Assignment" : "Class")}
+                    </h2>
                 </div>
                 <div className="ClassHeaderRight">
                     {isTeacher() && courseId ? (
@@ -241,13 +282,48 @@ export default function Groups() {
                                 <h3>{selectedGroup.name}</h3>
                             </div>
 
+                            <div className="GroupsSectionTitle">Members</div>
                             {selectedGroup.members.length === 0 ? (
                                 <div className="GroupsMuted">No members in this group.</div>
                             ) : (
                                 <div className="GroupsDetailList">
                                     {selectedGroup.members.map((m) => (
-                                        <div key={m.id} className="GroupsDetailRow">{m.name}</div>
+                                        <div key={m.id} className="GroupsDetailRow GroupsDetailRowEditable">
+                                            <div className="GroupsDetailRowName">{m.name}</div>
+                                            <div className="GroupsDetailRowActions">
+                                                <Button type="secondary" onClick={() => handleRemoveMemberFromGroup(m.id)}>
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        </div>
                                     ))}
+                                </div>
+                            )}
+
+                            <div className="GroupsSectionTitle">Add student</div>
+                            {courseMembers.filter((m) => !selectedGroup.members.some((gm) => gm.id === m.id)).length === 0 ? (
+                                <div className="GroupsMuted">No other enrolled students to add.</div>
+                            ) : (
+                                <div className="GroupsAddRow">
+                                    <select
+                                        className="GroupsSelect"
+                                        value={memberToAdd ?? ""}
+                                        onChange={(e) => setMemberToAdd(e.target.value ? Number(e.target.value) : null)}
+                                    >
+                                        <option value="" disabled>
+                                            Select a student…
+                                        </option>
+                                        {courseMembers
+                                            .filter((m) => !selectedGroup.members.some((gm) => gm.id === m.id))
+                                            .map((m) => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.name}{m.email ? ` (${m.email})` : ""}
+                                                </option>
+                                            ))}
+                                    </select>
+                                    <Button onClick={handleAddMemberToGroup} disabled={memberToAdd == null}>
+                                        Add
+                                    </Button>
                                 </div>
                             )}
                         </>

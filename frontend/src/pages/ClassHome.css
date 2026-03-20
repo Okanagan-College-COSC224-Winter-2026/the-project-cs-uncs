@@ -115,3 +115,35 @@
   gap: 8px;
   margin-top: 12px;
 }
+
+.AddStudentsPanel {
+  width: 100%;
+  max-width: 600px;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--background-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.AddStudentsLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.AddStudentsTextarea {
+  width: 100%;
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  padding: var(--spacing-sm);
+}
+
+.AddStudentsActions {
+  margin-top: var(--spacing-md);
+  display: flex;
+  justify-content: flex-end;
+}

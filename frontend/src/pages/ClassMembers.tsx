@@ -18,6 +18,7 @@ export default function ClassMembers() {
 
   const [members, setMembers] = useState<User[]>([])
   const [className, setClassName] = useState<string | null>(null);
+  const [loadingHeader, setLoadingHeader] = useState(true);
   const [showAddStudents, setShowAddStudents] = useState(false);
   const [emailsText, setEmailsText] = useState("");
   const [adding, setAdding] = useState(false);
@@ -25,11 +26,13 @@ export default function ClassMembers() {
 
   useEffect(() => {
     ;(async () => {
+      setLoadingHeader(true);
       const members = await listCourseMembers(id as string)
       const classes = await listClasses();
       const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
       setMembers(members)
       setClassName(currentClass?.name || null);
+      setLoadingHeader(false);
     })()
   }, [id])  
 
@@ -75,7 +78,7 @@ export default function ClassMembers() {
       <BackArrow />
       <div className="ClassHeader">
         <div className="ClassHeaderLeft">
-          <h2>{className}</h2>
+          <h2>{className ?? (loadingHeader ? 'Loading…' : 'Class')}</h2>
         </div>
 
         <div className="ClassHeaderRight">
@@ -119,7 +122,7 @@ export default function ClassMembers() {
       <TabNavigation
         tabs={[
           {
-            label: "Home",
+            label: "Assignments",
             path: `/classes/${id}/home`,
           },
           {

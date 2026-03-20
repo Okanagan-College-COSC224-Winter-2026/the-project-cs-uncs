@@ -246,7 +246,16 @@ export const listAssignments = async (classId: string) => {
       throw new Error(`Response status: ${resp.status}`)
     }
 
-    return await resp.json()
+    const json = await resp.json()
+    if (Array.isArray(json)) {
+      for (const a of json) {
+        const assignmentId = Number((a as any)?.id)
+        if (!Number.isFinite(assignmentId)) continue
+        cacheAssignmentDetails(assignmentId, a)
+      }
+    }
+
+    return json
   })()
 
   assignmentsListInFlight.set(classId, request)
@@ -775,6 +784,51 @@ export const getRubric = async (rubricID: number) => {
 }
 
 const assignmentDetailsInFlight = new Map<number, Promise<any>>()
+const assignmentDetailsCache = new Map<number, any>()
+
+const assignmentDetailsStorageKey = (assignmentId: number) => `assignmentDetails:${assignmentId}`
+
+function cacheAssignmentDetails(assignmentId: number, details: any) {
+  assignmentDetailsCache.set(assignmentId, details)
+
+  // Persist a minimal subset so first-visit tab rendering can avoid collapsing.
+  try {
+    const courseId =
+      (details as any)?.courseID ?? (details as any)?.course_id ?? (details as any)?.course?.id
+    const minimal = {
+      id: (details as any)?.id ?? assignmentId,
+      name: (details as any)?.name,
+      assignment_type: (details as any)?.assignment_type,
+      due_date: (details as any)?.due_date,
+      courseID: courseId,
+      course: Number.isFinite(Number((details as any)?.course?.id)) ? { id: (details as any).course.id } : undefined,
+    }
+    sessionStorage.setItem(assignmentDetailsStorageKey(assignmentId), JSON.stringify(minimal))
+  } catch {
+    // ignore storage failures (private mode/quota)
+  }
+}
+
+export const hintAssignmentType = (assignmentId: number, assignmentType: string) => {
+  if (!Number.isFinite(Number(assignmentId))) return
+  if (!assignmentType) return
+  cacheAssignmentDetails(Number(assignmentId), { id: Number(assignmentId), assignment_type: assignmentType })
+}
+
+export const peekAssignmentDetails = (assignmentId: number) => {
+  const mem = assignmentDetailsCache.get(assignmentId)
+  if (mem) return mem
+
+  try {
+    const raw = sessionStorage.getItem(assignmentDetailsStorageKey(assignmentId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    assignmentDetailsCache.set(assignmentId, parsed)
+    return parsed
+  } catch {
+    return null
+  }
+}
 
 export const getAssignmentDetails = async (assignmentId: number) => {
   const existing = assignmentDetailsInFlight.get(assignmentId)
@@ -791,7 +845,9 @@ export const getAssignmentDetails = async (assignmentId: number) => {
       throw new Error(`Response status: ${resp.status}`)
     }
 
-    return await resp.json()
+    const json = await resp.json()
+    cacheAssignmentDetails(assignmentId, json)
+    return json
   })()
 
   assignmentDetailsInFlight.set(assignmentId, request)

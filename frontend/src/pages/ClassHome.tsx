@@ -150,6 +150,7 @@ export default function ClassHome() {
                     id={assignment.id}
                     name={assignment.name}
                     due_date={assignment.due_date}
+                    assignment_type={(assignment as any).assignment_type}
                     onDelete={(isTeacher() || isAdmin()) ? handleDeleteAssignment : undefined}
                   />
                 </li>

@@ -5,6 +5,7 @@ import {
   getReviewStatus,
   getAssignmentDetails,
   getGroupPeerEvalStatus,
+  hintAssignmentType,
   submitGroupPeerEval,
   syncIndividualPeerEvalReviews,
   type PeerEvalGroupStatusResponse,
@@ -116,6 +117,13 @@ export default function PeerReviews() {
     fetchData();
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    // This route only exists for peer-eval flows. Seed a hint so other tabs
+    // (especially Details) can render the full student tab set immediately.
+    hintAssignmentType(Number(id), 'peer_eval_group');
+  }, [id]);
+
   const handleReviewClick = (reviewId: number, completed: boolean) => {
     if (!assignment?.can_submit && !completed) {
       alert('The review period has ended. You cannot submit new reviews.');
@@ -210,6 +218,12 @@ export default function PeerReviews() {
   };
 
   if (loading) {
+    const loadingTabs = [
+      { label: "Details", path: `/assignment/${id}/details` },
+      { label: "Peer Review", path: `/assignment/${id}/reviews` },
+      { label: "My Feedback", path: `/assignment/${id}/feedback` },
+    ];
+
     return (
       <div className="peer-reviews-container Page">
         <BackArrow />
@@ -219,14 +233,7 @@ export default function PeerReviews() {
           </h2>
         </div>
 
-        <TabNavigation
-          tabs={[
-            {
-              label: "Details",
-              path: `/assignment/${id}/details`,
-            },
-          ]}
-        />
+        <TabNavigation tabs={loadingTabs} />
 
         <div className="peer-reviews-content TabPageContent">
           <div className="PageStatusText">Loading…</div>

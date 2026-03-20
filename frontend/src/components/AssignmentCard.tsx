@@ -1,11 +1,13 @@
 import './AssignmentCard.css'
 import Button from './Button'
+import { isAdmin, isTeacher } from '../util/login'
 
 interface Props {
   onClick?: () => void
   id: number | string
   name: string
   due_date?: string
+  assignment_type?: string
   onDelete?: (id: number | string) => void;
 }
 
@@ -61,7 +63,16 @@ export default function AssignmentCard(props: Props) {
         if (props.onClick) {
           props.onClick();
         } else {
-          window.location.href = `/assignment/${props.id}`
+          const type = props.assignment_type ?? null
+          const isPeerEval = type === 'peer_eval_group' || type === 'peer_eval_individual'
+
+          // Students should land on Details first (not directly into Peer Review).
+          // Teachers/Admins land on the Rubric route for peer-eval assignments.
+          if ((isTeacher() || isAdmin()) && isPeerEval) {
+            window.location.href = `/assignment/${props.id}`
+          } else {
+            window.location.href = `/assignment/${props.id}/details`
+          }
         }
       }}
       className='A_Card'

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getAssignmentDetails, getReceivedFeedback, getReceivedGroupPeerEvalFeedback } from '../util/api';
+import { getAssignmentDetails, getReceivedFeedback, getReceivedGroupPeerEvalFeedback, hintAssignmentType } from '../util/api';
 import { hasRole } from '../util/login';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
@@ -35,6 +35,13 @@ export default function ReceivedFeedback() {
   const [feedback, setFeedback] = useState<ReviewFeedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!assignmentId) return;
+    // This route only exists for peer-eval flows. Seed a hint so other tabs
+    // (especially Details) can render the full student tab set immediately.
+    hintAssignmentType(Number(assignmentId), 'peer_eval_group');
+  }, [assignmentId]);
 
   useEffect(() => {
     const fetchFeedback = async () => {
@@ -93,6 +100,12 @@ export default function ReceivedFeedback() {
   }
 
   if (loading) {
+    const loadingTabs = [
+      { label: 'Details', path: `/assignment/${assignmentId}/details` },
+      { label: 'Peer Review', path: `/assignment/${assignmentId}/reviews` },
+      { label: 'My Feedback', path: `/assignment/${assignmentId}/feedback` },
+    ];
+
     return (
       <div className="received-feedback-container Page">
         <BackArrow />
@@ -103,14 +116,7 @@ export default function ReceivedFeedback() {
           </h2>
         </div>
 
-        <TabNavigation
-          tabs={[
-            {
-              label: 'Details',
-              path: `/assignment/${assignmentId}/details`,
-            },
-          ]}
-        />
+        <TabNavigation tabs={loadingTabs} />
 
         <div className="TabPageContent">
           <div className="PageStatusText">Loading…</div>

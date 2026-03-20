@@ -10,6 +10,7 @@ import {
   getAssignmentDetails,
   getMySubmission,
   getSubmissionDownloadUrl,
+  peekAssignmentDetails,
   updateAssignmentDetails,
   uploadMySubmission,
 } from "../util/api";
@@ -140,9 +141,19 @@ export default function AssignmentDetails() {
   }, [id]);
 
   if (loading) {
+    const cachedType = (() => {
+      if (!id) return null;
+      const cached = peekAssignmentDetails(Number(id));
+      return cached?.assignment_type ?? null;
+    })();
+    const cachedIsPeerEval = cachedType === "peer_eval_group" || cachedType === "peer_eval_individual";
+
     const loadingTabs = [{ label: "Details", path: `/assignment/${id}/details` }] as { label: string; path: string }[];
     if (isTeacher() || isAdmin()) {
       loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    } else if (isStudent() && cachedIsPeerEval) {
+      loadingTabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
+      loadingTabs.push({ label: "My Feedback", path: `/assignment/${id}/feedback` });
     }
 
     return (

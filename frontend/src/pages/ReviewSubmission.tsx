@@ -5,7 +5,8 @@ import {
   getReviewSubmission,
   submitReviewFeedback,
   getCriteria,
-  getAssignmentDetails
+  getAssignmentDetails,
+  hintAssignmentType
 } from '../util/api';
 import Criteria from '../components/Criteria';
 import TabNavigation from '../components/TabNavigation';
@@ -66,6 +67,13 @@ export default function ReviewSubmission() {
   const commentCriterionId = useMemo(() => {
     return criteriaDescriptions.find((d) => !d.hasScore)?.id ?? criteriaDescriptions[0]?.id ?? null;
   }, [criteriaDescriptions]);
+
+  useEffect(() => {
+    if (!assignmentId) return;
+    // This route only exists for peer-eval flows. Seed a hint so other tabs
+    // (especially Details) can render the full student tab set immediately.
+    hintAssignmentType(Number(assignmentId), 'peer_eval_group');
+  }, [assignmentId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -192,6 +200,12 @@ export default function ReviewSubmission() {
   };
 
   if (loading) {
+    const loadingTabs = [
+      { label: "Details", path: `/assignment/${assignmentId}/details` },
+      { label: "Peer Review", path: `/assignment/${assignmentId}/reviews` },
+      { label: "My Feedback", path: `/assignment/${assignmentId}/feedback` },
+    ];
+
     return (
       <div className="review-submission-container Page">
         <BackArrow />
@@ -202,14 +216,7 @@ export default function ReviewSubmission() {
           </h2>
         </div>
 
-        <TabNavigation
-          tabs={[
-            {
-              label: "Details",
-              path: `/assignment/${assignmentId}/details`,
-            },
-          ]}
-        />
+        <TabNavigation tabs={loadingTabs} />
 
         <div className="TabPageContent">
           <div className="PageStatusText">Loading…</div>

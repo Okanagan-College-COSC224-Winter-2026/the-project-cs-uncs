@@ -147,6 +147,7 @@ export default function AssignmentDetails() {
       return cached?.assignment_type ?? null;
     })();
     const cachedIsPeerEval = cachedType === "peer_eval_group" || cachedType === "peer_eval_individual";
+    const cachedIsPeerEvalIndividual = cachedType === "peer_eval_individual";
 
     const loadingTabs = [] as { label: string; path: string }[];
 
@@ -156,7 +157,9 @@ export default function AssignmentDetails() {
         loadingTabs.push({ label: "Rubric", path: `/assignment/${id}` });
       }
       loadingTabs.push({ label: "Details", path: `/assignment/${id}/details` });
-      loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+      if (!cachedIsPeerEvalIndividual) {
+        loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+      }
       if (cachedIsPeerEval) {
         loadingTabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
       }
@@ -238,6 +241,7 @@ export default function AssignmentDetails() {
   const assignmentType = assignment?.assignment_type ?? null;
   const isPeerEval = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
   const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && (isTeacher() || isAdmin());
+  const isPeerEvalIndividual = assignmentType === "peer_eval_individual";
 
   if (showRubricTab) {
     tabs.push({ label: "Rubric", path: `/assignment/${id}` });
@@ -246,7 +250,9 @@ export default function AssignmentDetails() {
   tabs.push({ label: "Details", path: `/assignment/${id}/details` });
 
   if (isTeacher() || isAdmin()) {
-    tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    if (!isPeerEvalIndividual) {
+      tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    }
   }
 
   if (isTeacher() || isAdmin()) {

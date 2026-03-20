@@ -86,6 +86,8 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
             raise ValueError("scoreMax must be an integer")
         if score_max_int < 0:
             raise ValueError("scoreMax must be >= 0")
+        if score_max_int > 10:
+            raise ValueError("scoreMax must be <= 10")
 
         if not has_score:
             score_max_int = 0

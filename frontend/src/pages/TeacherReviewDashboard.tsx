@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getAllReviewsForAssignment, getAssignmentDetails, getTeacherGroupPeerEvalSummary, peekAssignmentDetails, type TeacherGroupPeerEvalSummaryResponse } from '../util/api';
+import {
+  getAllReviewsForAssignment,
+  getAssignmentDetails,
+  getRubricCriteria,
+  getTeacherGroupPeerEvalOverview,
+  getTeacherGroupPeerEvalSummary,
+  listCourseGroups,
+  peekAssignmentDetails,
+  type CourseGroup,
+  type TeacherGroupPeerEvalOverviewResponse,
+  type TeacherGroupPeerEvalSummaryResponse,
+} from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
 import HeaderTitle from '../components/HeaderTitle';
@@ -63,7 +74,12 @@ export default function TeacherReviewDashboard() {
     const cached = peekAssignmentDetails(Number(id))
     return (cached as any)?.assignment_type ?? null
   });
+  const [groupOverview, setGroupOverview] = useState<TeacherGroupPeerEvalOverviewResponse | null>(null);
   const [groupSummary, setGroupSummary] = useState<TeacherGroupPeerEvalSummaryResponse | null>(null);
+  const [courseGroups, setCourseGroups] = useState<CourseGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [criteriaByRowId, setCriteriaByRowId] = useState<Record<number, { question: string; hasScore: boolean; scoreMax: number }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null);
@@ -89,10 +105,45 @@ export default function TeacherReviewDashboard() {
         const result = await getAllReviewsForAssignment(Number(id));
         setData(result);
 
+        // For individual peer eval, the teacher view is group-centric.
+        if (type === 'peer_eval_individual') {
+          const courseId = Number(details?.course?.id ?? details?.courseID)
+          const rubricCriteria = await getRubricCriteria(Number(id))
+
+          const map: Record<number, { question: string; hasScore: boolean; scoreMax: number }> = {}
+          if (Array.isArray(rubricCriteria)) {
+            for (const c of rubricCriteria) {
+              const rowId = Number((c as any)?.id)
+              if (!Number.isFinite(rowId)) continue
+              map[rowId] = {
+                question: String((c as any)?.question ?? '').trim() || `Criterion ${rowId}`,
+                hasScore: Boolean((c as any)?.hasScore ?? true),
+                scoreMax: Number((c as any)?.scoreMax ?? 0),
+              }
+            }
+          }
+          setCriteriaByRowId(map)
+
+          if (Number.isFinite(courseId)) {
+            const groups = await listCourseGroups(courseId)
+            setCourseGroups(Array.isArray(groups) ? groups : [])
+          } else {
+            setCourseGroups([])
+          }
+        } else {
+          setCourseGroups([])
+          setSelectedGroupId(null)
+          setSelectedStudentId(null)
+          setCriteriaByRowId({})
+        }
+
         if (type === 'peer_eval_group') {
+          const overview = await getTeacherGroupPeerEvalOverview(Number(id));
+          setGroupOverview(overview);
           const summary = await getTeacherGroupPeerEvalSummary(Number(id));
           setGroupSummary(summary);
         } else {
+          setGroupOverview(null);
           setGroupSummary(null);
         }
       } catch (err) {
@@ -121,6 +172,7 @@ export default function TeacherReviewDashboard() {
     const cachedType = (cached as any)?.assignment_type ?? null
     const cachedIsPeerEval = cachedType === 'peer_eval_group' || cachedType === 'peer_eval_individual'
     const cachedName = (cached as any)?.name ?? null
+    const cachedIsIndividual = cachedType === 'peer_eval_individual'
 
     return (
       <div className="teacher-dashboard-container Page">
@@ -146,10 +198,14 @@ export default function TeacherReviewDashboard() {
               label: "Details",
               path: `/assignment/${id}/details`,
             },
-            {
-              label: "Group Submissions",
-              path: `/assignment/${id}/group-submissions`,
-            },
+            ...(cachedIsIndividual
+              ? []
+              : [
+                  {
+                    label: "Group Submissions",
+                    path: `/assignment/${id}/group-submissions`,
+                  },
+                ]),
             ...(cachedIsPeerEval
               ? [
                   {
@@ -187,6 +243,354 @@ export default function TeacherReviewDashboard() {
   }
 
   const { assignment, statistics, reviews } = data;
+  const isPeerEval = assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual'
+  const isIndividualPeerEval = assignmentType === 'peer_eval_individual'
+
+  const selectedGroup = selectedGroupId ? courseGroups.find((g) => g.id === selectedGroupId) ?? null : null
+  const selectedStudent = selectedGroup && selectedStudentId
+    ? selectedGroup.members.find((m) => m.id === selectedStudentId) ?? null
+    : null
+
+  const scoreForReview = (review: ReviewDetail) => {
+    let total = 0
+    for (const c of review.criteria ?? []) {
+      const rowId = Number((c as any)?.criterionRowID)
+      const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
+      const include = meta ? meta.hasScore : true
+      if (!include) continue
+      const grade = Number((c as any)?.grade ?? 0)
+      total += Number.isFinite(grade) ? grade : 0
+    }
+    return total
+  }
+
+  const renderGroupPeerEval = () => {
+    if (!groupSummary) {
+      return (
+        <div className="reviews-section">
+          <h3>Group Scores</h3>
+          <div className="dashboard-no-reviews">
+            <p>No group score data available yet.</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (selectedGroupId) {
+      const selectedGroupName =
+        groupSummary.groups.find((g) => g.group.id === selectedGroupId)?.group.name ??
+        groupOverview?.submissions
+          ?.flatMap((s) => s.evaluations ?? [])
+          .find((ev) => ev.reviewee_group?.id === selectedGroupId)?.reviewee_group?.name ??
+        `Group ${selectedGroupId}`
+
+      const relevant =
+        groupOverview?.submissions
+          ?.flatMap((submission) =>
+            (submission.evaluations ?? [])
+              .filter((ev) => ev.reviewee_group?.id === selectedGroupId)
+              .map((ev) => ({ submission, evaluation: ev }))
+          ) ?? []
+
+      return (
+        <div className="reviews-section">
+          <div className="teacher-breadcrumbRow">
+            <button
+              type="button"
+              className="teacher-breadcrumbLink"
+              onClick={() => setSelectedGroupId(null)}
+            >
+              ← Back to Group Scores
+            </button>
+          </div>
+
+          <h3>{selectedGroupName}</h3>
+          {!groupOverview ? (
+            <div className="dashboard-no-reviews">
+              <p>No submitted rubrics available yet.</p>
+            </div>
+          ) : relevant.length === 0 ? (
+            <div className="dashboard-no-reviews">
+              <p>No submitted rubrics found for this group yet.</p>
+            </div>
+          ) : (
+            <div className="dashboard-reviews-list">
+              {relevant.map(({ submission, evaluation }) => {
+                const total = (evaluation.criteria ?? []).reduce((sum, c) => {
+                  if (!c.hasScore) return sum
+                  const grade = Number(c.grade ?? 0)
+                  return sum + (Number.isFinite(grade) ? grade : 0)
+                }, 0)
+
+                return (
+                  <div
+                    key={`${submission.id}-${evaluation.reviewee_group.id}`}
+                    className="dashboard-review-item completed"
+                    style={{ cursor: 'default' }}
+                  >
+                    <div className="review-summary" style={{ cursor: 'default' }}>
+                      <div className="review-participants" style={{ width: '100%' }}>
+                        <div className="participant reviewer" style={{ width: '100%' }}>
+                          <span className="label">From:</span>
+                          <span className="name">{submission.reviewer_group?.name ?? 'Group'}</span>
+                          {submission.submitted_by?.name ? (
+                            <span className="email">(submitted by {submission.submitted_by.name})</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="dashboard-review-status">
+                        <span className="criteria-count">Total: {total}</span>
+                      </div>
+                    </div>
+
+                    <div className="review-details" style={{ display: 'block' }}>
+                      <div className="dashboard-criteria-list">
+                        {(evaluation.criteria ?? []).map((c) => {
+                          const grade = Number(c.grade ?? 0)
+                          const max = c.scoreMax == null ? null : Number(c.scoreMax)
+                          const comments = String(c.comments ?? '')
+                          const question = String(c.question ?? '').trim() || `Criterion ${c.criterionRowID}`
+
+                          return (
+                            <div key={String(c.criterionRowID)} className="criterion-detail">
+                              <div className="criterion-header">
+                                <span className="criterion-label">{question}</span>
+                                {c.hasScore ? (
+                                  <span className="grade-badge">
+                                    Grade: {Number.isFinite(grade) ? grade : 0}{max ? `/${max}` : ''}
+                                  </span>
+                                ) : (
+                                  <span className="grade-badge">Comments</span>
+                                )}
+                              </div>
+                              {comments ? (
+                                <div className="dashboard-criterion-comments">
+                                  <strong>Comments:</strong>
+                                  <p>{comments}</p>
+                                </div>
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div className="reviews-section">
+        <h3>Group Scores</h3>
+
+        {groupSummary.groups.length === 0 ? (
+          <div className="dashboard-no-reviews">
+            <p>No included groups for this assignment.</p>
+          </div>
+        ) : (
+          <div className="dashboard-reviews-list">
+            <div className="dashboard-review-item completed" style={{ cursor: 'default' }}>
+              <div className="review-summary" style={{ cursor: 'default' }}>
+                <div className="review-participants" style={{ width: '100%' }}>
+                  <div className="participant reviewer" style={{ width: '100%' }}>
+                    <span className="label">Max per review:</span>
+                    <span className="name">{groupSummary.max_per_review}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="review-details" style={{ display: 'block' }}>
+                <div className="dashboard-criteria-list">
+                  {groupSummary.groups.map((g) => (
+                    <div key={g.group.id} className="criterion-detail">
+                      <div className="criterion-header">
+                        <button
+                          type="button"
+                          className="teacher-groupScoreLink"
+                          onClick={() => setSelectedGroupId(g.group.id)}
+                        >
+                          {g.group.name}
+                        </button>
+                        <span className="grade-badge">
+                          Total received: {g.total_received}
+                          {g.max_possible ? `/${g.max_possible}` : ''}
+                          {` (${g.reviews_received} review${g.reviews_received === 1 ? '' : 's'})`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderIndividualPeerEval = () => {
+    if (!selectedGroup) {
+      return (
+        <div className="reviews-section">
+          <h3>Groups</h3>
+          {courseGroups.length === 0 ? (
+            <div className="dashboard-no-reviews">
+              <p>No groups found for this class.</p>
+            </div>
+          ) : (
+            <div className="teacher-groups-grid">
+              {courseGroups.map((g) => (
+                <button
+                  key={g.id}
+                  className="teacher-group-card"
+                  type="button"
+                  onClick={() => {
+                    setSelectedGroupId(g.id)
+                    setSelectedStudentId(null)
+                  }}
+                >
+                  <div className="teacher-group-cardTitle">{g.name}</div>
+                  <div className="teacher-group-cardMeta">{g.members.length} member{g.members.length === 1 ? '' : 's'}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (!selectedStudent) {
+      const memberIds = new Set(selectedGroup.members.map((m) => m.id))
+      const totals: Record<number, number> = {}
+      for (const m of selectedGroup.members) totals[m.id] = 0
+
+      for (const r of reviews) {
+        if (!r.completed) continue
+        if (!memberIds.has(r.reviewer.id)) continue
+        if (!memberIds.has(r.reviewee.id)) continue
+        totals[r.reviewee.id] = (totals[r.reviewee.id] ?? 0) + scoreForReview(r)
+      }
+
+      return (
+        <div className="reviews-section">
+          <div className="teacher-breadcrumbRow">
+            <button
+              type="button"
+              className="teacher-breadcrumbLink"
+              onClick={() => {
+                setSelectedGroupId(null)
+                setSelectedStudentId(null)
+              }}
+            >
+              ← Back to Groups
+            </button>
+          </div>
+
+          <h3>{selectedGroup.name}</h3>
+          <div className="teacher-memberTotals">
+            {selectedGroup.members.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="teacher-memberRow"
+                onClick={() => setSelectedStudentId(m.id)}
+              >
+                <span className="teacher-memberName">{m.name}</span>
+                <span className="teacher-memberScore">{totals[m.id] ?? 0}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    const memberIds = new Set(selectedGroup.members.map((m) => m.id))
+    const received = reviews
+      .filter((r) => r.completed && r.reviewee.id === selectedStudent.id && memberIds.has(r.reviewer.id))
+      .map((r) => ({
+        review: r,
+        total: scoreForReview(r),
+      }))
+
+    return (
+      <div className="reviews-section">
+        <div className="teacher-breadcrumbRow">
+          <button
+            type="button"
+            className="teacher-breadcrumbLink"
+            onClick={() => setSelectedStudentId(null)}
+          >
+            ← Back to {selectedGroup.name}
+          </button>
+        </div>
+
+        <h3>{selectedStudent.name}</h3>
+        {received.length === 0 ? (
+          <div className="dashboard-no-reviews">
+            <p>No completed peer reviews received yet.</p>
+          </div>
+        ) : (
+          <div className="dashboard-reviews-list">
+            {received.map(({ review, total }) => (
+              <div key={review.id} className="dashboard-review-item completed" style={{ cursor: 'default' }}>
+                <div className="review-summary" style={{ cursor: 'default' }}>
+                  <div className="review-participants" style={{ width: '100%' }}>
+                    <div className="participant reviewer" style={{ width: '100%' }}>
+                      <span className="label">From:</span>
+                      <span className="name">{review.reviewer.name}</span>
+                      <span className="email">({review.reviewer.email})</span>
+                    </div>
+                  </div>
+                  <div className="dashboard-review-status">
+                    <span className="criteria-count">Total: {total}</span>
+                  </div>
+                </div>
+
+                <div className="review-details" style={{ display: 'block' }}>
+                  <div className="dashboard-criteria-list">
+                    {review.criteria.map((c) => {
+                      const rowId = Number((c as any)?.criterionRowID)
+                      const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
+                      const question = meta?.question ?? `Criterion ${rowId}`
+                      const hasScore = meta?.hasScore ?? true
+                      const max = meta?.scoreMax
+                      const grade = Number((c as any)?.grade ?? 0)
+                      const comments = String((c as any)?.comments ?? '')
+
+                      return (
+                        <div key={String((c as any)?.id ?? rowId)} className="criterion-detail">
+                          <div className="criterion-header">
+                            <span className="criterion-label">{question}</span>
+                            {hasScore ? (
+                              <span className="grade-badge">
+                                Grade: {Number.isFinite(grade) ? grade : 0}{max ? `/${max}` : ''}
+                              </span>
+                            ) : (
+                              <span className="grade-badge">Comments</span>
+                            )}
+                          </div>
+                          {comments ? (
+                            <div className="dashboard-criterion-comments">
+                              <strong>Comments:</strong>
+                              <p>{comments}</p>
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="teacher-dashboard-container Page">
@@ -199,7 +603,7 @@ export default function TeacherReviewDashboard() {
 
       <TabNavigation
         tabs={[
-          ...(assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual'
+          ...(isPeerEval
             ? [
                 {
                   label: 'Rubric',
@@ -211,11 +615,15 @@ export default function TeacherReviewDashboard() {
             label: "Details",
             path: `/assignment/${id}/details`,
           },
-          {
-            label: "Group Submissions",
-            path: `/assignment/${id}/group-submissions`,
-          },
-          ...((assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual')
+          ...(isIndividualPeerEval
+            ? []
+            : [
+                {
+                  label: "Group Submissions",
+                  path: `/assignment/${id}/group-submissions`,
+                },
+              ]),
+          ...(isPeerEval
             ? [
                 {
                   label: "Peer Reviews",
@@ -243,75 +651,39 @@ export default function TeacherReviewDashboard() {
           </div>
         </div>
 
-      <div className="statistics-section">
-        <h3>Overview</h3>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-label">Total Reviews</span>
-            <span className="stat-value">{statistics.total_reviews}</span>
-          </div>
-          <div className="stat-card completed">
-            <span className="stat-label">Completed</span>
-            <span className="stat-value">{statistics.completed_reviews}</span>
-          </div>
-          <div className="stat-card incomplete">
-            <span className="stat-label">Incomplete</span>
-            <span className="stat-value">{statistics.incomplete_reviews}</span>
-          </div>
-          <div className="stat-card rate">
-            <span className="stat-label">Completion Rate</span>
-            <span className="stat-value">{statistics.completion_rate}%</span>
-          </div>
-        </div>
-      </div>
-
-      {assignmentType === 'peer_eval_group' ? (
-        <div className="reviews-section">
-          <h3>Group Scores</h3>
-
-          {!groupSummary ? (
-            <div className="dashboard-no-reviews">
-              <p>No group score data available yet.</p>
+      {assignmentType !== 'peer_eval_group' ? (
+        <div className="statistics-section">
+          <h3>Overview</h3>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-label">Total Reviews</span>
+              <span className="stat-value">{statistics.total_reviews}</span>
             </div>
-          ) : groupSummary.groups.length === 0 ? (
-            <div className="dashboard-no-reviews">
-              <p>No included groups for this assignment.</p>
+            <div className="stat-card completed">
+              <span className="stat-label">Completed</span>
+              <span className="stat-value">{statistics.completed_reviews}</span>
             </div>
-          ) : (
-            <div className="dashboard-reviews-list">
-              <div className="dashboard-review-item completed" style={{ cursor: 'default' }}>
-                <div className="review-summary" style={{ cursor: 'default' }}>
-                  <div className="review-participants" style={{ width: '100%' }}>
-                    <div className="participant reviewer" style={{ width: '100%' }}>
-                      <span className="label">Max per review:</span>
-                      <span className="name">{groupSummary.max_per_review}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="review-details" style={{ display: 'block' }}>
-                  <div className="dashboard-criteria-list">
-                    {groupSummary.groups.map((g) => (
-                      <div key={g.group.id} className="criterion-detail">
-                        <div className="criterion-header">
-                          <span className="criterion-label">{g.group.name}</span>
-                          <span className="grade-badge">
-                            Total received: {g.total_received}
-                            {g.max_possible ? `/${g.max_possible}` : ''}
-                            {` (${g.reviews_received} review${g.reviews_received === 1 ? '' : 's'})`}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="stat-card incomplete">
+              <span className="stat-label">Incomplete</span>
+              <span className="stat-value">{statistics.incomplete_reviews}</span>
             </div>
-          )}
+            <div className="stat-card rate">
+              <span className="stat-label">Completion Rate</span>
+              <span className="stat-value">{statistics.completion_rate}%</span>
+            </div>
+          </div>
         </div>
       ) : null}
 
-      {assignmentType !== 'peer_eval_group' ? (
+      {assignmentType === 'peer_eval_group' ? (
+        renderGroupPeerEval()
+      ) : null}
+
+      {assignmentType === 'peer_eval_individual' ? (
+        renderIndividualPeerEval()
+      ) : null}
+
+      {assignmentType !== 'peer_eval_group' && assignmentType !== 'peer_eval_individual' ? (
         <div className="reviews-section">
           <h3>All Reviews ({reviews.length})</h3>
           {reviews.length === 0 ? (

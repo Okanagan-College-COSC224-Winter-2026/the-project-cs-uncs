@@ -52,10 +52,11 @@ export default function GroupSubmissions() {
   const tabs = useMemo(() => {
     const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && isTeacherOrAdmin;
     const showTeacherPeerReviewsTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && isTeacherOrAdmin;
+    const showGroupSubmissionsTab = assignmentType !== "peer_eval_individual";
     const tabsForTeacher = [
       ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
-      { label: "Group Submissions", path: `/assignment/${id}/group-submissions` },
+      ...(showGroupSubmissionsTab ? [{ label: "Group Submissions", path: `/assignment/${id}/group-submissions` }] : []),
       ...(showTeacherPeerReviewsTab ? [{ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` }] : []),
     ];
 
@@ -160,6 +161,10 @@ export default function GroupSubmissions() {
 
   if (!isTeacherOrAdmin) {
     return <Navigate to={`/assignment/${id}`} replace />;
+  }
+
+  if (assignmentType === "peer_eval_individual") {
+    return <Navigate to={`/assignment/${id}/teacher-reviews`} replace />;
   }
 
   const submittedCountForGroup = (group: CourseGroup) => {

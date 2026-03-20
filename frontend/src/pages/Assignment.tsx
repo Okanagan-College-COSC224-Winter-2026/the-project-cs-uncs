@@ -28,6 +28,8 @@ export default function Assignment() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const MAX_CRITERION_POINTS = 10;
+
   const [editMode, setEditMode] = useState(false);
   const [criteria, setCriteria] = useState<Array<{ id: number; rubricID: number; question: string; scoreMax: number; hasScore: boolean }>>([]);
   const [rubricId, setRubricId] = useState<number | null>(null);
@@ -125,7 +127,7 @@ export default function Assignment() {
     const normalized = draftCriteria.map((c) => ({
       ...c,
       question: c.question.trim(),
-      scoreMax: c.hasScore ? Math.max(0, c.scoreMax || 0) : 0,
+      scoreMax: c.hasScore ? Math.min(MAX_CRITERION_POINTS, Math.max(0, c.scoreMax || 0)) : 0,
     }));
 
     if (normalized.length === 0 || normalized.some((c) => !c.question)) {
@@ -156,7 +158,7 @@ export default function Assignment() {
         .map((c) => {
           const prev = originalById.get(c.id as number);
           if (!prev) return null;
-          const nextScoreMax = c.hasScore ? c.scoreMax : 0;
+          const nextScoreMax = c.hasScore ? Math.min(MAX_CRITERION_POINTS, Math.max(0, c.scoreMax || 0)) : 0;
           const changed =
             prev.question !== c.question ||
             prev.hasScore !== c.hasScore ||
@@ -195,6 +197,7 @@ export default function Assignment() {
       return typeof record.assignment_type === "string" ? record.assignment_type : null
     })()
     const cachedIsPeerEval = cachedType === "peer_eval_group" || cachedType === "peer_eval_individual"
+    const cachedIsIndividualPeerEval = cachedType === "peer_eval_individual"
 
     const loadingTabs = [] as { label: string; path: string }[];
     if (isTeacherOrAdmin) {
@@ -202,7 +205,9 @@ export default function Assignment() {
         loadingTabs.push({ label: "Rubric", path: `/assignment/${id}` });
       }
       loadingTabs.push({ label: "Details", path: `/assignment/${id}/details` });
-      loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+      if (!cachedIsIndividualPeerEval) {
+        loadingTabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+      }
       if (cachedIsPeerEval) {
         loadingTabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
       }
@@ -232,6 +237,7 @@ export default function Assignment() {
   }
 
   const isPeerEval = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
+  const isIndividualPeerEval = assignmentType === "peer_eval_individual";
   const tabs = [] as { label: string; path: string }[];
 
   if (isTeacherOrAdmin && isPeerEval) {
@@ -241,7 +247,9 @@ export default function Assignment() {
   tabs.push({ label: "Details", path: `/assignment/${id}/details` });
 
   if (isTeacherOrAdmin) {
-    tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    if (!isIndividualPeerEval) {
+      tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+    }
     if (isPeerEval) {
       tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
     }

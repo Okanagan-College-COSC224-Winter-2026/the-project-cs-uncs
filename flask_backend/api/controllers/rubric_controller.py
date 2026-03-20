@@ -136,6 +136,9 @@ def create_criteria():
     if score_max < 0:
         return jsonify({"msg": "scoreMax must be 0 or greater"}), 400
 
+    if score_max > 10:
+        return jsonify({"msg": "scoreMax must be 10 or less"}), 400
+
     if not has_score:
         score_max = 0
 
@@ -204,6 +207,8 @@ def update_criteria(criteria_id):
             return jsonify({"msg": "Invalid scoreMax"}), 400
         if next_score_max < 0:
             return jsonify({"msg": "scoreMax must be 0 or greater"}), 400
+        if next_score_max > 10:
+            return jsonify({"msg": "scoreMax must be 10 or less"}), 400
         criterion.scoreMax = next_score_max
 
     if not criterion.hasScore:

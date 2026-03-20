@@ -8,6 +8,7 @@ interface props {
     hasScores: Array<boolean>;
     onCriterionSelect: (row: number, column: number) => void;
     grades: number[];
+    readOnly?: boolean;
 }
 
 export default function Criteria(props: props) {
@@ -23,11 +24,11 @@ export default function Criteria(props: props) {
                         onCriterionSelect={props.onCriterionSelect}
                         questionIndex={i}
                         grade={props.grades[i]}
+                        readOnly={props.readOnly}
                     />
                 ))}
             </table>
-            {props.canComment && 
-            <textarea className="criteriaText" />}
+            {props.canComment && !props.readOnly ? <textarea className="criteriaText" /> : null}
         </div>
     )
 }

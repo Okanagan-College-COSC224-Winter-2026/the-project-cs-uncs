@@ -2,9 +2,29 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from ..models import Assignment, Course, CriteriaDescription, Rubric, User
+from ..models.db import db
 from .auth_controller import jwt_teacher_required
 
 bp = Blueprint("rubric", __name__)
+
+
+@bp.route("/get_rubric/<int:assignment_id>", methods=["GET"])
+@jwt_required()
+def get_rubric_for_assignment(assignment_id):
+    """Return rubric metadata for an assignment.
+
+    Used by the frontend rubric editor to determine the rubric_id even when
+    there are zero criteria.
+    """
+    assignment = Assignment.query.get(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+    if not rubric:
+        return jsonify({"rubric": None}), 200
+
+    return jsonify({"rubric": {"id": rubric.id, "assignmentID": rubric.assignmentID, "canComment": rubric.canComment}}), 200
 
 @bp.route("/create_rubric", methods=["POST"])
 @jwt_teacher_required
@@ -79,8 +99,9 @@ def create_criteria():
     data = request.get_json()
     rubric_id = data.get("rubricID")
     question = data.get("question")
-    score_max = data.get("scoreMax")
-    has_score = data.get("hasScore", True)
+    # UI requirement: rubric criteria are always out of 5 marks.
+    score_max = 5
+    has_score = True
     
     if not rubric_id:
         return jsonify({"msg": "Rubric ID is required"}), 400
@@ -104,9 +125,12 @@ def create_criteria():
     if course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
+    if not question or not str(question).strip():
+        return jsonify({"msg": "Question is required"}), 400
+
     new_criterion = CriteriaDescription(
         rubricID=rubric_id, 
-        question=question, 
+        question=str(question).strip(),
         scoreMax=score_max, 
         hasScore=has_score
     )
@@ -117,5 +141,38 @@ def create_criteria():
         # checked model: create_criteria_description(cls, criteria_description)
         CriteriaDescription.create_criteria_description(new_criterion)
         return jsonify({"message": "Criteria created", "id": new_criterion.id}), 201
+    except Exception as e:
+        return jsonify({"msg": str(e)}), 500
+
+
+@bp.route("/delete_criteria/<int:criteria_id>", methods=["DELETE"])
+@jwt_teacher_required
+def delete_criteria(criteria_id):
+    """Delete a single criteria description from a rubric."""
+    criterion = CriteriaDescription.query.get(criteria_id)
+    if not criterion:
+        return jsonify({"msg": "Criteria not found"}), 404
+
+    rubric = Rubric.query.get(criterion.rubricID)
+    if not rubric:
+        return jsonify({"msg": "Rubric not found"}), 404
+
+    assignment = Assignment.query.get(rubric.assignmentID)
+    if not assignment:
+        return jsonify({"msg": "Assignment associated with rubric not found"}), 404
+
+    course = Course.query.get(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course associated with assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    try:
+        db.session.delete(criterion)
+        db.session.commit()
+        return jsonify({"message": "Criteria deleted"}), 200
     except Exception as e:
         return jsonify({"msg": str(e)}), 500

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAssignedReviews, getReviewStatus } from '../util/api';
+import { getAssignedReviews, getReviewStatus, getAssignmentDetails } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
 import './PeerReviews.css';
@@ -42,6 +42,7 @@ export default function PeerReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [status, setStatus] = useState<ReviewStatus | null>(null);
   const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,10 @@ export default function PeerReviews() {
         const reviewData = await getAssignedReviews(Number(id));
         setReviews(reviewData.reviews);
         setAssignment(reviewData.assignment);
+
+        // Fetch assignment type for tab rendering
+        const details = await getAssignmentDetails(Number(id));
+        setAssignmentType(details?.assignment_type ?? null);
 
         // Fetch status
         const statusData = await getReviewStatus(Number(id));
@@ -113,10 +118,14 @@ export default function PeerReviews() {
 
       <TabNavigation
         tabs={[
-          {
-            label: "Home",
-            path: `/assignment/${id}`,
-          },
+          ...(assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual"
+            ? [
+                {
+                  label: "Rubric",
+                  path: `/assignment/${id}`,
+                },
+              ]
+            : []),
           {
             label: "Details",
             path: `/assignment/${id}/details`,

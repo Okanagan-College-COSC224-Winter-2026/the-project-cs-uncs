@@ -25,6 +25,9 @@ class Assignment(db.Model):
     # NEW: due date field (acceptance criteria: edit/delete allowed before due date)
     due_date = db.Column(db.DateTime, nullable=True, index=True)
 
+    # Assignment type determines peer-eval workflows.
+    assignment_type = db.Column(db.String(50), nullable=False, default="standard", index=True)
+
     # relationships
     course = db.relationship("Course", back_populates="assignments", lazy="joined")
     rubrics = db.relationship(
@@ -46,6 +49,7 @@ class Assignment(db.Model):
         description=None,
         attachment_original_name=None,
         attachment_storage_name=None,
+        assignment_type="standard",
     ):
         self.courseID = courseID
         self.name = name
@@ -54,6 +58,7 @@ class Assignment(db.Model):
         self.description = description
         self.attachment_original_name = attachment_original_name
         self.attachment_storage_name = attachment_storage_name
+        self.assignment_type = assignment_type
 
     def __repr__(self):
         return f"<Assignment id={self.id} name={self.name}>"

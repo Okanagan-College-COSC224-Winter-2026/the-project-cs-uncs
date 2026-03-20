@@ -24,6 +24,7 @@ type AssignmentDetails = {
   name?: string | null;
   courseID?: number;
   course?: { id: number };
+  assignment_type?: string | null;
 };
 
 export default function GroupSubmissions() {
@@ -31,6 +32,7 @@ export default function GroupSubmissions() {
 
   const [assignmentName, setAssignmentName] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<number | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(null);
 
   const [groups, setGroups] = useState<CourseGroup[]>([]);
   const [submissionsByStudentId, setSubmissionsByStudentId] = useState<Record<number, Submission>>({});
@@ -42,22 +44,23 @@ export default function GroupSubmissions() {
   const isTeacherOrAdmin = hasRole("teacher", "admin");
 
   const tabs = useMemo(() => {
+    const showRubricTab = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
     const tabsForTeacher = [
-      { label: "Home", path: `/assignment/${id}` },
+      ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
       { label: "Group Submissions", path: `/assignment/${id}/group-submissions` },
       { label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` },
     ];
 
     const tabsForStudent = [
-      { label: "Home", path: `/assignment/${id}` },
+      ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
       { label: "Peer Review", path: `/assignment/${id}/reviews` },
       { label: "My Feedback", path: `/assignment/${id}/feedback` },
     ];
 
     return isTeacherOrAdmin ? tabsForTeacher : tabsForStudent;
-  }, [id, isTeacherOrAdmin]);
+  }, [assignmentType, id, isTeacherOrAdmin]);
 
   if (!isTeacherOrAdmin) {
     return <Navigate to={`/assignment/${id}`} replace />;
@@ -77,6 +80,7 @@ export default function GroupSubmissions() {
         if (cancelled) return;
 
         setAssignmentName(details?.name ?? null);
+        setAssignmentType(details?.assignment_type ?? null);
 
         const resolvedCourseId = Number(details?.course?.id ?? details?.courseID);
         setCourseId(Number.isFinite(resolvedCourseId) ? resolvedCourseId : null);

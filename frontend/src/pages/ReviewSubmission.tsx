@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   getReviewDetails,
   getReviewSubmission,
+  getAssignmentDetails,
   submitReviewFeedback,
   getCriteria
 } from '../util/api';
@@ -51,6 +52,7 @@ export default function ReviewSubmission() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,6 +82,13 @@ export default function ReviewSubmission() {
         const assignmentId = reviewData.review.assignment.id;
 
         try {
+          const details = await getAssignmentDetails(Number(assignmentId));
+          setAssignmentType(details?.assignment_type ?? null);
+        } catch {
+          setAssignmentType(null);
+        }
+
+        try {
           const criteriaData = await getCriteria(assignmentId);
           if (criteriaData && criteriaData.length > 0) {
             setCriteriaDescriptions(criteriaData);
@@ -89,7 +98,7 @@ export default function ReviewSubmission() {
               const descriptions = reviewData.criteria.map((c: { criterionRowID: number }) => ({
                 id: c.criterionRowID,
                 question: `Criterion ${c.criterionRowID}`,
-                scoreMax: 10,
+                scoreMax: 5,
                 hasScore: true
               }));
               setCriteriaDescriptions(descriptions);
@@ -101,7 +110,7 @@ export default function ReviewSubmission() {
             const descriptions = reviewData.criteria.map((c: { criterionRowID: number }) => ({
               id: c.criterionRowID,
               question: `Criterion ${c.criterionRowID}`,
-              scoreMax: 10,
+              scoreMax: 5,
               hasScore: true
             }));
             setCriteriaDescriptions(descriptions);
@@ -230,10 +239,14 @@ export default function ReviewSubmission() {
 
       <TabNavigation
         tabs={[
-          {
-            label: "Home",
-            path: `/assignment/${assignmentId}`,
-          },
+          ...(assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual'
+            ? [
+                {
+                  label: 'Rubric',
+                  path: `/assignment/${assignmentId}`,
+                },
+              ]
+            : []),
           {
             label: "Details",
             path: `/assignment/${assignmentId}/details`,

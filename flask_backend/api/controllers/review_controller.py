@@ -10,6 +10,8 @@ from ..models import (
     Criterion,
     CriterionSchema,
     CriteriaDescription,
+    Group,
+    GroupMember,
     Review,
     ReviewSchema,
     Rubric,
@@ -169,8 +171,26 @@ def submit_review_feedback(review_id):
     if review.reviewerID != user.id:
         return jsonify({"msg": "You are not authorized to submit this review"}), 403
 
-    # Check if review period is still open
+    # For individual peer evaluation assignments, enforce current-team eligibility.
     assignment = review.assignment
+    if assignment and assignment.assignment_type == "peer_eval_individual":
+        reviewer_group = (
+            Group.query.join(GroupMember, GroupMember.group_id == Group.id)
+            .filter(Group.course_id == assignment.courseID, GroupMember.user_id == user.id)
+            .first()
+        )
+        reviewee_group = (
+            Group.query.join(GroupMember, GroupMember.group_id == Group.id)
+            .filter(
+                Group.course_id == assignment.courseID,
+                GroupMember.user_id == review.revieweeID,
+            )
+            .first()
+        )
+        if not reviewer_group or not reviewee_group or reviewer_group.id != reviewee_group.id:
+            return jsonify({"msg": "You are not eligible to submit this review"}), 403
+
+    # Check if review period is still open
     if assignment.due_date and not assignment.can_modify():
         return jsonify({
             "msg": "The review period has ended. Submissions are no longer accepted.",

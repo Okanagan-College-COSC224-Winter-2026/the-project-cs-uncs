@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getAllReviewsForAssignment } from '../util/api';
+import { getAllReviewsForAssignment, getAssignmentDetails } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
 import './TeacherReviewDashboard.css';
@@ -57,6 +57,7 @@ interface DashboardData {
 export default function TeacherReviewDashboard() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null);
@@ -71,6 +72,9 @@ export default function TeacherReviewDashboard() {
 
         const result = await getAllReviewsForAssignment(Number(id));
         setData(result);
+
+        const details = await getAssignmentDetails(Number(id));
+        setAssignmentType(details?.assignment_type ?? null);
       } catch (err) {
         console.error('Error fetching review data:', err);
         setError((err as Error).message || 'Failed to load review data. Please try again.');
@@ -130,10 +134,14 @@ export default function TeacherReviewDashboard() {
 
       <TabNavigation
         tabs={[
-          {
-            label: "Home",
-            path: `/assignment/${id}`,
-          },
+          ...(assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual'
+            ? [
+                {
+                  label: 'Rubric',
+                  path: `/assignment/${id}`,
+                },
+              ]
+            : []),
           {
             label: "Details",
             path: `/assignment/${id}/details`,

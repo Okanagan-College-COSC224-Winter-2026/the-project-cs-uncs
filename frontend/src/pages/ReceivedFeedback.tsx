@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getReceivedFeedback } from '../util/api';
+import { getAssignmentDetails, getReceivedFeedback } from '../util/api';
 import { hasRole } from '../util/login';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
@@ -30,6 +30,7 @@ export default function ReceivedFeedback() {
   const { id: assignmentId } = useParams<{ id: string }>();
 
   const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<ReviewFeedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +45,9 @@ export default function ReceivedFeedback() {
         const data = await getReceivedFeedback(Number(assignmentId));
         setAssignment(data.assignment);
         setFeedback(data.feedback);
+
+        const details = await getAssignmentDetails(Number(assignmentId));
+        setAssignmentType(details?.assignment_type ?? null);
       } catch (err) {
         setError((err as Error).message || 'Failed to load feedback. Please try again.');
       } finally {
@@ -56,10 +60,12 @@ export default function ReceivedFeedback() {
 
   const isTeacherOrAdmin = hasRole('teacher', 'admin');
 
-  const tabs = [
-    { label: 'Home', path: `/assignment/${assignmentId}` },
-    { label: 'Details', path: `/assignment/${assignmentId}/details` },
-  ];
+  const tabs: { label: string; path: string }[] = [];
+  const showRubricTab = assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual';
+  if (showRubricTab) {
+    tabs.push({ label: 'Rubric', path: `/assignment/${assignmentId}` });
+  }
+  tabs.push({ label: 'Details', path: `/assignment/${assignmentId}/details` });
 
   if (isTeacherOrAdmin) {
     tabs.push({ label: 'Group Submissions', path: `/assignment/${assignmentId}/group-submissions` });

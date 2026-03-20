@@ -2,14 +2,121 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+import json
+
 from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
-from ..models import Course, Assignment, Submission, User, User_Course, AssignmentSchema, Group, GroupMember, db
+from ..models import (
+    Assignment,
+    AssignmentIncludedGroup,
+    AssignmentSchema,
+    Course,
+    CriteriaDescription,
+    Group,
+    GroupMember,
+    Rubric,
+    Submission,
+    User,
+    User_Course,
+    db,
+)
 from .auth_controller import jwt_teacher_required, jwt_role_required
 
 bp = Blueprint("assignment", __name__, url_prefix="/assignment")
+
+
+_ASSIGNMENT_TYPES = {"standard", "peer_eval_group", "peer_eval_individual"}
+
+
+def _default_rubric_template(assignment_type: str):
+    if assignment_type == "peer_eval_individual":
+        return [
+            ("Contributed meaningfully to the team's work", 5, True),
+            ("Communicated clearly and respectfully", 5, True),
+            ("Was reliable and met commitments", 5, True),
+            ("Produced high-quality work", 5, True),
+            ("Helped the team succeed (supportive/collaborative)", 5, True),
+        ]
+
+    if assignment_type == "peer_eval_group":
+        return [
+            ("Deliverable was clear and easy to follow", 5, True),
+            ("Work was complete and met requirements", 5, True),
+            ("Evidence of strong teamwork/coordination", 5, True),
+            ("Overall effectiveness/quality", 5, True),
+            ("Actionable suggestions for improvement", 0, False),
+        ]
+
+    return []
+
+
+def _normalize_rubric_criteria_payload(rubric_criteria):
+    """Normalize rubric criteria payload from request.
+
+    Expected format: list of {question: str, scoreMax?: int, hasScore?: bool}
+    """
+    if rubric_criteria is None:
+        return None
+
+    if not isinstance(rubric_criteria, list) or not rubric_criteria:
+        raise ValueError("rubric_criteria must be a non-empty list")
+
+    normalized = []
+    for row in rubric_criteria:
+        if not isinstance(row, dict):
+            raise ValueError("rubric_criteria rows must be objects")
+        question = row.get("question")
+        if not isinstance(question, str) or not question.strip():
+            raise ValueError("Each criterion must have a question")
+
+        has_score = row.get("hasScore")
+        if has_score is None:
+            has_score = True
+        if not isinstance(has_score, bool):
+            raise ValueError("hasScore must be boolean")
+
+        score_max = row.get("scoreMax")
+        if score_max is None:
+            score_max = 0 if not has_score else 5
+        try:
+            score_max_int = int(score_max)
+        except (TypeError, ValueError):
+            raise ValueError("scoreMax must be an integer")
+        if score_max_int < 0:
+            raise ValueError("scoreMax must be >= 0")
+
+        if not has_score:
+            score_max_int = 0
+
+        normalized.append((question.strip(), score_max_int, has_score))
+
+    return normalized
+
+
+def _ensure_default_rubric_for_assignment(assignment: Assignment, *, template_override=None):
+    if assignment.assignment_type not in {"peer_eval_group", "peer_eval_individual"}:
+        return
+
+    # Create or replace rubric for this assignment.
+    existing_rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
+    if existing_rubric:
+        existing_rubric.delete()
+
+    rubric = Rubric(assignmentID=assignment.id, canComment=True)
+    Rubric.create_rubric(rubric)
+
+    template = template_override if template_override is not None else _default_rubric_template(assignment.assignment_type)
+    for question, score_max, has_score in template:
+        CriteriaDescription.create_criteria_description(
+            CriteriaDescription(
+                rubricID=rubric.id,
+                question=question,
+                scoreMax=score_max,
+                hasScore=has_score,
+            )
+        )
 
 
 def _parse_due_date_input(due_date_value, *, tz_offset_minutes: int | None = None, now_utc=None):
@@ -104,6 +211,9 @@ def create_assignment():
         description = data.get("description")
         rubric_text = data.get("rubric")
         due_date = data.get("due_date")
+        assignment_type = data.get("assignment_type") or "standard"
+        included_group_ids = data.get("included_group_ids")
+        rubric_criteria = data.get("rubric_criteria")
         uploaded_file = None
     else:
         course_id = request.form.get("courseID")
@@ -111,6 +221,21 @@ def create_assignment():
         description = request.form.get("description")
         rubric_text = request.form.get("rubric")
         due_date = request.form.get("due_date")
+        assignment_type = request.form.get("assignment_type") or "standard"
+        included_group_ids_raw = request.form.get("included_group_ids")
+        included_group_ids = None
+        if included_group_ids_raw:
+            try:
+                included_group_ids = json.loads(included_group_ids_raw)
+            except json.JSONDecodeError:
+                included_group_ids = None
+        rubric_criteria_raw = request.form.get("rubric_criteria")
+        rubric_criteria = None
+        if rubric_criteria_raw:
+            try:
+                rubric_criteria = json.loads(rubric_criteria_raw)
+            except json.JSONDecodeError:
+                rubric_criteria = None
         uploaded_file = request.files.get("file")
 
     attachment_original_name = None
@@ -147,6 +272,9 @@ def create_assignment():
     if not assignment_name:
         return jsonify({"msg": "Assignment name is required"}), 400
 
+    if assignment_type not in _ASSIGNMENT_TYPES:
+        return jsonify({"msg": "Invalid assignment type"}), 400
+
     email = get_jwt_identity()
     user = User.get_by_email(email)
     if not user:
@@ -158,6 +286,28 @@ def create_assignment():
     if course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
+    included_groups = []
+    if assignment_type == "peer_eval_group":
+        if not isinstance(included_group_ids, list) or not included_group_ids:
+            return jsonify({"msg": "included_group_ids is required for group peer evaluation"}), 400
+
+        if len(included_group_ids) < 2:
+            return jsonify({"msg": "At least two groups must be included"}), 400
+
+        included_groups = Group.query.filter(
+            Group.id.in_([int(gid) for gid in included_group_ids]),
+            Group.course_id == int(course_id),
+        ).all()
+        if len(included_groups) != len({int(gid) for gid in included_group_ids}):
+            return jsonify({"msg": "One or more included groups are invalid"}), 400
+
+    rubric_template_override = None
+    if assignment_type in {"peer_eval_group", "peer_eval_individual"}:
+        try:
+            rubric_template_override = _normalize_rubric_criteria_payload(rubric_criteria)
+        except ValueError as e:
+            return jsonify({"msg": str(e)}), 400
+
     new_assignment = Assignment(
         courseID=course_id,
         name=assignment_name,
@@ -166,8 +316,17 @@ def create_assignment():
         description=description,
         attachment_original_name=attachment_original_name,
         attachment_storage_name=attachment_storage_name,
+        assignment_type=assignment_type,
     )
     Assignment.create(new_assignment)
+
+    if assignment_type == "peer_eval_group":
+        for g in included_groups:
+            db.session.add(AssignmentIncludedGroup(assignment_id=new_assignment.id, group_id=g.id))
+        db.session.commit()
+
+    _ensure_default_rubric_for_assignment(new_assignment, template_override=rubric_template_override)
+
     return (
         jsonify(
             {

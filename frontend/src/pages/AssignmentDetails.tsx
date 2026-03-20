@@ -22,6 +22,7 @@ interface AssignmentDetailsData {
   description?: string | null;
   attachment_storage_name?: string | null;
   attachment_original_name?: string | null;
+  assignment_type?: string | null;
 }
 
 interface MySubmissionData {
@@ -185,10 +186,16 @@ export default function AssignmentDetails() {
     }
   };
 
-  const tabs = [
-    { label: "Home", path: `/assignment/${id}` },
-    { label: "Details", path: `/assignment/${id}/details` },
-  ];
+  const tabs = [] as { label: string; path: string }[];
+
+  const assignmentType = assignment?.assignment_type ?? null;
+  const showRubricTab = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
+
+  if (showRubricTab) {
+    tabs.push({ label: "Rubric", path: `/assignment/${id}` });
+  }
+
+  tabs.push({ label: "Details", path: `/assignment/${id}/details` });
 
   if (isTeacher() || isAdmin()) {
     tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });

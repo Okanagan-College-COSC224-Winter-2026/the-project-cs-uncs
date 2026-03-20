@@ -5,11 +5,12 @@ import './RubricDisplay.css';
 
 interface RubricDisplayProps {
     rubricId: number | null;
-    onCriterionSelect: (row: number, column: number) => void;
+    onCriterionSelect?: (row: number, column: number) => void;
     grades: number[];
+    readOnly?: boolean;
 }
 
-export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: RubricDisplayProps) {
+export default function RubricDisplay({ rubricId, onCriterionSelect, grades, readOnly }: RubricDisplayProps) {
     const [criteria, setCriteria] = useState<Criterion[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -85,8 +86,9 @@ export default function RubricDisplay({ rubricId, onCriterionSelect, grades }: R
                 scoreMaxes={scoreMaxes}
                 canComment={true}
                 hasScores={hasScores}
-                onCriterionSelect={onCriterionSelect}
+                onCriterionSelect={onCriterionSelect ?? (() => {})}
                 grades={grades}
+                readOnly={readOnly}
             />
         </div>
     );

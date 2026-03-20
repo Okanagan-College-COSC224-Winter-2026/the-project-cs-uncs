@@ -38,6 +38,7 @@ export default function Groups() {
 
     const [groups, setGroups] = useState<Group[]>([]);
     const [courseMembers, setCourseMembers] = useState<Member[]>([]);
+    const [assignmentType, setAssignmentType] = useState<string | null>(null);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
@@ -68,6 +69,7 @@ export default function Groups() {
                     const resolvedCourseId = Number(details?.course?.id ?? details?.courseID);
                     setCourseId(Number.isFinite(resolvedCourseId) ? resolvedCourseId : null);
                     setHeaderTitle(details?.name ?? null);
+                    setAssignmentType(details?.assignment_type ?? null);
                 } else {
                     const resolvedCourseId = Number(id);
                     setCourseId(Number.isFinite(resolvedCourseId) ? resolvedCourseId : null);
@@ -211,8 +213,9 @@ export default function Groups() {
     );
 
     const assignmentTabs = useMemo(() => {
+        const showRubricTab = assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual";
         const tabs = [
-            { label: "Home", path: `/assignment/${id}` },
+            ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
             { label: "Details", path: `/assignment/${id}/details` },
             { label: "Groups", path: `/assignment/${id}/groups` },
         ];
@@ -225,7 +228,7 @@ export default function Groups() {
         }
 
         return tabs;
-    }, [id]);
+    }, [assignmentType, id]);
 
     return (
         <>

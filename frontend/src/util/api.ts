@@ -442,6 +442,20 @@ export const getCriteria = async (assignmentID: number) => {
   return await resp.json()
 }
 
+export const getRubricCriteria = async (assignmentID: number) => {
+  const resp = await fetch(`${BASE_URL}/get_criteria/${assignmentID}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
 export const createCriteria = async (rubricID: number, question: string, scoreMax: number, canComment: boolean, hasScore: boolean = true) => {
   const response = await fetch(`${BASE_URL}/create_criteria`, {
     method: 'POST',
@@ -480,6 +494,36 @@ export const createRubric = async (id: number, assignmentID: number, canComment:
   }
 
   return await response.json();
+}
+
+export const getRubricForAssignment = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/get_rubric/${assignmentId}`, {
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(`Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const deleteCriteriaDescription = async (criteriaId: number) => {
+  const resp = await fetch(`${BASE_URL}/delete_criteria/${criteriaId}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json().catch(() => ({} as any))
 }
 
 // ============================================================
@@ -776,23 +820,35 @@ export type CreateAssignmentRequest = {
   name: string;
   description?: string;
   due_date?: string;
+  assignment_type?: 'standard' | 'peer_eval_group' | 'peer_eval_individual';
+  included_group_ids?: number[];
+  rubric_criteria?: Array<{ question: string; scoreMax?: number; hasScore?: boolean }>;
 };
 
 export function createAssignment(courseID: number, name: string, due_date?: string): Promise<any>;
+export function createAssignment(body: CreateAssignmentRequest): Promise<any>;
 export function createAssignment(formData: FormData): Promise<any>;
-export async function createAssignment(arg1: number | FormData, name?: string, due_date?: string) {
+export async function createAssignment(
+  arg1: number | CreateAssignmentRequest | FormData,
+  name?: string,
+  due_date?: string
+) {
   const isMultipart = arg1 instanceof FormData;
   const tzOffset = String(new Date().getTimezoneOffset())
+
+  const jsonBody: CreateAssignmentRequest | null = (() => {
+    if (isMultipart) return null;
+    if (typeof arg1 === 'number') {
+      return { courseID: arg1, name: name || '', due_date } satisfies CreateAssignmentRequest;
+    }
+    return arg1 as CreateAssignmentRequest;
+  })();
 
   const response = await fetch(`${BASE_URL}/assignment/create_assignment`, {
     method: 'POST',
     body: isMultipart
       ? arg1
-      : JSON.stringify({
-          courseID: arg1,
-          name: name || '',
-          due_date,
-        } satisfies CreateAssignmentRequest),
+      : JSON.stringify(jsonBody),
     headers: isMultipart
       ? {
           'X-Timezone-Offset': tzOffset,

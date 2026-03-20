@@ -17,6 +17,7 @@ from .controllers import (
     review_controller,
     rubric_controller,
     group_controller,
+    peer_eval_controller,
 )
 from .models.db import db, ma
 
@@ -183,6 +184,7 @@ def create_app(test_config=None):
     app.register_blueprint(review_controller.bp)
     app.register_blueprint(rubric_controller.bp)
     app.register_blueprint(group_controller.bp)
+    app.register_blueprint(peer_eval_controller.bp)
     app.register_blueprint(fake_api_controller.fake)
 
     return app

@@ -9,6 +9,7 @@ from ..models import (
     User,
     Course,
     Assignment,
+    AssignmentIncludedGroup,
     Rubric,
     CriteriaDescription,
     Criterion,
@@ -20,6 +21,8 @@ from ..models import (
 )
 from ..models.db import db
 from werkzeug.security import generate_password_hash
+
+from ..controllers.assignment_controller import _ensure_default_rubric_for_assignment
 
 
 @click.command("init_db")
@@ -447,6 +450,12 @@ def add_users_command():
     click.echo("\n" + "=" * 60)
     click.echo("Seeding additional group-testing data...")
 
+    def _utc_now_naive():
+        return datetime.now(timezone.utc).replace(tzinfo=None)
+
+    def _date_only_end_of_day(d):
+        return datetime(d.year, d.month, d.day, 23, 59, 59)
+
     group_teacher = User.get_by_email("teacher@example.com")
     if not group_teacher:
         click.echo(
@@ -458,29 +467,110 @@ def add_users_command():
 
     # Create a bunch of additional students (password: 123456)
     group_test_students = []
-    for i in range(1, 19):
-        email = f"groupstudent{i:02d}@test.com"
-        student = User.get_by_email(email)
-        if not student:
-            hashed = generate_password_hash("123456", method="pbkdf2:sha256")
-            student = User(
-                name=f"Group Test Student {i:02d}",
-                email=email,
-                hash_pass=hashed,
-                role="student",
-            )
-            User.create_user(student)
-            click.echo(f"✓ Created student: {student.email}")
-        else:
-            click.echo(f"✓ Student already exists: {student.email}")
-        group_test_students.append(student)
-
-    # Create a few sample classes/courses taught by the example teacher
-    group_test_course_names = [
-        "Group Testing 101 - Section A",
-        "Group Testing 101 - Section B",
-        "Group Testing 101 - Section C",
+    seeded_students = [
+        {"name": "Annie Adams", "email": "annie@test.com"},
+        {"name": "Ben Baker", "email": "ben@test.com"},
+        {"name": "Casey Carter", "email": "casey@test.com"},
+        {"name": "Drew Diaz", "email": "drew@test.com"},
+        {"name": "Evan Evans", "email": "evan@test.com"},
+        {"name": "Finn Foster", "email": "finn@test.com"},
+        {"name": "Gabe Garcia", "email": "gabe@test.com"},
+        {"name": "Harper Hughes", "email": "harper@test.com"},
+        {"name": "Ivy Ito", "email": "ivy@test.com"},
+        {"name": "Jules Johnson", "email": "jules@test.com"},
+        {"name": "Kai Kim", "email": "kai@test.com"},
+        {"name": "Logan Lee", "email": "logan@test.com"},
+        {"name": "Morgan Miller", "email": "morgan@test.com"},
+        {"name": "Nico Nguyen", "email": "nico@test.com"},
+        {"name": "Oakley Ortiz", "email": "oakley@test.com"},
+        {"name": "Priya Patel", "email": "priya@test.com"},
+        {"name": "Quinn Quinn", "email": "quinn@test.com"},
+        {"name": "Riley Rivera", "email": "riley@test.com"},
     ]
+
+    def _unique_email(base_email: str) -> str:
+        if not User.get_by_email(base_email):
+            return base_email
+        local, domain = base_email.split("@", 1)
+        for n in range(2, 100):
+            candidate = f"{local}{n}@{domain}"
+            if not User.get_by_email(candidate):
+                return candidate
+        for n in range(1, 100):
+            candidate = f"{local}_legacy{n}@{domain}"
+            if not User.get_by_email(candidate):
+                return candidate
+        return f"{local}_legacy999@{domain}"
+
+    for i, spec in enumerate(seeded_students, start=1):
+        desired_name = spec["name"]
+        desired_email = spec["email"]
+
+        legacy_emails = [
+            f"groupstudent{i:02d}@test.com",
+            f"student{i:02d}@test.com",
+        ]
+
+        student = User.get_by_email(desired_email)
+        legacy_student = None
+        legacy_students = [User.get_by_email(le) for le in legacy_emails]
+
+        if student:
+            if student.name != desired_name:
+                student.name = desired_name
+                student.update()
+            for legacy in legacy_students:
+                if legacy and legacy.id != student.id:
+                    old_email = legacy.email
+                    legacy.name = desired_name
+                    local, domain = desired_email.split("@", 1)
+                    legacy.email = _unique_email(f"{local}_legacy{i}@{domain}")
+                    legacy.update()
+                    click.echo(f"✓ Updated student: {old_email} -> {legacy.email}")
+            click.echo(f"✓ Student already exists: {student.email}")
+            group_test_students.append(student)
+            continue
+
+        for legacy in legacy_students:
+            if legacy:
+                legacy_student = legacy
+                break
+
+        if legacy_student:
+            legacy_student.name = desired_name
+            legacy_student.email = _unique_email(desired_email)
+            legacy_student.update()
+            click.echo(f"✓ Updated student: {legacy_student.email}")
+            group_test_students.append(legacy_student)
+            continue
+
+        hashed = generate_password_hash("123456", method="pbkdf2:sha256")
+        created = User(
+            name=desired_name,
+            email=_unique_email(desired_email),
+            hash_pass=hashed,
+            role="student",
+        )
+        User.create_user(created)
+        click.echo(f"✓ Created student: {created.email}")
+        group_test_students.append(created)
+
+    # Create a few sample classes/courses taught by the example teacher.
+    # If legacy group-testing courses exist, rename them to the COSC courses.
+    legacy_to_new_course_names = {
+        "Group Testing 101 - Section A": "COSC 224",
+        "Group Testing 101 - Section B": "COSC 205",
+        "Group Testing 101 - Section C": "COSC 211",
+    }
+
+    for legacy_name, new_name in legacy_to_new_course_names.items():
+        legacy_course = Course.get_by_name_teacher(legacy_name, group_teacher.id)
+        if legacy_course and legacy_course.name != new_name:
+            legacy_course.name = new_name
+            db.session.commit()
+            click.echo(f"✓ Renamed course: {legacy_name} -> {new_name} (ID: {legacy_course.id})")
+
+    group_test_course_names = ["COSC 224", "COSC 205", "COSC 211", "COSC 232"]
 
     group_test_courses = []
     for course_name in group_test_course_names:
@@ -493,62 +583,61 @@ def add_users_command():
             click.echo(f"✓ Course already exists: {course.name} (ID: {course.id})")
         group_test_courses.append(course)
 
-        # Add a simple assignment so assignment-level navigation can be tested
-        assignment_name = "Group Test Assignment"
-        assignment = Assignment.query.filter_by(courseID=course.id, name=assignment_name).first()
-        if not assignment:
-            due_date = datetime.now(timezone.utc) + timedelta(days=14)
-            assignment = Assignment(
-                courseID=course.id,
-                name=assignment_name,
-                rubric_text="Group testing rubric text",
-                due_date=due_date,
-            )
-            Assignment.create(assignment)
-            click.echo(f"  - Added assignment: {assignment.name} (ID: {assignment.id})")
-
     # Enroll students into courses (idempotent)
-    # Section A: enroll all group-test students
-    section_a = group_test_courses[0]
+    # COSC 224: enroll all group-test students
+    cosc_224 = group_test_courses[0]
     enrolled = 0
     for student in group_test_students:
-        if not User_Course.get(student.id, section_a.id):
-            db.session.add(User_Course(userID=student.id, courseID=section_a.id))
+        if not User_Course.get(student.id, cosc_224.id):
+            db.session.add(User_Course(userID=student.id, courseID=cosc_224.id))
             enrolled += 1
     if enrolled:
         db.session.commit()
-        click.echo(f"✓ Enrolled {enrolled} group-test students into '{section_a.name}'")
+        click.echo(f"✓ Enrolled {enrolled} students into '{cosc_224.name}'")
     else:
-        click.echo(f"✓ All group-test students already enrolled in '{section_a.name}'")
+        click.echo(f"✓ All students already enrolled in '{cosc_224.name}'")
 
-    # Section B: enroll first 12 students
-    section_b = group_test_courses[1]
+    # COSC 205: enroll first 12 students
+    cosc_205 = group_test_courses[1]
     enrolled = 0
     for student in group_test_students[:12]:
-        if not User_Course.get(student.id, section_b.id):
-            db.session.add(User_Course(userID=student.id, courseID=section_b.id))
+        if not User_Course.get(student.id, cosc_205.id):
+            db.session.add(User_Course(userID=student.id, courseID=cosc_205.id))
             enrolled += 1
     if enrolled:
         db.session.commit()
-        click.echo(f"✓ Enrolled {enrolled} group-test students into '{section_b.name}'")
+        click.echo(f"✓ Enrolled {enrolled} students into '{cosc_205.name}'")
     else:
-        click.echo(f"✓ Group-test students already enrolled in '{section_b.name}'")
+        click.echo(f"✓ Students already enrolled in '{cosc_205.name}'")
 
-    # Section C: enroll last 8 students
-    section_c = group_test_courses[2]
+    # COSC 211: enroll last 8 students
+    cosc_211 = group_test_courses[2]
     enrolled = 0
     for student in group_test_students[-8:]:
-        if not User_Course.get(student.id, section_c.id):
-            db.session.add(User_Course(userID=student.id, courseID=section_c.id))
+        if not User_Course.get(student.id, cosc_211.id):
+            db.session.add(User_Course(userID=student.id, courseID=cosc_211.id))
             enrolled += 1
     if enrolled:
         db.session.commit()
-        click.echo(f"✓ Enrolled {enrolled} group-test students into '{section_c.name}'")
+        click.echo(f"✓ Enrolled {enrolled} students into '{cosc_211.name}'")
     else:
-        click.echo(f"✓ Group-test students already enrolled in '{section_c.name}'")
+        click.echo(f"✓ Students already enrolled in '{cosc_211.name}'")
 
-    # Pre-create a few groups in Section A, leaving some students unassigned
-    click.echo(f"\nCreating sample groups in '{section_a.name}'...")
+    # COSC 232: enroll a subset (first 8 students)
+    cosc_232 = group_test_courses[3]
+    enrolled = 0
+    for student in group_test_students[:8]:
+        if not User_Course.get(student.id, cosc_232.id):
+            db.session.add(User_Course(userID=student.id, courseID=cosc_232.id))
+            enrolled += 1
+    if enrolled:
+        db.session.commit()
+        click.echo(f"✓ Enrolled {enrolled} students into '{cosc_232.name}'")
+    else:
+        click.echo(f"✓ Students already enrolled in '{cosc_232.name}'")
+
+    # Pre-create a few groups in COSC 224, leaving some students unassigned
+    click.echo(f"\nCreating sample groups in '{cosc_224.name}'...")
     group_specs = [
         ("Alpha", group_test_students[0:4]),
         ("Beta", group_test_students[4:8]),
@@ -557,9 +646,9 @@ def add_users_command():
     ]
 
     for group_name, members in group_specs:
-        group = Group.query.filter_by(course_id=section_a.id, name=group_name).first()
+        group = Group.query.filter_by(course_id=cosc_224.id, name=group_name).first()
         if not group:
-            group = Group.create(name=group_name, course_id=section_a.id)
+            group = Group.create(name=group_name, course_id=cosc_224.id)
             click.echo(f"✓ Created group: {group.name} (ID: {group.id})")
         else:
             click.echo(f"✓ Group already exists: {group.name} (ID: {group.id})")
@@ -581,8 +670,155 @@ def add_users_command():
     click.echo("\nGroup-testing seed data ready.")
     click.echo("Try logging in as:")
     click.echo("  teacher@example.com (teacher)")
-    click.echo("  groupstudent01@test.com (student)")
+    click.echo("  annie@test.com (student)")
     click.echo("")
+
+    # ---------------------------------------------------------------------
+    # Showcase assignments with different states/features
+    # ---------------------------------------------------------------------
+    click.echo("Seeding showcase assignments...")
+
+    showcase = [
+        {
+            "course": cosc_224,
+            "name": "Week 1 Project Proposal",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=14),
+            "rubric_text": "Submit your proposal as a PDF.",
+        },
+        {
+            "course": cosc_224,
+            "name": "Sprint Checkpoint",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=2),
+            "rubric_text": "Short progress update and next steps.",
+        },
+        {
+            "course": cosc_224,
+            "name": "Individual Peer Evaluation",
+            "assignment_type": "peer_eval_individual",
+            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=1))),
+            "rubric_text": "Rate each teammate using the rubric.",
+        },
+        {
+            "course": cosc_224,
+            "name": "Group Peer Evaluation",
+            "assignment_type": "peer_eval_group",
+            "due_date": _date_only_end_of_day(datetime.now().date()),
+            "rubric_text": "As a group, evaluate the other groups using the rubric.",
+        },
+        {
+            "course": cosc_224,
+            "name": "Optional Reflection (No Due Date)",
+            "assignment_type": "standard",
+            "due_date": None,
+            "rubric_text": "Optional reflection (no due date).",
+        },
+        {
+            "course": cosc_224,
+            "name": "Past due",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() - timedelta(days=2),
+            "rubric_text": "Showcase assignment that is already past due.",
+        },
+        {
+            "course": cosc_205,
+            "name": "Homework 1",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=14),
+            "rubric_text": "Homework submission.",
+        },
+        {
+            "course": cosc_205,
+            "name": "Homework 2",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=2),
+            "rubric_text": "Second homework submission.",
+        },
+        {
+            "course": cosc_205,
+            "name": "Reading Reflection (No Due Date)",
+            "assignment_type": "standard",
+            "due_date": None,
+            "rubric_text": "Optional reading reflection.",
+        },
+        {
+            "course": cosc_211,
+            "name": "Lab 1",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=2),
+            "rubric_text": "Lab submission.",
+        },
+        {
+            "course": cosc_211,
+            "name": "Lab 2",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=14),
+            "rubric_text": "Second lab submission.",
+        },
+        {
+            "course": cosc_211,
+            "name": "Checkpoint Quiz",
+            "assignment_type": "standard",
+            "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=1))),
+            "rubric_text": "Quick quiz (due tomorrow).",
+        },
+        {
+            "course": cosc_232,
+            "name": "Mini Project (No Due Date)",
+            "assignment_type": "standard",
+            "due_date": None,
+            "rubric_text": "Mini project kickoff.",
+        },
+        {
+            "course": cosc_232,
+            "name": "Problem Set 1",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=14),
+            "rubric_text": "Problem set submission.",
+        },
+        {
+            "course": cosc_232,
+            "name": "Problem Set 2",
+            "assignment_type": "standard",
+            "due_date": _utc_now_naive() + timedelta(days=2),
+            "rubric_text": "Second problem set submission.",
+        },
+    ]
+
+    for spec in showcase:
+        course = spec["course"]
+        name = spec["name"]
+        assignment = Assignment.query.filter_by(courseID=course.id, name=name).first()
+        if not assignment:
+            assignment = Assignment(
+                courseID=course.id,
+                name=name,
+                rubric_text=spec["rubric_text"],
+                due_date=spec["due_date"],
+                assignment_type=spec["assignment_type"],
+            )
+            Assignment.create(assignment)
+            click.echo(f"✓ Created assignment: {course.name} -> {assignment.name} (ID: {assignment.id})")
+        else:
+            assignment.rubric_text = spec["rubric_text"]
+            assignment.due_date = spec["due_date"]
+            assignment.assignment_type = spec["assignment_type"]
+            assignment.update()
+            click.echo(f"✓ Assignment already exists (updated): {course.name} -> {assignment.name} (ID: {assignment.id})")
+
+        if assignment.assignment_type in {"peer_eval_group", "peer_eval_individual"}:
+            _ensure_default_rubric_for_assignment(assignment)
+
+        if assignment.assignment_type == "peer_eval_group":
+            course_groups = Group.query.filter_by(course_id=course.id).all()
+            if len(course_groups) >= 2:
+                AssignmentIncludedGroup.query.filter_by(assignment_id=assignment.id).delete()
+                for g in course_groups:
+                    db.session.add(AssignmentIncludedGroup(assignment_id=assignment.id, group_id=g.id))
+                db.session.commit()
+                click.echo(f"  - Included {len(course_groups)} groups for group peer eval")
+
 
 
 @click.command("create_admin")

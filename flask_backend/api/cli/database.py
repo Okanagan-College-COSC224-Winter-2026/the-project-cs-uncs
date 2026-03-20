@@ -15,6 +15,9 @@ from ..models import (
     Criterion,
     Submission,
     Review,
+    GroupEvaluationSubmission,
+    GroupEvaluationTarget,
+    GroupEvaluationCriterion,
     User_Course,
     Group,
     GroupMember
@@ -685,6 +688,10 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Submit your proposal as a PDF.",
+            "description": (
+                "Submit a 1–2 page project proposal describing your idea, scope, and expected deliverables.\n"
+                "Include: team members, planned tech stack, and a week-by-week timeline."
+            ),
         },
         {
             "course": cosc_224,
@@ -692,6 +699,10 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Short progress update and next steps.",
+            "description": (
+                "Post a short checkpoint update: what you accomplished, what is blocked, and what you plan next.\n"
+                "Attach links/screenshots if relevant."
+            ),
         },
         {
             "course": cosc_224,
@@ -699,6 +710,11 @@ def add_users_command():
             "assignment_type": "peer_eval_individual",
             "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=31))),
             "rubric_text": "Rate each teammate using the rubric.",
+            "description": (
+                "Complete an individual peer evaluation for each of your current teammates.\n"
+                "If groups change during the term, your assigned review list reflects your current team.\n"
+                "Any feedback you already submitted remains available to instructors and the recipient."
+            ),
         },
         {
             "course": cosc_224,
@@ -706,6 +722,11 @@ def add_users_command():
             "assignment_type": "peer_eval_group",
             "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=30))),
             "rubric_text": "As a group, evaluate the other groups using the rubric.",
+            "description": (
+                "Submit one group-level evaluation on behalf of your team.\n"
+                "Your group must evaluate each included group using the rubric.\n"
+                "After one group member submits, the evaluation is locked for your entire group."
+            ),
         },
         {
             "course": cosc_224,
@@ -713,6 +734,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": None,
             "rubric_text": "Optional reflection (no due date).",
+            "description": "Optional reflection prompt; no due date and not graded.",
         },
         {
             "course": cosc_224,
@@ -720,6 +742,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() - timedelta(days=2),
             "rubric_text": "Showcase assignment that is already past due.",
+            "description": "Demo assignment intentionally seeded as past due (for UI testing).",
         },
         {
             "course": cosc_205,
@@ -727,6 +750,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Homework submission.",
+            "description": "Solve the problems and submit your work as a single PDF.",
         },
         {
             "course": cosc_205,
@@ -734,6 +758,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Second homework submission.",
+            "description": "Second problem set covering the next unit; submit a single PDF.",
         },
         {
             "course": cosc_205,
@@ -741,6 +766,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": None,
             "rubric_text": "Optional reading reflection.",
+            "description": "Optional reflection: summarize the reading and list open questions.",
         },
         {
             "course": cosc_211,
@@ -748,6 +774,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Lab submission.",
+            "description": "Complete the lab tasks and submit the required artifacts.",
         },
         {
             "course": cosc_211,
@@ -755,6 +782,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Second lab submission.",
+            "description": "Second lab; focus on correctness and short write-up of results.",
         },
         {
             "course": cosc_211,
@@ -762,6 +790,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _date_only_end_of_day((datetime.now().date() + timedelta(days=31))),
             "rubric_text": "Quick quiz (due tomorrow).",
+            "description": "Short checkpoint quiz to confirm understanding; due end-of-day.",
         },
         {
             "course": cosc_232,
@@ -769,6 +798,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": None,
             "rubric_text": "Mini project kickoff.",
+            "description": "Mini project kickoff; submit when ready (no due date).",
         },
         {
             "course": cosc_232,
@@ -776,6 +806,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=44),
             "rubric_text": "Problem set submission.",
+            "description": "Problem set #1: submit solutions and brief explanations.",
         },
         {
             "course": cosc_232,
@@ -783,6 +814,7 @@ def add_users_command():
             "assignment_type": "standard",
             "due_date": _utc_now_naive() + timedelta(days=32),
             "rubric_text": "Second problem set submission.",
+            "description": "Problem set #2: build on PS1 and include complexity notes where applicable.",
         },
     ]
 
@@ -796,6 +828,7 @@ def add_users_command():
                 name=name,
                 rubric_text=spec["rubric_text"],
                 due_date=spec["due_date"],
+                description=spec.get("description"),
                 assignment_type=spec["assignment_type"],
             )
             Assignment.create(assignment)
@@ -804,11 +837,14 @@ def add_users_command():
             assignment.rubric_text = spec["rubric_text"]
             assignment.due_date = spec["due_date"]
             assignment.assignment_type = spec["assignment_type"]
+            assignment.description = spec.get("description")
             assignment.update()
             click.echo(f"✓ Assignment already exists (updated): {course.name} -> {assignment.name} (ID: {assignment.id})")
 
         if assignment.assignment_type in {"peer_eval_group", "peer_eval_individual"}:
-            _ensure_default_rubric_for_assignment(assignment)
+            existing = Rubric.query.filter_by(assignmentID=assignment.id).first()
+            if not existing:
+                _ensure_default_rubric_for_assignment(assignment)
 
         if assignment.assignment_type == "peer_eval_group":
             course_groups = Group.query.filter_by(course_id=course.id).all()
@@ -818,6 +854,168 @@ def add_users_command():
                     db.session.add(AssignmentIncludedGroup(assignment_id=assignment.id, group_id=g.id))
                 db.session.commit()
                 click.echo(f"  - Included {len(course_groups)} groups for group peer eval")
+
+    # ---------------------------------------------------------------------
+    # Seed completed peer eval examples (idempotent)
+    # ---------------------------------------------------------------------
+    click.echo("\nSeeding completed peer evaluation examples...")
+
+    def _get_or_create_review(assignment_id: int, reviewer_id: int, reviewee_id: int) -> Review:
+        existing = Review.get_by_reviewer_reviewee_assignment(reviewer_id, reviewee_id, assignment_id)
+        if existing:
+            return existing
+        review = Review(assignmentID=assignment_id, reviewerID=reviewer_id, revieweeID=reviewee_id)
+        Review.create_review(review)
+        return review
+
+    def _ensure_review_completed(review: Review, rubric_id: int, *, score: int, comment_prefix: str):
+        existing = Criterion.query.filter_by(reviewID=review.id).count()
+        if existing > 0 and review.completed:
+            return False
+
+        criteria_rows = (
+            CriteriaDescription.query.filter_by(rubricID=rubric_id)
+            .order_by(CriteriaDescription.id.asc())
+            .all()
+        )
+        if not criteria_rows:
+            return False
+
+        # Only create criteria if none exist; preserve any manual edits.
+        if existing == 0:
+            for row in criteria_rows:
+                db.session.add(
+                    Criterion(
+                        reviewID=review.id,
+                        criterionRowID=row.id,
+                        grade=score if row.hasScore else None,
+                        comments=(f"{comment_prefix} {row.question}" if not row.hasScore else f"{comment_prefix}")
+                    )
+                )
+
+        review.completed = True
+        db.session.commit()
+        return True
+
+    # COSC 224: Individual peer eval (completed) + Group peer eval (submitted)
+    ind = Assignment.query.filter_by(courseID=cosc_224.id, name="Individual Peer Evaluation").first()
+    grp = Assignment.query.filter_by(courseID=cosc_224.id, name="Group Peer Evaluation").first()
+
+    annie = User.get_by_email("annie@test.com")
+    ben = User.get_by_email("ben@test.com")
+    casey = User.get_by_email("casey@test.com")
+
+    if ind and annie and ben and casey:
+        ind_rubric = Rubric.query.filter_by(assignmentID=ind.id).first()
+        if ind_rubric:
+            r1 = _get_or_create_review(ind.id, annie.id, ben.id)
+            r2 = _get_or_create_review(ind.id, annie.id, casey.id)
+
+            did1 = _ensure_review_completed(r1, ind_rubric.id, score=4, comment_prefix="Solid contribution:")
+            did2 = _ensure_review_completed(r2, ind_rubric.id, score=5, comment_prefix="Strong performance:")
+
+            if did1 or did2:
+                click.echo("✓ Seeded completed individual peer eval(s) in COSC 224")
+            else:
+                click.echo("✓ Individual peer eval examples already seeded (COSC 224)")
+
+    if grp:
+        alpha = Group.query.filter_by(course_id=cosc_224.id, name="Alpha").first()
+        beta = Group.query.filter_by(course_id=cosc_224.id, name="Beta").first()
+        gamma = Group.query.filter_by(course_id=cosc_224.id, name="Gamma").first()
+        grp_rubric = Rubric.query.filter_by(assignmentID=grp.id).first()
+
+        if alpha and beta and gamma and grp_rubric and annie:
+            existing_sub = GroupEvaluationSubmission.get_by_assignment_and_group(grp.id, alpha.id)
+            if not existing_sub:
+                sub = GroupEvaluationSubmission(
+                    assignment_id=grp.id,
+                    reviewer_group_id=alpha.id,
+                    submitted_by_user_id=annie.id,
+                )
+                db.session.add(sub)
+                db.session.commit()
+
+                targets = [beta, gamma]
+                rows = (
+                    CriteriaDescription.query.filter_by(rubricID=grp_rubric.id)
+                    .order_by(CriteriaDescription.id.asc())
+                    .all()
+                )
+
+                for tgt in targets:
+                    target = GroupEvaluationTarget(submission_id=sub.id, reviewee_group_id=tgt.id)
+                    db.session.add(target)
+                    db.session.commit()
+
+                    for row in rows:
+                        db.session.add(
+                            GroupEvaluationCriterion(
+                                target_id=target.id,
+                                criterionRowID=row.id,
+                                grade=(4 if row.hasScore else None),
+                                comments=(
+                                    None
+                                    if row.hasScore
+                                    else f"Suggested improvement: clarify expectations and provide examples." 
+                                ),
+                            )
+                        )
+
+                db.session.commit()
+                click.echo("✓ Seeded submitted group peer eval in COSC 224 (Alpha → Beta/Gamma)")
+            else:
+                click.echo("✓ Group peer eval example already seeded (COSC 224)")
+
+    # COSC 205: add a small peer-eval individual example in a different class
+    cosc_205_ind_name = "Individual Peer Evaluation (HW Team)"
+    cosc_205_ind = Assignment.query.filter_by(courseID=cosc_205.id, name=cosc_205_ind_name).first()
+    if not cosc_205_ind:
+        cosc_205_ind = Assignment(
+            courseID=cosc_205.id,
+            name=cosc_205_ind_name,
+            rubric_text="Rate each teammate using the rubric.",
+            description=(
+                "Individual peer evaluation for your homework team.\n"
+                "Your assigned list reflects your current teammates."
+            ),
+            due_date=_date_only_end_of_day((datetime.now().date() + timedelta(days=21))),
+            assignment_type="peer_eval_individual",
+        )
+        Assignment.create(cosc_205_ind)
+
+    if cosc_205_ind:
+        existing = Rubric.query.filter_by(assignmentID=cosc_205_ind.id).first()
+        if not existing:
+            _ensure_default_rubric_for_assignment(cosc_205_ind)
+
+        # Ensure COSC 205 has at least 2 simple groups for teammate relationships.
+        red = Group.query.filter_by(course_id=cosc_205.id, name="Red").first()
+        blue = Group.query.filter_by(course_id=cosc_205.id, name="Blue").first()
+        if not red:
+            red = Group.create(name="Red", course_id=cosc_205.id)
+        if not blue:
+            blue = Group.create(name="Blue", course_id=cosc_205.id)
+
+        evan = User.get_by_email("evan@test.com")
+        finn = User.get_by_email("finn@test.com")
+        gabe = User.get_by_email("gabe@test.com")
+        if evan and finn and gabe:
+            for u in [evan, finn]:
+                if not GroupMember.query.filter_by(group_id=red.id, user_id=u.id).first():
+                    db.session.add(GroupMember(group_id=red.id, user_id=u.id))
+            if not GroupMember.query.filter_by(group_id=blue.id, user_id=gabe.id).first():
+                db.session.add(GroupMember(group_id=blue.id, user_id=gabe.id))
+            db.session.commit()
+
+            cosc_205_rubric = Rubric.query.filter_by(assignmentID=cosc_205_ind.id).first()
+            if cosc_205_rubric:
+                rr = _get_or_create_review(cosc_205_ind.id, evan.id, finn.id)
+                did = _ensure_review_completed(rr, cosc_205_rubric.id, score=5, comment_prefix="Great teammate:")
+                if did:
+                    click.echo("✓ Seeded completed individual peer eval in COSC 205 (Evan → Finn)")
+                else:
+                    click.echo("✓ COSC 205 individual peer eval example already seeded")
 
 
 

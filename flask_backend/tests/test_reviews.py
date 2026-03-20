@@ -11,10 +11,13 @@ from api.models import (
     Course,
     Criterion,
     CriteriaDescription,
+    Group,
+    GroupMember,
     Review,
     Rubric,
     Submission,
     User,
+    db,
 )
 
 
@@ -205,6 +208,15 @@ class TestGetAssignedReviews:
         assignment = Assignment.get_by_id(assignment_id)
         assignment.assignment_type = 'peer_eval_individual'
         assignment.update()
+
+        # Peer-eval individual assignments are group-based; ensure the reviewer
+        # and reviewees are teammates so the assigned endpoint returns them.
+        group = Group(name="G1", course_id=assignment.courseID)
+        db.session.add(group)
+        db.session.commit()
+        GroupMember.add_member(group.id, students[0].id)
+        GroupMember.add_member(group.id, students[1].id)
+        GroupMember.add_member(group.id, students[2].id)
 
         # Create a historical duplicate review row for the same teammate.
         duplicate = Review(

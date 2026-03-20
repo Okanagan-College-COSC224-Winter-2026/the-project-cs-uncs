@@ -591,3 +591,94 @@ class TestPeerEvalIndividualEligibility:
         submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
         assert submit.status_code == 403
         assert submit.get_json()["msg"] == "You are not eligible to submit this review"
+
+    def test_individual_assigned_reviews_only_show_current_teammates_after_group_change(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher4@test.com", "teacher")
+        s1 = _create_user("Student 1", "as1@test.com", "student")
+        s2 = _create_user("Student 2", "as2@test.com", "student")
+        s3 = _create_user("Student 3", "as3@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "teacher4@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Individual Peer Eval",
+                "assignment_type": "peer_eval_individual",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        # Student 1 syncs and sees Student 2 assigned.
+        login_as(test_client, "as1@test.com")
+        sync = test_client.post(f"/peer_eval/individual/sync/{assignment_id}")
+        assert sync.status_code == 200
+
+        assigned = test_client.get(f"/review/assigned/{assignment_id}")
+        assert assigned.status_code == 200
+        assigned_data = assigned.get_json()
+        assert {r["reviewee"]["id"] for r in assigned_data["reviews"]} == {s2.id}
+
+        # Student 1 submits the review for Student 2.
+        review = Review.query.filter_by(
+            assignmentID=assignment_id, reviewerID=s1.id, revieweeID=s2.id
+        ).first()
+        assert review is not None
+
+        criteria = []
+        assignment = Assignment.get_by_id(assignment_id)
+        rubric = assignment.rubrics.first()
+        assert rubric is not None
+        for row in rubric.criteria_descriptions.all():
+            item = {"criterionRowID": row.id, "comments": "ok"}
+            if row.hasScore:
+                item["grade"] = 0
+            criteria.append(item)
+
+        submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
+        assert submit.status_code == 200
+
+        # Move reviewer (Student 1) to a new group with Student 3.
+        GroupMember.remove_member(g1.id, s1.id)
+        GroupMember.add_member(g2.id, s1.id)
+
+        # Sync should create a new review for the new teammate.
+        login_as(test_client, "as1@test.com")
+        sync2 = test_client.post(f"/peer_eval/individual/sync/{assignment_id}")
+        assert sync2.status_code == 200
+
+        assigned2 = test_client.get(f"/review/assigned/{assignment_id}")
+        assert assigned2.status_code == 200
+        assigned2_data = assigned2.get_json()
+        assert {r["reviewee"]["id"] for r in assigned2_data["reviews"]} == {s3.id}
+
+        status = test_client.get(f"/review/status/{assignment_id}")
+        assert status.status_code == 200
+        status_data = status.get_json()
+        assert status_data["total_assigned"] == 1
+
+        # Teacher can still see the historical submitted review for Student 2.
+        login_as(test_client, "teacher4@test.com")
+        all_reviews = test_client.get(f"/review/assignment/{assignment_id}/all")
+        assert all_reviews.status_code == 200
+        teacher_data = all_reviews.get_json()
+        matches = [
+            r
+            for r in teacher_data.get("reviews", [])
+            if r["reviewer"]["id"] == s1.id and r["reviewee"]["id"] == s2.id and r["completed"] is True
+        ]
+        assert len(matches) == 1
+
+        # Reviewee can still see the received feedback.
+        login_as(test_client, "as2@test.com")
+        received = test_client.get(f"/review/received/{assignment_id}")
+        assert received.status_code == 200
+        assert received.get_json()["total_reviews"] == 1

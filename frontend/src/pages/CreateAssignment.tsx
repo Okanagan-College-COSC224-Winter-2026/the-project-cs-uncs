@@ -4,8 +4,10 @@ import BackArrow from '../components/BackArrow'
 import Button from '../components/Button'
 import StatusMessage from '../components/StatusMessage'
 import Textbox from '../components/Textbox'
-import RubricCriteriaEditor, { type RubricCriterionDraft } from '../components/RubricCriteriaEditor'
+import type { RubricCriterionDraft } from '../components/RubricCriteriaEditor'
+import RubricEditorPanel from '../components/RubricEditorPanel'
 import { createAssignment, listCourseGroups, type CourseGroup } from '../util/api'
+import { hasEmptyRubricQuestion, hasInvalidRubricScore } from '../util/rubric'
 import './CreateAssignment.css'
 import '../components/RubricCreator.css'
 
@@ -148,14 +150,12 @@ export default function CreateAssignment() {
     }
 
     if (showRubricEditor) {
-      const hasEmptyQuestion = rubricCriteria.some((c) => !c.question.trim())
-      if (hasEmptyQuestion || rubricCriteria.length === 0) {
+      if (hasEmptyRubricQuestion(rubricCriteria)) {
         setStatusType('error')
         setStatusMessage('Rubric must have at least one criterion with a question')
         return
       }
-      const badScore = rubricCriteria.some((c) => c.hasScore && (Number.isNaN(c.scoreMax) || c.scoreMax < 0))
-      if (badScore) {
+      if (hasInvalidRubricScore(rubricCriteria)) {
         setStatusType('error')
         setStatusMessage('Rubric scores must be 0 or greater')
         return
@@ -260,11 +260,11 @@ export default function CreateAssignment() {
       />
 
       {showRubricEditor ? (
-        <div className="RubricCreator">
-          <h2>Rubric</h2>
-
-          <RubricCriteriaEditor criteria={rubricCriteria} onChange={setRubricCriteria} />
-        </div>
+        <RubricEditorPanel
+          header={<h2>Rubric</h2>}
+          criteria={rubricCriteria}
+          onChange={setRubricCriteria}
+        />
       ) : null}
 
       {showGroupSelector ? (

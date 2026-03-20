@@ -7,8 +7,10 @@ import TabNavigation from "../components/TabNavigation";
 import HeaderTitle from "../components/HeaderTitle";
 import { hasRole } from "../util/login";
 import Button from "../components/Button";
-import RubricCriteriaEditor, { type RubricCriterionDraft } from "../components/RubricCriteriaEditor";
+import type { RubricCriterionDraft } from "../components/RubricCriteriaEditor";
+import RubricEditorPanel from "../components/RubricEditorPanel";
 import "../components/RubricCreator.css";
+import { hasEmptyRubricQuestion, normalizeRubricDraftForEdit } from "../util/rubric";
 
 import { 
   getAssignmentDetails,
@@ -124,13 +126,9 @@ export default function Assignment() {
     if (!id) return;
     if (!draftCriteria) return;
 
-    const normalized = draftCriteria.map((c) => ({
-      ...c,
-      question: c.question.trim(),
-      scoreMax: c.hasScore ? Math.min(MAX_CRITERION_POINTS, Math.max(0, c.scoreMax || 0)) : 0,
-    }));
+    const normalized = normalizeRubricDraftForEdit(draftCriteria, MAX_CRITERION_POINTS);
 
-    if (normalized.length === 0 || normalized.some((c) => !c.question)) {
+    if (hasEmptyRubricQuestion(normalized)) {
       setError("Rubric must have at least one criterion with a question.");
       return;
     }
@@ -297,22 +295,24 @@ export default function Assignment() {
       </div>
 
       {canEditRubric && editMode ? (
-        <div className="RubricCreator">
-          <h3>Edit Rubric</h3>
-
-          {draftCriteria ? (
-            <RubricCriteriaEditor criteria={draftCriteria} onChange={setDraftCriteria} disabled={saving} />
-          ) : null}
-
-          <div className="button-group">
-            <Button onClick={saveChanges} disabled={saving || !draftCriteria}>
-              Save
-            </Button>
-            <Button type="secondary" onClick={cancelEdit} disabled={saving}>
-              Cancel
-            </Button>
-          </div>
-        </div>
+        draftCriteria ? (
+          <RubricEditorPanel
+            header={<h3>Edit Rubric</h3>}
+            criteria={draftCriteria}
+            onChange={setDraftCriteria}
+            disabled={saving}
+            actions={
+              <>
+                <Button onClick={saveChanges} disabled={saving || !draftCriteria}>
+                  Save
+                </Button>
+                <Button type="secondary" onClick={cancelEdit} disabled={saving}>
+                  Cancel
+                </Button>
+              </>
+            }
+          />
+        ) : null
       ) : null}
     </div>
   );

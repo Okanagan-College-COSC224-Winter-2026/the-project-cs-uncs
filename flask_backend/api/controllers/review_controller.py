@@ -40,6 +40,18 @@ from ..models.schemas import CriteriaDescriptionSchema
 criteria_description_schema = CriteriaDescriptionSchema(many=True)
 
 
+def _get_current_teammate_ids_for_course(user_id: int, course_id: int) -> set[int]:
+    group = (
+        Group.query.options(joinedload(Group.members))
+        .join(GroupMember, GroupMember.group_id == Group.id)
+        .filter(Group.course_id == course_id, GroupMember.user_id == user_id)
+        .first()
+    )
+    if not group:
+        return set()
+    return {int(m.user_id) for m in group.members if int(m.user_id) != int(user_id)}
+
+
 @bp.route("/assigned/<int:assignment_id>", methods=["GET"])
 @jwt_role_required("student", "teacher", "admin")
 def get_assigned_reviews(assignment_id):
@@ -86,6 +98,13 @@ def get_assigned_reviews(assignment_id):
                 db.session.delete(r)
             db.session.commit()
             reviews = [r for r in reviews if r.id not in deleted_ids]
+
+    # Individual peer eval: only show reviews for current teammates.
+    # Historical reviews must remain available to teachers and reviewees, but
+    # the reviewer should not see old teammates after a group change.
+    if assignment.assignment_type == "peer_eval_individual" and reviews:
+        teammate_ids = _get_current_teammate_ids_for_course(user.id, assignment.courseID)
+        reviews = [r for r in reviews if int(r.revieweeID) in teammate_ids]
 
     # Bulk-fetch submissions and criterion counts to avoid N+1 query patterns.
     reviewee_ids = {r.revieweeID for r in reviews}
@@ -304,6 +323,9 @@ def get_review_status(assignment_id):
         return jsonify({"msg": "Assignment not found"}), 404
 
     reviews = Review.get_by_reviewer_and_assignment(user.id, assignment_id)
+    if assignment.assignment_type == "peer_eval_individual" and reviews:
+        teammate_ids = _get_current_teammate_ids_for_course(user.id, assignment.courseID)
+        reviews = [r for r in reviews if int(r.revieweeID) in teammate_ids]
 
     completed_count = sum(1 for review in reviews if review.completed)
     total_count = len(reviews)

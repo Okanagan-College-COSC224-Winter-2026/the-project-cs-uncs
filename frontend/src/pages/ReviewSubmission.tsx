@@ -7,6 +7,7 @@ import {
   getCriteria
 } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
+import BackArrow from '../components/BackArrow';
 import './ReviewSubmission.css';
 import './Assignment.css';
 
@@ -200,6 +201,7 @@ export default function ReviewSubmission() {
   if (loading) {
     return (
       <div className="review-submission-container">
+        <BackArrow />
         <p>Loading review...</p>
       </div>
     );
@@ -208,10 +210,8 @@ export default function ReviewSubmission() {
   if (error && !review) {
     return (
       <div className="review-submission-container">
+        <BackArrow />
         <div className="error-message">{error}</div>
-        <button onClick={() => navigate(`/assignment/${assignmentId}/reviews`)}>
-          Back to Reviews
-        </button>
       </div>
     );
   }
@@ -223,6 +223,7 @@ export default function ReviewSubmission() {
 
   return (
     <div className="review-submission-container">
+      <BackArrow />
       <div className="AssignmentHeader">
         <h2>Assignment {assignmentId}</h2>
       </div>
@@ -236,10 +237,6 @@ export default function ReviewSubmission() {
           {
             label: "Details",
             path: `/assignment/${assignmentId}/details`,
-          },
-          {
-            label: "Group",
-            path: `/assignment/${assignmentId}/group`,
           },
           {
             label: "Peer Review",

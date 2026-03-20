@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import TabNavigation from "../components/TabNavigation";
 import Button from "../components/Button";
+import BackArrow from "../components/BackArrow";
 import { isAdmin, isStudent, isTeacher } from "../util/login";
 import {
   getAssignmentAttachmentUrl,
   getAssignmentDetails,
   getMySubmission,
   getSubmissionDownloadUrl,
-  listSubmissions,
   updateAssignmentDetails,
   uploadMySubmission,
 } from "../util/api";
@@ -28,14 +28,12 @@ interface MySubmissionData {
   file_name?: string | null;
 }
 
-interface SubmissionListItem {
-  id: number;
-  file_name?: string | null;
-  student?: {
-    id: number;
-    name?: string | null;
-    email?: string | null;
-  };
+interface MySubmissionResponse {
+  submission: MySubmissionData | null;
+  forbidden?: boolean;
+  msg?: string;
+  locked?: boolean;
+  submitted_by?: { id: number; name?: string | null } | null;
 }
 
 export default function AssignmentDetails() {
@@ -55,7 +53,6 @@ export default function AssignmentDetails() {
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [uploadingSubmission, setUploadingSubmission] = useState(false);
   const [mySubmission, setMySubmission] = useState<MySubmissionData | null>(null);
-  const [submissionList, setSubmissionList] = useState<SubmissionListItem[]>([]);
   const [submissionForbidden, setSubmissionForbidden] = useState(false);
   const [submissionForbiddenMessage, setSubmissionForbiddenMessage] = useState<string | null>(null);
 
@@ -78,27 +75,25 @@ export default function AssignmentDetails() {
 
         setSubmissionFile(null);
         setMySubmission(null);
-        setSubmissionList([]);
         setSubmissionForbidden(false);
         setSubmissionForbiddenMessage(null);
 
         if (isStudent()) {
           const resp = await getMySubmission(Number(id));
-          if (resp?.forbidden) {
+          const typed = resp as MySubmissionResponse;
+
+          if (typed?.forbidden) {
             setSubmissionForbidden(true);
-            setSubmissionForbiddenMessage(resp?.msg ?? "You are not allowed to submit for this assignment.");
+            setSubmissionForbiddenMessage(typed?.msg ?? "You are not allowed to submit for this assignment.");
             setMySubmission(null);
+          } else if (typed?.locked) {
+            setSubmissionForbidden(true);
+            setSubmissionForbiddenMessage(
+              typed?.msg ?? "Your group has already submitted."
+            );
+            setMySubmission(typed?.submission ?? null);
           } else {
             setMySubmission(resp?.submission ?? null);
-          }
-        } else if (isTeacher() || isAdmin()) {
-          const resp = await listSubmissions(Number(id));
-          if (resp?.forbidden) {
-            setSubmissionForbidden(true);
-            setSubmissionForbiddenMessage(resp?.msg ?? "You are not allowed to view submissions for this assignment.");
-            setSubmissionList([]);
-          } else {
-            setSubmissionList(resp?.submissions ?? []);
           }
         }
       } catch (err) {
@@ -149,10 +144,13 @@ export default function AssignmentDetails() {
   const tabs = [
     { label: "Home", path: `/assignment/${id}` },
     { label: "Details", path: `/assignment/${id}/details` },
-    { label: "Group", path: `/assignment/${id}/group` },
   ];
 
-  if (isTeacher()) {
+  if (isTeacher() || isAdmin()) {
+    tabs.push({ label: "Group Submissions", path: `/assignment/${id}/group-submissions` });
+  }
+
+  if (isTeacher() || isAdmin()) {
     tabs.push({ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` });
   } else {
     tabs.push({ label: "Peer Review", path: `/assignment/${id}/reviews` });
@@ -186,12 +184,20 @@ export default function AssignmentDetails() {
       setSubmissionFile(null);
 
       const resp = await getMySubmission(Number(id));
-      if (resp?.forbidden) {
+        const typed = resp as MySubmissionResponse;
+
+        if (typed?.forbidden) {
         setSubmissionForbidden(true);
-        setSubmissionForbiddenMessage(resp?.msg ?? "You are not allowed to submit for this assignment.");
+        setSubmissionForbiddenMessage(typed?.msg ?? "You are not allowed to submit for this assignment.");
         setMySubmission(null);
-      } else {
-        setMySubmission(resp?.submission ?? null);
+        } else if (typed?.locked) {
+          setSubmissionForbidden(true);
+          setSubmissionForbiddenMessage(
+          typed?.msg ?? "Your group has already submitted."
+          );
+          setMySubmission(typed?.submission ?? null);
+        } else {
+          setMySubmission(typed?.submission ?? null);
       }
     } catch (err) {
       console.error("Error uploading submission:", err);
@@ -203,8 +209,9 @@ export default function AssignmentDetails() {
 
   return (
     <div className="assignment-details-container">
+      <BackArrow />
       <div className="AssignmentHeader">
-        <h2>{assignment?.name ?? `Assignment ${id}`}</h2>
+        <h2>{assignment?.name ?? "Loading…"}</h2>
       </div>
 
       <TabNavigation tabs={tabs} />
@@ -256,7 +263,7 @@ export default function AssignmentDetails() {
               {!submissionForbidden ? (
                 <>
                   <label className="assignment-details-label">
-                    Upload submission (uploading again will replace your previous submission)
+                    Upload submission (uploading again will replace the current submission)
                     <input
                       className="assignment-details-file"
                       type="file"
@@ -271,27 +278,6 @@ export default function AssignmentDetails() {
                   </div>
                 </>
               ) : null}
-            </>
-          ) : null}
-
-          {isTeacher() || isAdmin() ? (
-            <>
-              <h3>Student Submissions</h3>
-              {submissionList.length ? (
-                <ul>
-                  {submissionList.map((sub) => (
-                    <li key={sub.id}>
-                      {(sub.student?.name || sub.student?.email || `Student ${sub.student?.id ?? ""}`).trim()} —{" "}
-                      {sub.file_name || "(file)"} —{" "}
-                      <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
-                        Download
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No submissions yet.</p>
-              )}
             </>
           ) : null}
 

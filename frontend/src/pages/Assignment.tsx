@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import "./Assignment.css";
+import BackArrow from "../components/BackArrow";
 import RubricCreator from "../components/RubricCreator";
 import RubricDisplay from "../components/RubricDisplay";
 import TabNavigation from "../components/TabNavigation";
-import { isTeacher } from "../util/login";
+import { hasRole, isTeacher } from "../util/login";
 
 import { 
   getAssignmentDetails,
@@ -19,6 +20,8 @@ export default function Assignment() {
   const { id } = useParams();
   const [selectedCriteria, setSelectedCriteria] = useState<SelectedCriterion[]>([]);
   const [assignmentName, setAssignmentName] = useState<string | null>(null);
+
+  const isTeacherOrAdmin = hasRole("teacher", "admin");
 
   useEffect(() => {
       (async () => {
@@ -65,14 +68,17 @@ export default function Assignment() {
       label: "Details",
       path: `/assignment/${id}/details`,
     },
-    {
-      label: "Group",
-      path: `/assignment/${id}/group`,
-    }
   ];
 
+  if (isTeacherOrAdmin) {
+    tabs.push({
+      label: "Group Submissions",
+      path: `/assignment/${id}/group-submissions`,
+    });
+  }
+
   // Add role-specific review tab
-  if (isTeacher()) {
+  if (isTeacherOrAdmin) {
     tabs.push({
       label: "Peer Reviews",
       path: `/assignment/${id}/teacher-reviews`,
@@ -90,8 +96,9 @@ export default function Assignment() {
 
   return (
     <>
+      <BackArrow />
       <div className="AssignmentHeader">
-        <h2>{assignmentName || `Assignment ${id}`}</h2>
+        <h2>{assignmentName ?? "Loading…"}</h2>
       </div>
 
       <TabNavigation tabs={tabs} />

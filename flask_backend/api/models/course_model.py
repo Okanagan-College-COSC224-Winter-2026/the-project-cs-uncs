@@ -21,6 +21,7 @@ class Course(db.Model):
     assignments = db.relationship(
         "Assignment", back_populates="course", cascade="all, delete-orphan", lazy="dynamic"
     )
+    groups = db.relationship("Group", back_populates="course", cascade="all, delete-orphan", lazy="dynamic")
     user_courses = db.relationship(
         "User_Course",
         back_populates="course",

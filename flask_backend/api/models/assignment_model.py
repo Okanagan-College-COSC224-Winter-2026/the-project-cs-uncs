@@ -30,17 +30,11 @@ class Assignment(db.Model):
     rubrics = db.relationship(
         "Rubric", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
     )
-    groups = db.relationship(
-        "CourseGroup", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
-    )
     submissions = db.relationship(
         "Submission", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
     )
     reviews = db.relationship(
         "Review", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
-    )
-    group_members = db.relationship(
-        "Group_Members", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     def __init__(

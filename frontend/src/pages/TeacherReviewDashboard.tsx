@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getAllReviewsForAssignment } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
+import BackArrow from '../components/BackArrow';
 import './TeacherReviewDashboard.css';
 import './Assignment.css';
 
@@ -55,7 +56,6 @@ interface DashboardData {
 
 export default function TeacherReviewDashboard() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +95,7 @@ export default function TeacherReviewDashboard() {
   if (loading) {
     return (
       <div className="teacher-dashboard-container">
+        <BackArrow />
         <p>Loading review data...</p>
       </div>
     );
@@ -103,10 +104,8 @@ export default function TeacherReviewDashboard() {
   if (error) {
     return (
       <div className="teacher-dashboard-container">
+        <BackArrow />
         <div className="error-message">{error}</div>
-        <button className="dashboard-back-button" onClick={() => navigate(`/assignment/${id}`)}>
-          Back to Assignment
-        </button>
       </div>
     );
   }
@@ -114,6 +113,7 @@ export default function TeacherReviewDashboard() {
   if (!data) {
     return (
       <div className="teacher-dashboard-container">
+        <BackArrow />
         <p>No data available</p>
       </div>
     );
@@ -123,6 +123,7 @@ export default function TeacherReviewDashboard() {
 
   return (
     <div className="teacher-dashboard-container">
+      <BackArrow />
       <div className="AssignmentHeader">
         <h2>Assignment {id}</h2>
       </div>
@@ -138,8 +139,8 @@ export default function TeacherReviewDashboard() {
             path: `/assignment/${id}/details`,
           },
           {
-            label: "Group",
-            path: `/assignment/${id}/group`,
+            label: "Group Submissions",
+            path: `/assignment/${id}/group-submissions`,
           },
           {
             label: "Peer Reviews",

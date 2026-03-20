@@ -1,4 +1,5 @@
 // import { useParams } from 'react-router-dom'
+import BackArrow from '../components/BackArrow'
 import './Profile.css'
 // import { useEffect, useState } from 'react'
 // import { getProfile } from '../util/api'
@@ -18,6 +19,7 @@ export default function Profile() {
 
   return (
     <div className="Profile">
+      <BackArrow />
       <div className="profile-image">
         <img src={`https://placehold.co/200x200`} alt="profile" />
       </div>

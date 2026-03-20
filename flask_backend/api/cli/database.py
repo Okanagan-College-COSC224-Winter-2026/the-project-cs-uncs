@@ -14,7 +14,9 @@ from ..models import (
     Criterion,
     Submission,
     Review,
-    User_Course
+    User_Course,
+    Group,
+    GroupMember
 )
 from ..models.db import db
 from werkzeug.security import generate_password_hash
@@ -438,6 +440,148 @@ def add_users_command():
     click.echo("\nPeer Review Users:")
     click.echo("  teacher@test.com")
     click.echo("  student1@test.com | student2@test.com | student3@test.com | student4@test.com")
+
+    # ---------------------------------------------------------------------
+    # Additional seed data for group testing
+    # ---------------------------------------------------------------------
+    click.echo("\n" + "=" * 60)
+    click.echo("Seeding additional group-testing data...")
+
+    group_teacher = User.get_by_email("teacher@example.com")
+    if not group_teacher:
+        click.echo(
+            "Error: teacher@example.com not found; cannot seed group-testing courses.",
+            err=True,
+        )
+        click.echo("")
+        return
+
+    # Create a bunch of additional students (password: 123456)
+    group_test_students = []
+    for i in range(1, 19):
+        email = f"groupstudent{i:02d}@test.com"
+        student = User.get_by_email(email)
+        if not student:
+            hashed = generate_password_hash("123456", method="pbkdf2:sha256")
+            student = User(
+                name=f"Group Test Student {i:02d}",
+                email=email,
+                hash_pass=hashed,
+                role="student",
+            )
+            User.create_user(student)
+            click.echo(f"✓ Created student: {student.email}")
+        else:
+            click.echo(f"✓ Student already exists: {student.email}")
+        group_test_students.append(student)
+
+    # Create a few sample classes/courses taught by the example teacher
+    group_test_course_names = [
+        "Group Testing 101 - Section A",
+        "Group Testing 101 - Section B",
+        "Group Testing 101 - Section C",
+    ]
+
+    group_test_courses = []
+    for course_name in group_test_course_names:
+        course = Course.get_by_name_teacher(course_name, group_teacher.id)
+        if not course:
+            course = Course(teacherID=group_teacher.id, name=course_name)
+            Course.create_course(course)
+            click.echo(f"✓ Created course: {course.name} (ID: {course.id})")
+        else:
+            click.echo(f"✓ Course already exists: {course.name} (ID: {course.id})")
+        group_test_courses.append(course)
+
+        # Add a simple assignment so assignment-level navigation can be tested
+        assignment_name = "Group Test Assignment"
+        assignment = Assignment.query.filter_by(courseID=course.id, name=assignment_name).first()
+        if not assignment:
+            due_date = datetime.now(timezone.utc) + timedelta(days=14)
+            assignment = Assignment(
+                courseID=course.id,
+                name=assignment_name,
+                rubric_text="Group testing rubric text",
+                due_date=due_date,
+            )
+            Assignment.create(assignment)
+            click.echo(f"  - Added assignment: {assignment.name} (ID: {assignment.id})")
+
+    # Enroll students into courses (idempotent)
+    # Section A: enroll all group-test students
+    section_a = group_test_courses[0]
+    enrolled = 0
+    for student in group_test_students:
+        if not User_Course.get(student.id, section_a.id):
+            db.session.add(User_Course(userID=student.id, courseID=section_a.id))
+            enrolled += 1
+    if enrolled:
+        db.session.commit()
+        click.echo(f"✓ Enrolled {enrolled} group-test students into '{section_a.name}'")
+    else:
+        click.echo(f"✓ All group-test students already enrolled in '{section_a.name}'")
+
+    # Section B: enroll first 12 students
+    section_b = group_test_courses[1]
+    enrolled = 0
+    for student in group_test_students[:12]:
+        if not User_Course.get(student.id, section_b.id):
+            db.session.add(User_Course(userID=student.id, courseID=section_b.id))
+            enrolled += 1
+    if enrolled:
+        db.session.commit()
+        click.echo(f"✓ Enrolled {enrolled} group-test students into '{section_b.name}'")
+    else:
+        click.echo(f"✓ Group-test students already enrolled in '{section_b.name}'")
+
+    # Section C: enroll last 8 students
+    section_c = group_test_courses[2]
+    enrolled = 0
+    for student in group_test_students[-8:]:
+        if not User_Course.get(student.id, section_c.id):
+            db.session.add(User_Course(userID=student.id, courseID=section_c.id))
+            enrolled += 1
+    if enrolled:
+        db.session.commit()
+        click.echo(f"✓ Enrolled {enrolled} group-test students into '{section_c.name}'")
+    else:
+        click.echo(f"✓ Group-test students already enrolled in '{section_c.name}'")
+
+    # Pre-create a few groups in Section A, leaving some students unassigned
+    click.echo(f"\nCreating sample groups in '{section_a.name}'...")
+    group_specs = [
+        ("Alpha", group_test_students[0:4]),
+        ("Beta", group_test_students[4:8]),
+        ("Gamma", group_test_students[8:12]),
+        ("Delta", group_test_students[12:15]),
+    ]
+
+    for group_name, members in group_specs:
+        group = Group.query.filter_by(course_id=section_a.id, name=group_name).first()
+        if not group:
+            group = Group.create(name=group_name, course_id=section_a.id)
+            click.echo(f"✓ Created group: {group.name} (ID: {group.id})")
+        else:
+            click.echo(f"✓ Group already exists: {group.name} (ID: {group.id})")
+
+        added_members = 0
+        for student in members:
+            existing_member = GroupMember.query.filter_by(
+                group_id=group.id, user_id=student.id
+            ).first()
+            if existing_member:
+                continue
+            db.session.add(GroupMember(group_id=group.id, user_id=student.id))
+            added_members += 1
+
+        if added_members:
+            db.session.commit()
+            click.echo(f"  - Added {added_members} members to '{group.name}'")
+
+    click.echo("\nGroup-testing seed data ready.")
+    click.echo("Try logging in as:")
+    click.echo("  teacher@example.com (teacher)")
+    click.echo("  groupstudent01@test.com (student)")
     click.echo("")
 
 

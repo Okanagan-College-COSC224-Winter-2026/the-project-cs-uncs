@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getAssignedReviews, getReviewStatus } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
+import BackArrow from '../components/BackArrow';
 import './PeerReviews.css';
 import './Assignment.css';
 
@@ -88,6 +89,7 @@ export default function PeerReviews() {
   if (loading) {
     return (
       <div className="peer-reviews-container">
+        <BackArrow />
         <p>Loading peer reviews...</p>
       </div>
     );
@@ -96,6 +98,7 @@ export default function PeerReviews() {
   if (error) {
     return (
       <div className="peer-reviews-container">
+        <BackArrow />
         <div className="error-message">{error}</div>
       </div>
     );
@@ -103,8 +106,9 @@ export default function PeerReviews() {
 
   return (
     <div className="peer-reviews-container">
+      <BackArrow />
       <div className="AssignmentHeader">
-        <h2>Assignment {id}</h2>
+        <h2>{assignment?.name ?? "Loading…"}</h2>
       </div>
 
       <TabNavigation
@@ -116,10 +120,6 @@ export default function PeerReviews() {
           {
             label: "Details",
             path: `/assignment/${id}/details`,
-          },
-          {
-            label: "Group",
-            path: `/assignment/${id}/group`,
           },
           {
             label: "Peer Review",

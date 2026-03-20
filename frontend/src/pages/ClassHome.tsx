@@ -1,4 +1,5 @@
 import AssignmentCard from "../components/AssignmentCard";
+import BackArrow from "../components/BackArrow";
 import Button from "../components/Button";
 import "./ClassHome.css";
 import { useNavigate, useParams } from "react-router-dom";
@@ -44,6 +45,7 @@ export default function ClassHome() {
     
     return (
       <>
+        <BackArrow />
         <div className="ClassHeader">
           <div className="ClassHeaderLeft">
             <h2>{className}</h2>
@@ -59,16 +61,18 @@ export default function ClassHome() {
       </div>
 
       <TabNavigation
-        tabs={[
-          {
-            label: "Home",
-            path: `/classes/${id}/home`,
-          },
-          {
-            label: "Members",
-            path: `/classes/${id}/members`,
-          },
-        ]}
+        tabs={
+          isTeacher() || isAdmin()
+            ? [
+                { label: "Home", path: `/classes/${id}/home` },
+                { label: "Members", path: `/classes/${id}/members` },
+                { label: "Groups", path: `/classes/${id}/groups` },
+              ]
+            : [
+                { label: "Home", path: `/classes/${id}/home` },
+                { label: "My Group", path: `/classes/${id}/my-group` },
+              ]
+        }
       />
 
       <StatusMessage message={statusMessage} type={statusType} />

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getReceivedFeedback } from '../util/api';
-import { isTeacher } from '../util/login';
+import { hasRole } from '../util/login';
 import TabNavigation from '../components/TabNavigation';
+import BackArrow from '../components/BackArrow';
 import './ReceivedFeedback.css';
 
 interface CriterionFeedback {
@@ -53,13 +54,15 @@ export default function ReceivedFeedback() {
     fetchFeedback();
   }, [assignmentId]);
 
+  const isTeacherOrAdmin = hasRole('teacher', 'admin');
+
   const tabs = [
     { label: 'Home', path: `/assignment/${assignmentId}` },
     { label: 'Details', path: `/assignment/${assignmentId}/details` },
-    { label: 'Group', path: `/assignment/${assignmentId}/group` },
   ];
 
-  if (isTeacher()) {
+  if (isTeacherOrAdmin) {
+    tabs.push({ label: 'Group Submissions', path: `/assignment/${assignmentId}/group-submissions` });
     tabs.push({ label: 'Peer Reviews', path: `/assignment/${assignmentId}/teacher-reviews` });
   } else {
     tabs.push({ label: 'Peer Review', path: `/assignment/${assignmentId}/reviews` });
@@ -69,6 +72,7 @@ export default function ReceivedFeedback() {
   if (loading) {
     return (
       <div className="received-feedback-container">
+        <BackArrow />
         <p>Loading feedback...</p>
       </div>
     );
@@ -76,6 +80,7 @@ export default function ReceivedFeedback() {
 
   return (
     <div className="received-feedback-container">
+      <BackArrow />
       <div className="AssignmentHeader">
         <h2>{assignment?.name ?? `Assignment ${assignmentId}`}</h2>
       </div>

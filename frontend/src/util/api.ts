@@ -218,56 +218,7 @@ export const listAssignments = async (classId: string) => {
   return await resp.json()
 }
 
-export const listStuGroup = async (assignmentId : number, studentId : number) => {
-  const resp = await fetch(`${BASE_URL}/list_stu_groups/`+ assignmentId + "/" + studentId, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-   },
-    credentials: 'include',
-  })
 
-  maybeHandleExpire(resp);
-
-
-  if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
-  }
-
-  return await resp.json()
-} 
-
-export const listGroups = async (assignmentId : number) => {
-  const resp = await fetch(`${BASE_URL}/list_all_groups/` + assignmentId, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-   },
-    credentials: 'include',
-  })
-  maybeHandleExpire(resp);
-
-
-  if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
-  }
-  
-  return await resp.json()
-} 
-
-export const listUnassignedGroups = async (assignmentId : number) => {
-  const resp = await fetch(`${BASE_URL}/list_ua_groups/` + assignmentId, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-   },
-    credentials: 'include',
-  })
-
-  maybeHandleExpire(resp);
-
-  return await resp.json()
-}
 
 export const listCourseMembers = async (classId: string) => {
   const resp = await fetch(`${BASE_URL}/class/members`, {
@@ -289,6 +240,67 @@ export const listCourseMembers = async (classId: string) => {
   
   return await resp.json()
 } 
+
+// ============================================================
+// COURSE GROUPS (Flask backend: /groups/*)
+// ============================================================
+
+export type CourseGroupMember = { id: number; name: string; email?: string }
+export type CourseGroup = { id: number; name: string; members: CourseGroupMember[] }
+
+export const listCourseGroups = async (courseId: number): Promise<CourseGroup[]> => {
+  const resp = await fetch(`${BASE_URL}/groups/course/${courseId}`, {
+    method: 'GET',
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Failed to list groups: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const createCourseGroup = async (
+  courseId: number,
+  name: string,
+  memberIds: number[]
+): Promise<{ msg: string; group_id: number }> => {
+  const resp = await fetch(`${BASE_URL}/groups/course/${courseId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, members: memberIds }),
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  const json = await resp.json().catch(() => ({} as any))
+  if (!resp.ok) {
+    throw new Error(json.msg || `Failed to create group: ${resp.status}`)
+  }
+
+  return json
+}
+
+export const getMyCourseGroup = async (courseId: number): Promise<{ group: CourseGroup | null; multiple?: boolean }> => {
+  const resp = await fetch(`${BASE_URL}/groups/course/${courseId}/my`, {
+    method: 'GET',
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  const json = await resp.json().catch(() => ({} as any))
+  if (!resp.ok) {
+    throw new Error(json.msg || `Failed to fetch my group: ${resp.status}`)
+  }
+
+  return json
+}
 
 export const removeCourseMember = async (classId: number, userId: number) => {
   const resp = await fetch(`${BASE_URL}/class/remove_member`, {

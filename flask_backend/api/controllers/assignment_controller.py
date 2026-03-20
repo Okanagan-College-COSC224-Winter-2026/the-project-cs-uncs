@@ -6,7 +6,7 @@ from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
-from ..models import Course, Assignment, Submission, User, User_Course, AssignmentSchema, db
+from ..models import Course, Assignment, Submission, User, User_Course, AssignmentSchema, Group, GroupMember, db
 from .auth_controller import jwt_teacher_required, jwt_role_required
 
 bp = Blueprint("assignment", __name__, url_prefix="/assignment")
@@ -18,7 +18,22 @@ def _original_filename_from_storage_name(storage_name: str | None) -> str | None
     # We store submissions as: <uuidhex>__<secure_filename>
     if "__" in storage_name:
         return storage_name.split("__", 1)[1]
+
     return storage_name
+
+
+def _get_user_group_for_course(user_id: int, course_id: int):
+    """Return (group, member_user_ids) for the given user in a course, or (None, [])."""
+    group = (
+        Group.query.join(GroupMember, GroupMember.group_id == Group.id)
+        .filter(Group.course_id == course_id, GroupMember.user_id == user_id)
+        .first()
+    )
+    if not group:
+        return None, []
+
+    member_user_ids = [m.user_id for m in group.members]
+    return group, member_user_ids
 
 @bp.route("/create_assignment", methods=["POST"])
 @jwt_teacher_required
@@ -296,13 +311,45 @@ def get_my_submission(assignment_id):
     if not enrollment:
         return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
 
-    submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+    group, member_ids = _get_user_group_for_course(user.id, assignment.courseID)
+
+    if group and member_ids:
+        submission = (
+            Submission.query.filter(
+                Submission.assignmentID == assignment.id,
+                Submission.studentID.in_(member_ids),
+            )
+            .order_by(Submission.id.asc())
+            .first()
+        )
+    else:
+        submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+
     if not submission:
-        return jsonify({"submission": None}), 200
+        return jsonify({"submission": None, "locked": False}), 200
 
     storage_name = Path(submission.path).name if submission.path else None
     file_name = _original_filename_from_storage_name(storage_name)
-    return jsonify({"submission": {"id": submission.id, "file_name": file_name}}), 200
+    submitted_by = None
+    try:
+        submitted_by_user = submission.student
+        if submitted_by_user:
+            submitted_by = {"id": submitted_by_user.id, "name": submitted_by_user.name}
+    except Exception:
+        submitted_by = None
+
+    locked = bool(group and submission.studentID != user.id)
+
+    return (
+        jsonify(
+            {
+                "submission": {"id": submission.id, "file_name": file_name},
+                "submitted_by": submitted_by,
+                "locked": locked,
+            }
+        ),
+        200,
+    )
 
 
 @bp.route("/submit/<int:assignment_id>", methods=["POST"])
@@ -337,6 +384,19 @@ def upload_submission(assignment_id):
 
     storage_name = f"{uuid4().hex}__{safe_name}"
     abs_path = abs_dir / storage_name
+
+    group, member_ids = _get_user_group_for_course(user.id, assignment.courseID)
+    if group and member_ids:
+        existing_group_submission = (
+            Submission.query.filter(
+                Submission.assignmentID == assignment.id,
+                Submission.studentID.in_(member_ids),
+            )
+            .order_by(Submission.id.asc())
+            .first()
+        )
+        if existing_group_submission and existing_group_submission.studentID != user.id:
+            return jsonify({"msg": "Your group has already submitted for this assignment"}), 403
 
     submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
     if submission and submission.path:
@@ -435,7 +495,15 @@ def download_submission(submission_id):
 
     is_owner_student = user.is_student() and submission.studentID == user.id
     is_course_teacher = user.is_teacher() and course.teacherID == user.id
-    if not (user.is_admin() or is_owner_student or is_course_teacher):
+    is_groupmate_student = False
+    if user.is_student() and not is_owner_student:
+        group, _ = _get_user_group_for_course(user.id, course.id)
+        if group:
+            is_groupmate_student = (
+                GroupMember.query.filter_by(group_id=group.id, user_id=submission.studentID).first() is not None
+            )
+
+    if not (user.is_admin() or is_owner_student or is_course_teacher or is_groupmate_student):
         return jsonify({"msg": "Unauthorized"}), 403
 
     if not submission.path:

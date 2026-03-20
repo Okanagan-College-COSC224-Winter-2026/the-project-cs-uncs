@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listAllUsers, createUserAdmin, updateUserAdmin, updateUserRoleAdmin, deleteUserAdmin } from "../util/api";
+import BackArrow from "../components/BackArrow";
 import './AdminUsers.css'
 
 type User = {
@@ -59,13 +60,12 @@ export default function AdminUsers() {
     }
   }
 
-  type UpdateUserPayload = { name?: string | null; email?: string | null };
-
   const handleSave = async (userId: number, updated: Partial<User>) => {
     try {
-      if (updated.name || updated.email) {
-        await updateUserAdmin(userId, { name: updated.name ?? null, email: updated.email ?? null } as UpdateUserPayload);
-      }
+      const payload: { name?: string; email?: string } = {};
+      if (updated.name !== undefined) payload.name = updated.name;
+      if (updated.email !== undefined) payload.email = updated.email;
+      if (Object.keys(payload).length > 0) await updateUserAdmin(userId, payload);
       if (updated.role) {
         await updateUserRoleAdmin(userId, updated.role);
       }
@@ -100,6 +100,7 @@ export default function AdminUsers() {
 
   return (
     <div className="AdminUsers">
+      <BackArrow />
       <h1>Admin — Manage Users</h1>
 
       {error && <div className="Error" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}

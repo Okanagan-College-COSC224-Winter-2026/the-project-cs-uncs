@@ -11,7 +11,6 @@ import LoginPage from "./pages/LoginPage";
 import ClassHome from "./pages/ClassHome";
 import ClassMembers from "./pages/ClassMembers";
 import Assignment from "./pages/Assignment";
-import Group from "./pages/Group";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePassword from "./pages/ChangePassword";
 // CreateTeacher removed in favor of AdminUsers
@@ -22,6 +21,9 @@ import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
 import ReceivedFeedback from "./pages/ReceivedFeedback";
 import CreateAssignment from "./pages/CreateAssignment";
 import AssignmentDetails from "./pages/AssignmentDetails";
+import Groups from "./pages/Groups";
+import GroupSubmissions from "./pages/GroupSubmissions";
+import MyGroup from "./pages/MyGroup";
 
 function AppContent() {
   const location = useLocation();
@@ -78,6 +80,19 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
+          <Route path="/classes/:id/groups" element={
+            <ProtectedRoute>
+              <Groups />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/classes/:id/my-group" element={
+            <ProtectedRoute>
+              <MyGroup />
+            </ProtectedRoute>
+          } />
+
+
           <Route path="/classes/:id/create-assignment" element={
             <ProtectedRoute>
               <CreateAssignment />
@@ -102,15 +117,21 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/assignments/:id/group" element={
+          <Route path="/assignment/:id/groups" element={
             <ProtectedRoute>
-              <Group />
+              <Groups />
             </ProtectedRoute>
           } />
 
-          <Route path="/assignment/:id/group" element={
+          <Route path="/assignment/:id/group-submissions" element={
             <ProtectedRoute>
-              <Group />
+              <GroupSubmissions />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/my-group" element={
+            <ProtectedRoute>
+              <MyGroup />
             </ProtectedRoute>
           } />
 

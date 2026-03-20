@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import BackArrow from '../components/BackArrow'
 import Button from '../components/Button'
 import StatusMessage from '../components/StatusMessage'
 import Textbox from '../components/Textbox'
@@ -65,6 +66,7 @@ export default function CreateAssignment() {
 
   return (
     <div className="CreateAssignment">
+      <BackArrow />
       <h1>Create Assignment</h1>
 
       <StatusMessage message={statusMessage} type={statusType} />

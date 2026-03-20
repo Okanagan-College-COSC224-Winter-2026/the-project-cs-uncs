@@ -1,12 +1,12 @@
 from marshmallow import fields, validate
 
 from .assignment_model import Assignment
-from .course_group_model import CourseGroup
 from .course_model import Course
 from .criteria_description_model import CriteriaDescription
 from .criterion_model import Criterion
 from .db import db, ma
-from .group_members_model import Group_Members
+from .group_model import Group
+from .group_member_model import GroupMember
 from .review_model import Review
 from .rubric_model import Rubric
 from .submission_model import Submission
@@ -192,15 +192,14 @@ class ReviewListSchema(ma.SQLAlchemyAutoSchema):
 
 class CourseGroupSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = CourseGroup
+        model = Group
         load_instance = True
-        include_fk = False
+        include_fk = True
         sqla_session = db.session
 
-
-class GroupMembersSchema(ma.SQLAlchemyAutoSchema):
+class GroupMemberSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = Group_Members
+        model = GroupMember
         load_instance = True
         include_fk = False
         sqla_session = db.session

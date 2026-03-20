@@ -85,6 +85,31 @@ export const getCurrentUser = async () => {
   return await response.json();
 }
 
+export const getCurrentUserPhotoUrl = (cacheBuster?: string | number) => {
+  const suffix = cacheBuster ? `?v=${encodeURIComponent(String(cacheBuster))}` : ''
+  return `${BASE_URL}/user/photo${suffix}`
+}
+
+export const uploadCurrentUserPhoto = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${BASE_URL}/user/photo`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Failed to upload photo: ${response.status}`)
+  }
+
+  return await response.json().catch(() => ({} as any))
+}
+
 export const deleteAssignment = async (assignmentId: number) => {
   const response = await fetch(`${BASE_URL}/assignment/delete_assignment/${assignmentId}`, {
     method: 'DELETE',

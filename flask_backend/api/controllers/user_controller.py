@@ -2,9 +2,12 @@
 User management endpoints
 """
 
-from flask import Blueprint, jsonify, request
+from pathlib import Path
+
+from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, set_access_cookies
 from marshmallow import Schema, ValidationError, fields, validate
+from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..models import User, UserSchema
@@ -34,6 +37,62 @@ def get_current_user():
     if not user:
         return jsonify({"msg": "User not found"}), 404
     return jsonify(user_schema.dump(user)), 200
+
+
+@bp.route("/photo", methods=["GET"])
+@jwt_required()
+def get_current_user_photo():
+    """Fetch the current user's profile photo (if one exists)."""
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    uploads_root = Path(current_app.instance_path) / "uploads" / "profile_photos"
+    if not uploads_root.exists():
+        return jsonify({"msg": "No photo"}), 404
+
+    matches = sorted(uploads_root.glob(f"user_{user.id}.*"))
+    if not matches:
+        return jsonify({"msg": "No photo"}), 404
+
+    photo_path = matches[0]
+    return send_from_directory(str(uploads_root), photo_path.name, as_attachment=False)
+
+
+@bp.route("/photo", methods=["POST"])
+@jwt_required()
+def upload_current_user_photo():
+    """Upload or replace the current user's profile photo."""
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    uploaded_file = request.files.get("file")
+    if not uploaded_file or not uploaded_file.filename:
+        return jsonify({"msg": "File is required"}), 400
+
+    safe_name = secure_filename(uploaded_file.filename)
+    ext = Path(safe_name).suffix.lower()
+    allowed_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+    if ext not in allowed_exts:
+        return jsonify({"msg": "Unsupported file type"}), 400
+
+    uploads_root = Path(current_app.instance_path) / "uploads" / "profile_photos"
+    uploads_root.mkdir(parents=True, exist_ok=True)
+
+    # Remove any prior photo for this user (regardless of extension)
+    for existing in uploads_root.glob(f"user_{user.id}.*"):
+        try:
+            existing.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    storage_name = f"user_{user.id}{ext}"
+    uploaded_file.save(str(uploads_root / storage_name))
+
+    return jsonify({"msg": "Photo uploaded"}), 200
 
 
 @bp.route("/<int:user_id>", methods=["GET"])

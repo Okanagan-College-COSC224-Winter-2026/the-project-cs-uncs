@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -52,6 +53,14 @@ def create_app(test_config=None):
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         JWT_SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret"),
+        # JWT expiration: Flask-JWT-Extended defaults to 15 minutes if unset.
+        # That can feel like "random" logouts in local dev (the frontend redirects on 401).
+        # Use a longer dev default but keep production short unless explicitly overridden.
+        JWT_ACCESS_TOKEN_EXPIRES=(
+            timedelta(minutes=int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")))
+            if is_production
+            else timedelta(hours=int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_HOURS", "12")))
+        ),
         # JWT Cookie settings - secure defaults for production, permissive for development
         JWT_TOKEN_LOCATION=["cookies"],
         JWT_COOKIE_SECURE=is_production,  # True in production (HTTPS required)

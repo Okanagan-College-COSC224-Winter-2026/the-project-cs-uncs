@@ -406,22 +406,21 @@ export default function TeacherReviewDashboard() {
               <div className="review-details" style={{ display: 'block' }}>
                 <div className="dashboard-criteria-list">
                   {groupSummary.groups.map((g) => (
-                    <div key={g.group.id} className="criterion-detail">
+                    <button
+                      key={g.group.id}
+                      type="button"
+                      className="teacher-groupScoreRow"
+                      onClick={() => setSelectedGroupId(g.group.id)}
+                    >
                       <div className="criterion-header">
-                        <button
-                          type="button"
-                          className="teacher-groupScoreLink"
-                          onClick={() => setSelectedGroupId(g.group.id)}
-                        >
-                          {g.group.name}
-                        </button>
+                        <span className="criterion-label">{g.group.name}</span>
                         <span className="grade-badge">
                           Total received: {g.total_received}
                           {g.max_possible ? `/${g.max_possible}` : ''}
                           {` (${g.reviews_received} review${g.reviews_received === 1 ? '' : 's'})`}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

@@ -78,6 +78,13 @@ export default function TeacherReviewDashboard() {
   const [groupSummary, setGroupSummary] = useState<TeacherGroupPeerEvalSummaryResponse | null>(null);
   const [courseGroups, setCourseGroups] = useState<CourseGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+
+  const getAdditionalComments = (criteria: Array<{ comments?: unknown }> | null | undefined) => {
+    const comments = (criteria ?? [])
+      .map((c) => String((c as any)?.comments ?? '').trim())
+      .filter((txt) => txt.length > 0)
+    return Array.from(new Set(comments)).join('\n\n')
+  }
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [criteriaByRowId, setCriteriaByRowId] = useState<Record<number, { question: string; hasScore: boolean; scoreMax: number }>>({});
   const [loading, setLoading] = useState(true);
@@ -345,33 +352,33 @@ export default function TeacherReviewDashboard() {
 
                     <div className="review-details" style={{ display: 'block' }}>
                       <div className="dashboard-criteria-list">
-                        {(evaluation.criteria ?? []).map((c) => {
+                        {(evaluation.criteria ?? []).filter((c) => c.hasScore).map((c) => {
                           const grade = Number(c.grade ?? 0)
                           const max = c.scoreMax == null ? null : Number(c.scoreMax)
-                          const comments = String(c.comments ?? '')
                           const question = String(c.question ?? '').trim() || `Criterion ${c.criterionRowID}`
 
                           return (
                             <div key={String(c.criterionRowID)} className="criterion-detail">
                               <div className="criterion-header">
                                 <span className="criterion-label">{question}</span>
-                                {c.hasScore ? (
-                                  <span className="grade-badge">
-                                    Grade: {Number.isFinite(grade) ? grade : 0}{max ? `/${max}` : ''}
-                                  </span>
-                                ) : (
-                                  <span className="grade-badge">Comments</span>
-                                )}
+                                <span className="grade-badge">
+                                  Grade: {Number.isFinite(grade) ? grade : 0}{max ? `/${max}` : ''}
+                                </span>
                               </div>
-                              {comments ? (
-                                <div className="dashboard-criterion-comments">
-                                  <strong>Comments:</strong>
-                                  <p>{comments}</p>
-                                </div>
-                              ) : null}
                             </div>
                           )
                         })}
+
+                        {(() => {
+                          const combined = getAdditionalComments(evaluation.criteria as any)
+                          if (!combined) return null
+                          return (
+                            <div className="dashboard-criterion-comments">
+                              <strong>Additional comments:</strong>
+                              <p style={{ whiteSpace: 'pre-wrap' }}>{combined}</p>
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -551,36 +558,40 @@ export default function TeacherReviewDashboard() {
 
                 <div className="review-details" style={{ display: 'block' }}>
                   <div className="dashboard-criteria-list">
-                    {review.criteria.map((c) => {
+                    {review.criteria.filter((c) => {
+                      const rowId = Number((c as any)?.criterionRowID)
+                      const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
+                      const hasScore = meta?.hasScore ?? true
+                      return hasScore
+                    }).map((c) => {
                       const rowId = Number((c as any)?.criterionRowID)
                       const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
                       const question = meta?.question ?? `Criterion ${rowId}`
-                      const hasScore = meta?.hasScore ?? true
                       const max = meta?.scoreMax
                       const grade = Number((c as any)?.grade ?? 0)
-                      const comments = String((c as any)?.comments ?? '')
 
                       return (
                         <div key={String((c as any)?.id ?? rowId)} className="criterion-detail">
                           <div className="criterion-header">
                             <span className="criterion-label">{question}</span>
-                            {hasScore ? (
-                              <span className="grade-badge">
-                                Grade: {Number.isFinite(grade) ? grade : 0}{max ? `/${max}` : ''}
-                              </span>
-                            ) : (
-                              <span className="grade-badge">Comments</span>
-                            )}
+                            <span className="grade-badge">
+                              Grade: {Number.isFinite(grade) ? grade : 0}{max ? `/${max}` : ''}
+                            </span>
                           </div>
-                          {comments ? (
-                            <div className="dashboard-criterion-comments">
-                              <strong>Comments:</strong>
-                              <p>{comments}</p>
-                            </div>
-                          ) : null}
                         </div>
                       )
                     })}
+
+                    {(() => {
+                      const combined = getAdditionalComments(review.criteria as any)
+                      if (!combined) return null
+                      return (
+                        <div className="dashboard-criterion-comments">
+                          <strong>Additional comments:</strong>
+                          <p style={{ whiteSpace: 'pre-wrap' }}>{combined}</p>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
@@ -650,7 +661,7 @@ export default function TeacherReviewDashboard() {
           </div>
         </div>
 
-      {assignmentType !== 'peer_eval_group' ? (
+  	  {assignmentType !== 'peer_eval_group' && assignmentType !== 'peer_eval_individual' ? (
         <div className="statistics-section">
           <h3>Overview</h3>
           <div className="stats-grid">
@@ -733,7 +744,7 @@ export default function TeacherReviewDashboard() {
                       ) : (
                         <div className="dashboard-criteria-list">
                           <h4>Submitted Feedback:</h4>
-                          {review.criteria.map((criterion) => (
+                          {review.criteria.filter((criterion) => (criterion as any).hasScore !== false).map((criterion) => (
                             <div key={criterion.id} className="criterion-detail">
                               <div className="criterion-header">
                                 <span className="criterion-label">
@@ -743,14 +754,19 @@ export default function TeacherReviewDashboard() {
                                   Grade: {criterion.grade}{criterion.scoreMax ? `/${criterion.scoreMax}` : ''}
                                 </span>
                               </div>
-                              {criterion.comments && (
-                                <div className="dashboard-criterion-comments">
-                                  <strong>Comments:</strong>
-                                  <p>{criterion.comments}</p>
-                                </div>
-                              )}
                             </div>
                           ))}
+
+                          {(() => {
+                            const combined = getAdditionalComments(review.criteria as any)
+                            if (!combined) return null
+                            return (
+                              <div className="dashboard-criterion-comments">
+                                <strong>Additional comments:</strong>
+                                <p style={{ whiteSpace: 'pre-wrap' }}>{combined}</p>
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>

@@ -109,8 +109,8 @@ export default function Assignment() {
       ).map((c) => ({
         id: c.id,
         question: c.question,
-        hasScore: c.hasScore,
-        scoreMax: c.hasScore ? c.scoreMax : 0,
+        hasScore: true,
+        scoreMax: c.scoreMax,
       }))
     );
     setEditMode(true);
@@ -156,15 +156,15 @@ export default function Assignment() {
         .map((c) => {
           const prev = originalById.get(c.id as number);
           if (!prev) return null;
-          const nextScoreMax = c.hasScore ? Math.min(MAX_CRITERION_POINTS, Math.max(0, c.scoreMax || 0)) : 0;
+          const nextScoreMax = Math.min(MAX_CRITERION_POINTS, Math.max(0, c.scoreMax || 0));
           const changed =
             prev.question !== c.question ||
-            prev.hasScore !== c.hasScore ||
-            (prev.hasScore ? prev.scoreMax : 0) !== nextScoreMax;
+            prev.scoreMax !== nextScoreMax ||
+            prev.hasScore !== true;
           if (!changed) return null;
           return {
             id: c.id as number,
-            payload: { question: c.question, hasScore: c.hasScore, scoreMax: nextScoreMax },
+            payload: { question: c.question, hasScore: true, scoreMax: nextScoreMax },
           };
         })
         .filter((x): x is { id: number; payload: { question: string; scoreMax: number; hasScore: boolean } } => Boolean(x));
@@ -172,7 +172,7 @@ export default function Assignment() {
       await Promise.all(deletions.map((cid) => deleteCriteriaDescription(cid)));
       await Promise.all(updates.map((u) => updateCriteriaDescription(u.id, u.payload)));
       await Promise.all(
-        creations.map((c) => createCriteria(effectiveRubricId as number, c.question, c.scoreMax, true, c.hasScore))
+        creations.map((c) => createCriteria(effectiveRubricId as number, c.question, c.scoreMax, true, true))
       );
 
       const critResp = await getRubricCriteria(Number(id));

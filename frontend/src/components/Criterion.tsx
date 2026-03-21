@@ -50,9 +50,7 @@ export default function Criterion(props: props) {
                     );
                 })
             ) : (
-                <td className='criterionData'>
-                    <textarea className='comment' placeholder='Comment here' disabled={isReadOnly} />
-                </td>
+                <td className='criterionData'>—</td>
             )}
         </tr>
     )

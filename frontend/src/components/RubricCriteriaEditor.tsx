@@ -31,48 +31,29 @@ export default function RubricCriteriaEditor({
             value={item.question}
             onChange={(e) => {
               const updated = [...criteria]
-              updated[index] = { ...updated[index], question: e.target.value }
+              updated[index] = { ...updated[index], question: e.target.value, hasScore: true }
               onChange(updated)
             }}
             placeholder="Enter question"
             disabled={disabled}
           />
-          <label>
-            Has score:
-            <input
-              type="checkbox"
-              checked={item.hasScore}
-              onChange={(e) => {
-                const updated = [...criteria]
-                const nextHasScore = e.target.checked
-                updated[index] = {
-                  ...updated[index],
-                  hasScore: nextHasScore,
-                  scoreMax: nextHasScore ? Math.min(MAX_SCORE, Math.max(0, updated[index].scoreMax || 0)) : 0,
-                }
-                onChange(updated)
-              }}
-              disabled={disabled}
-            />
-          </label>
-          {item.hasScore ? (
-            <input
-              type="number"
-              min="0"
-              max={MAX_SCORE}
-              value={item.scoreMax}
-              onChange={(e) => {
-                const updated = [...criteria]
-                updated[index] = {
-                  ...updated[index],
-                  scoreMax: Math.min(MAX_SCORE, Math.max(0, Number(e.target.value))),
-                }
-                onChange(updated)
-              }}
-              placeholder="Enter score max"
-              disabled={disabled}
-            />
-          ) : null}
+          <input
+            type="number"
+            min="0"
+            max={MAX_SCORE}
+            value={item.scoreMax}
+            onChange={(e) => {
+              const updated = [...criteria]
+              updated[index] = {
+                ...updated[index],
+                hasScore: true,
+                scoreMax: Math.min(MAX_SCORE, Math.max(0, Number(e.target.value))),
+              }
+              onChange(updated)
+            }}
+            placeholder="Enter score max"
+            disabled={disabled}
+          />
           <Button
             type="secondary"
             onClick={() => onChange(criteria.filter((_, i) => i !== index))}

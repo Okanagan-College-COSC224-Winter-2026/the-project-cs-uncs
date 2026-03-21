@@ -15,18 +15,23 @@ export default function Criteria(props: props) {
     return (
         <div className="Criteria">
             <table className='criteriaTable'>
-                {props.questions.map((question, i) => (
-                    <Criterion 
-                        key={i}
-                        question={question} 
-                        scoreMax={props.scoreMaxes[i]} 
-                        hasScore={props.hasScores[i]}
-                        onCriterionSelect={props.onCriterionSelect}
-                        questionIndex={i}
-                        grade={props.grades[i]}
-                        readOnly={props.readOnly}
-                    />
-                ))}
+                {props.questions.map((question, i) => {
+                    const hasScore = props.hasScores[i] !== false;
+                    if (!hasScore) return null;
+
+                    return (
+                        <Criterion
+                            key={i}
+                            question={question}
+                            scoreMax={props.scoreMaxes[i]}
+                            hasScore={hasScore}
+                            onCriterionSelect={props.onCriterionSelect}
+                            questionIndex={i}
+                            grade={props.grades[i]}
+                            readOnly={props.readOnly}
+                        />
+                    );
+                })}
             </table>
             {props.canComment && !props.readOnly ? <textarea className="criteriaText" /> : null}
         </div>

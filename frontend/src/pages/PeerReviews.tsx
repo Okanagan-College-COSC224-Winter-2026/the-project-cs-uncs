@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getAssignedReviews,
-  getReviewStatus,
   getAssignmentDetails,
   getGroupPeerEvalStatus,
   hintAssignmentType,
@@ -34,13 +33,6 @@ interface Review {
   criteria_count: number;
 }
 
-interface ReviewStatus {
-  total_assigned: number;
-  completed: number;
-  remaining: number;
-  is_open: boolean;
-  due_date: string | null;
-}
 
 interface AssignmentInfo {
   id: number;
@@ -53,8 +45,7 @@ export default function PeerReviews() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [status, setStatus] = useState<ReviewStatus | null>(null);
-  const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
+const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
   const [assignmentType, setAssignmentType] = useState<string | null>(null);
   const [groupStatus, setGroupStatus] = useState<PeerEvalGroupStatusResponse | null>(null);
   const [groupDraft, setGroupDraft] = useState<Record<number, Record<number, number>>>({});
@@ -90,8 +81,7 @@ export default function PeerReviews() {
           setShowSubmittedGroupSubmission(false);
           setAssignment({ id: gs.assignment.id, name: gs.assignment.name, due_date: details?.due_date ?? null, can_submit: !gs.submitted });
           setReviews([]);
-          setStatus(null);
-        } else {
+} else {
           // Individual peer eval (or legacy): ensure reviews exist for current group
           if (type === 'peer_eval_individual') {
             await syncIndividualPeerEvalReviews(Number(id));
@@ -100,11 +90,7 @@ export default function PeerReviews() {
           const reviewData = await getAssignedReviews(Number(id));
           setReviews(reviewData.reviews);
           setAssignment(reviewData.assignment);
-
-          const statusData = await getReviewStatus(Number(id));
-          setStatus(statusData);
-
-          setGroupStatus(null);
+setGroupStatus(null);
         }
       } catch (err) {
         console.error('Error fetching peer reviews:', err);
@@ -294,22 +280,6 @@ export default function PeerReviews() {
           )}
         </div>
 
-        {assignmentType !== 'peer_eval_group' && status && (
-          <div className="review-status">
-            <h3>Your Progress</h3>
-            <div className="status-details">
-              <span className="status-item">
-                Total Assigned: <strong>{status.total_assigned}</strong>
-              </span>
-              <span className="status-item">
-                Completed: <strong className="completed">{status.completed}</strong>
-              </span>
-              <span className="status-item">
-                Remaining: <strong className="remaining">{status.remaining}</strong>
-              </span>
-            </div>
-          </div>
-        )}
 
         {assignmentType === 'peer_eval_group' ? (
           <div className="reviews-list">

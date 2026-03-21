@@ -46,7 +46,6 @@ def _default_rubric_template(assignment_type: str):
             ("Work was complete and met requirements", 5, True),
             ("Evidence of strong teamwork/coordination", 5, True),
             ("Overall effectiveness/quality", 5, True),
-            ("Actionable suggestions for improvement", 0, False),
         ]
 
     return []
@@ -75,7 +74,13 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
         if has_score is None:
             has_score = True
         if not isinstance(has_score, bool):
-            raise ValueError("hasScore must be boolean")
+            raise ValueError("hasScore must be a boolean")
+
+        if not has_score:
+            raise ValueError(
+                "Rubric criteria must use numeric scores (hasScore=true). "
+                "Use the 'Additional comments (optional)' box during review submission instead."
+            )
 
         score_max = row.get("scoreMax")
         if score_max is None:
@@ -88,9 +93,6 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
             raise ValueError("scoreMax must be >= 0")
         if score_max_int > 10:
             raise ValueError("scoreMax must be <= 10")
-
-        if not has_score:
-            score_max_int = 0
 
         normalized.append((question.strip(), score_max_int, has_score))
 

@@ -94,7 +94,7 @@ export default function RubricDisplay({
                     <Criteria
                         questions={questions}
                         scoreMaxes={scoreMaxes}
-                        canComment={true}
+                        canComment={false}
                         hasScores={hasScores}
                         onCriterionSelect={onCriterionSelect ?? (() => {})}
                         grades={grades}

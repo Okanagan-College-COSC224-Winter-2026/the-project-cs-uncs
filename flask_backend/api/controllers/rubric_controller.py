@@ -133,14 +133,16 @@ def create_criteria():
     except (TypeError, ValueError):
         return jsonify({"msg": "Invalid scoreMax"}), 400
 
+    if not has_score:
+        return jsonify({
+            "msg": "Rubric criteria must use numeric scores (hasScore=true). Use the Additional comments box instead."
+        }), 400
+
     if score_max < 0:
         return jsonify({"msg": "scoreMax must be 0 or greater"}), 400
 
     if score_max > 10:
         return jsonify({"msg": "scoreMax must be 10 or less"}), 400
-
-    if not has_score:
-        score_max = 0
 
     new_criterion = CriteriaDescription(
         rubricID=rubric_id, 
@@ -198,7 +200,11 @@ def update_criteria(criteria_id):
         criterion.question = str(next_question).strip()
 
     if next_has_score is not None:
-        criterion.hasScore = bool(next_has_score)
+        if not bool(next_has_score):
+            return jsonify({
+                "msg": "Rubric criteria must use numeric scores (hasScore=true). Use the Additional comments box instead."
+            }), 400
+        criterion.hasScore = True
 
     if next_score_max is not None:
         try:
@@ -210,9 +216,6 @@ def update_criteria(criteria_id):
         if next_score_max > 10:
             return jsonify({"msg": "scoreMax must be 10 or less"}), 400
         criterion.scoreMax = next_score_max
-
-    if not criterion.hasScore:
-        criterion.scoreMax = 0
 
     try:
         criterion.update()

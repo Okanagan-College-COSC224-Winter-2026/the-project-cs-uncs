@@ -75,7 +75,7 @@ class TestPeerEvalGroup:
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
                     {"question": "Custom Q1", "scoreMax": 7, "hasScore": True},
-                    {"question": "Custom freeform", "hasScore": False},
+                    {"question": "Custom Q2", "scoreMax": 5, "hasScore": True},
                 ],
             },
         )
@@ -85,11 +85,39 @@ class TestPeerEvalGroup:
         rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
         assert rubric is not None
         criteria = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
-        assert [c.question for c in criteria] == ["Custom Q1", "Custom freeform"]
+        assert [c.question for c in criteria] == ["Custom Q1", "Custom Q2"]
         assert criteria[0].scoreMax == 7
         assert criteria[0].hasScore is True
-        assert criteria[1].scoreMax == 0
-        assert criteria[1].hasScore is False
+        assert criteria[1].scoreMax == 5
+        assert criteria[1].hasScore is True
+
+    def test_group_peer_eval_rejects_freeform_rubric_criteria(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher_freeform@test.com", "teacher")
+        s1 = _create_user("Student 1", "ff1@test.com", "student")
+        s2 = _create_user("Student 2", "ff2@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g2.id, s2.id)
+
+        login_as(test_client, "teacher_freeform@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval",
+                "assignment_type": "peer_eval_group",
+                "included_group_ids": [g1.id, g2.id],
+                "rubric_criteria": [
+                    {"question": "Custom Q1", "scoreMax": 7, "hasScore": True},
+                    {"question": "Custom freeform", "hasScore": False},
+                ],
+            },
+        )
+        assert res.status_code == 400
 
     def test_group_peer_eval_rejects_custom_rubric_scoremax_above_10(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher_custom_max@test.com", "teacher")

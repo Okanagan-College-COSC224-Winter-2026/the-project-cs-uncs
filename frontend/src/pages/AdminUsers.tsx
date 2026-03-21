@@ -59,12 +59,12 @@ export default function AdminUsers() {
     }
   }
 
-  type UpdateUserPayload = { name?: string | null; email?: string | null };
+  type UpdateUserPayload = { name?: string; email?: string };
 
   const handleSave = async (userId: number, updated: Partial<User>) => {
     try {
       if (updated.name || updated.email) {
-        await updateUserAdmin(userId, { name: updated.name ?? null, email: updated.email ?? null } as UpdateUserPayload);
+        await updateUserAdmin(userId, { name: updated.name, email: updated.email } as UpdateUserPayload);
       }
       if (updated.role) {
         await updateUserRoleAdmin(userId, updated.role);
@@ -104,9 +104,9 @@ export default function AdminUsers() {
 
       {error && <div className="Error" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
 
-      <div style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div className="admin-controls">
         <input placeholder="Search name, email or role" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <label>
           Show
           <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}>
             <option value={5}>5</option>
@@ -116,7 +116,7 @@ export default function AdminUsers() {
           </select>
           per page
         </label>
-        <div style={{ marginLeft: 'auto' }}>{users.length} total users</div>
+        <div className="admin-total-count">{users.length} total users</div>
       </div>
 
       <section className="NewUser">
@@ -189,7 +189,7 @@ export default function AdminUsers() {
             });
             const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
             return (
-              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="admin-pagination">
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Prev</button>
                 <span>Page {page} of {totalPages}</span>
                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next</button>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import BackArrow from '../components/BackArrow';
 import Button from '../components/Button';
 import Textbox from '../components/Textbox';
 import StatusMessage from '../components/StatusMessage';
@@ -67,7 +66,6 @@ export default function ChangePassword() {
   return (
     <div className="InputPage">
       <div className="InputBlock Page">
-        <BackArrow />
         <h1>Change Password</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {isForced

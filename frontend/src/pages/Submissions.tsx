@@ -255,174 +255,177 @@ export default function Submissions() {
           {loading ? <div className="PageStatusText">Loading…</div> : null}
           {!loading && loadingRoster ? <div className="PageStatusText">Loading…</div> : null}
 
-          <div className="GroupsPanel">
-            {assignmentType === "standard" ? (
-            <>
-              <h3>Student Submissions</h3>
-              {students.length === 0 ? (
-                <div className="GroupsMuted">No students found.</div>
-              ) : (
-                <div className="GroupsDetailList">
-                  {students.map((s) => {
-                    const sub = submissionsByStudentId[s.id];
-                    const displayName = (s.name ?? "").trim() || s.email || `Student #${s.id}`;
+          {assignmentType === "standard" ? (
+            <div className="GroupsPanel">
+              <>
+                <h3>Student Submissions</h3>
+                {students.length === 0 ? (
+                  <div className="GroupsMuted">No students found.</div>
+                ) : (
+                  <div className="GroupsDetailList">
+                    {students.map((s) => {
+                      const sub = submissionsByStudentId[s.id];
+                      const displayName = (s.name ?? "").trim() || s.email || `Student #${s.id}`;
 
-                    return (
-                      <div key={s.id} className="GroupsDetailRow">
-                        <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
-                          <div style={{ fontWeight: 600 }}>{displayName}</div>
-                          {s.email ? <div className="GroupsMuted">{s.email}</div> : null}
-                        </div>
+                      return (
+                        <div key={s.id} className="GroupsDetailRow">
+                          <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                            <div style={{ fontWeight: 600 }}>{displayName}</div>
+                            {s.email ? <div className="GroupsMuted">{s.email}</div> : null}
+                          </div>
 
-                        <div className="GroupsMuted" style={{ marginTop: 6 }}>
-                          {sub ? (
-                            <>
-                              Submitted{sub.file_name ? `: ${sub.file_name}` : ""}
-                              {typeof sub.on_time === "boolean" ? (sub.on_time ? " (On time)" : " (Late)") : ""} —{" "}
-                              <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
-                                Download
-                              </a>
-                            </>
-                          ) : (
-                            "No submission"
-                          )}
+                          <div className="GroupsMuted" style={{ marginTop: 6 }}>
+                            {sub ? (
+                              <>
+                                Submitted{sub.file_name ? `: ${sub.file_name}` : ""}
+                                {typeof sub.on_time === "boolean" ? (sub.on_time ? " (On time)" : " (Late)") : ""} —{" "}
+                                <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
+                                  Download
+                                </a>
+                              </>
+                            ) : (
+                              "No submission"
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-            ) : selectedGroup ? (
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            </div>
+          ) : selectedGroup ? (
             <>
-              <div className="GroupsDetailHeader">
+              <div className="GroupsTopActions">
                 <Button type="secondary" onClick={() => setSelectedGroup(null)}>
-                  Back
+                  ← Back
                 </Button>
-                <h3>{selectedGroup.name}</h3>
               </div>
 
-              <h4>Members</h4>
-              {selectedGroup.members.length === 0 ? (
-                <div className="GroupsMuted">No members in this group.</div>
-              ) : (
-                <div className="GroupsDetailList">
-                  {selectedGroup.members.map((m) => (
-                    <div key={m.id} className="GroupsDetailRow">
-                      {m.name}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="GroupsPanel">
+                <h3 style={{ margin: 0 }}>{selectedGroup.name}</h3>
 
-              <h4>Submission</h4>
-              {(() => {
-                if (assignmentType === "peer_eval_group") {
-                  const groupSubmission = getGroupPeerEvalSubmission(selectedGroup);
+                <h4>Members</h4>
+                {selectedGroup.members.length === 0 ? (
+                  <div className="GroupsMuted">No members in this group.</div>
+                ) : (
+                  <div className="GroupsDetailList">
+                    {selectedGroup.members.map((m) => (
+                      <div key={m.id} className="GroupsDetailRow">
+                        {m.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <h4>Submission</h4>
+                {(() => {
+                  if (assignmentType === "peer_eval_group") {
+                    const groupSubmission = getGroupPeerEvalSubmission(selectedGroup);
+                    if (!groupSubmission) {
+                      return <div className="GroupsMuted">No peer evaluation submitted yet.</div>;
+                    }
+
+                    return (
+                      <div className="GroupsDetailList">
+                        {(groupSubmission.evaluations ?? []).length === 0 ? (
+                          <div className="GroupsMuted">No peer reviews yet.</div>
+                        ) : (
+                          groupSubmission.evaluations?.map((ev: GroupPeerEvalEvaluation, idx: number) => {
+                            const sorted: GroupPeerEvalCriterion[] = [...(ev?.criteria ?? [])].sort(
+                              (a, b) => Number(a.criterionRowID) - Number(b.criterionRowID)
+                            );
+
+                            const questions = sorted.map((c) => c.question);
+                            const scoreMaxes = sorted.map((c) => (c.scoreMax == null ? 0 : c.scoreMax));
+                            const hasScores = sorted.map((c) => c.hasScore);
+                            const grades = sorted.map((c) => c.grade ?? 0);
+
+                            return (
+                              <div key={ev?.reviewee_group?.id ?? idx} className="GroupsDetailRow">
+                                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                                  Evaluated: {ev?.reviewee_group?.name}
+                                </div>
+                                <Criteria
+                                  questions={questions}
+                                  scoreMaxes={scoreMaxes}
+                                  hasScores={hasScores}
+                                  canComment={false}
+                                  onCriterionSelect={() => { /* read-only */ }}
+                                  grades={grades}
+                                  readOnly
+                                />
+
+                                {sorted.some((c) => (c.comments ?? "").trim().length > 0) ? (
+                                  <div className="GroupsDetailList" style={{ marginTop: 8 }}>
+                                    {sorted.map((c) => (
+                                      <div key={c.criterionRowID} className="GroupsDetailRow">
+                                        <div style={{ fontWeight: 600 }}>{c.question}</div>
+                                        <div className="GroupsMuted">{(c.comments ?? "").trim() || "No comments"}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    );
+                  }
+
+                  const groupSubmission = getGroupSubmission(selectedGroup);
                   if (!groupSubmission) {
-                    return <div className="GroupsMuted">No peer evaluation submitted yet.</div>;
+                    return <div className="GroupsMuted">No submission uploaded yet.</div>;
                   }
 
                   return (
                     <div className="GroupsDetailList">
-                      {(groupSubmission.evaluations ?? []).length === 0 ? (
-                        <div className="GroupsMuted">No peer reviews yet.</div>
-                      ) : (
-                        groupSubmission.evaluations?.map((ev: GroupPeerEvalEvaluation, idx: number) => {
-                          const sorted: GroupPeerEvalCriterion[] = [...(ev?.criteria ?? [])].sort(
-                            (a, b) => Number(a.criterionRowID) - Number(b.criterionRowID)
-                          );
-
-                          const questions = sorted.map((c) => c.question);
-                          const scoreMaxes = sorted.map((c) => (c.scoreMax == null ? 0 : c.scoreMax));
-                          const hasScores = sorted.map((c) => c.hasScore);
-                          const grades = sorted.map((c) => c.grade ?? 0);
-
-                          return (
-                            <div key={ev?.reviewee_group?.id ?? idx} className="GroupsDetailRow">
-                              <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                                Evaluated: {ev?.reviewee_group?.name}
-                              </div>
-                              <Criteria
-                                questions={questions}
-                                scoreMaxes={scoreMaxes}
-                                hasScores={hasScores}
-                                canComment={false}
-                                onCriterionSelect={() => { /* read-only */ }}
-                                grades={grades}
-                                readOnly
-                              />
-
-                              {sorted.some((c) => (c.comments ?? "").trim().length > 0) ? (
-                                <div className="GroupsDetailList" style={{ marginTop: 8 }}>
-                                  {sorted.map((c) => (
-                                    <div key={c.criterionRowID} className="GroupsDetailRow">
-                                      <div style={{ fontWeight: 600 }}>{c.question}</div>
-                                      <div className="GroupsMuted">{(c.comments ?? "").trim() || "No comments"}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })
-                      )}
+                      <div className="GroupsDetailRow">
+                        <div>
+                          {groupSubmission.file_name ? groupSubmission.file_name : "(file)"} —{" "}
+                          <a href={getSubmissionDownloadUrl(groupSubmission.id)} target="_blank" rel="noreferrer">
+                            Download
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   );
-                }
-
-                const groupSubmission = getGroupSubmission(selectedGroup);
-                if (!groupSubmission) {
-                  return <div className="GroupsMuted">No submission uploaded yet.</div>;
-                }
-
-                return (
-                  <div className="GroupsDetailList">
-                    <div className="GroupsDetailRow">
-                      <div>
-                        {groupSubmission.file_name ? groupSubmission.file_name : "(file)"} —{" "}
-                        <a href={getSubmissionDownloadUrl(groupSubmission.id)} target="_blank" rel="noreferrer">
-                          Download
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+                })()}
+              </div>
             </>
           ) : (
-            <>
-              <h3>Group Submissions</h3>
-              {groups.length === 0 ? (
-                <div className="GroupsMuted">No groups yet.</div>
-              ) : (
-                <div className="GroupsList">
-                  {groups.map((group) => {
-                    const submittedCount = submittedCountForGroup(group);
-                    const groupSub = assignmentType === "peer_eval_group" ? getGroupPeerEvalSubmission(group) : null;
-                    const onTimeLabel =
-                      assignmentType === "peer_eval_group" && typeof groupSub?.on_time === "boolean"
-                        ? (groupSub.on_time ? " (On time)" : " (Late)")
-                        : "";
+            <div className="GroupsPanel">
+              <>
+                <h3>Group Submissions</h3>
+                {groups.length === 0 ? (
+                  <div className="GroupsMuted">No groups yet.</div>
+                ) : (
+                  <div className="GroupsList">
+                    {groups.map((group) => {
+                      const submittedCount = submittedCountForGroup(group);
+                      const groupSub = assignmentType === "peer_eval_group" ? getGroupPeerEvalSubmission(group) : null;
+                      const onTimeLabel =
+                        assignmentType === "peer_eval_group" && typeof groupSub?.on_time === "boolean"
+                          ? (groupSub.on_time ? " (On time)" : " (Late)")
+                          : "";
 
-                    return (
-                      <div key={group.id} className="GroupItem">
-                        <button
-                          className="GroupItemMain"
-                          onClick={() => setSelectedGroup(group)}
-                          type="button"
-                        >
-                          <div className="GroupItemName">{group.name}</div>
-                          <div className="GroupItemMeta">{submittedCount > 0 ? `Submitted${onTimeLabel}` : "No submission"}</div>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-            )}
-          </div>
+                      return (
+                        <div key={group.id} className="GroupItem">
+                          <button className="GroupItemMain" onClick={() => setSelectedGroup(group)} type="button">
+                            <div className="GroupItemName">{group.name}</div>
+                            <div className="GroupItemMeta">
+                              {submittedCount > 0 ? `Submitted${onTimeLabel}` : "No submission"}
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            </div>
+          )}
         </div>
       </div>
     </div>

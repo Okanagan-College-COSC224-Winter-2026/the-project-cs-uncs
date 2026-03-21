@@ -320,15 +320,18 @@ export default function Groups() {
                     </div>
                 ) : null}
 
+                {selectedGroup ? (
+                    <div className="GroupsTopActions">
+                        <Button type="secondary" onClick={() => setSelectedGroup(null)}>
+                            ← Back
+                        </Button>
+                    </div>
+                ) : null}
+
                 <div className="GroupsPanel">
                     {selectedGroup ? (
                         <>
-                            <div className="GroupsDetailHeader">
-                                <Button type="secondary" onClick={() => setSelectedGroup(null)}>
-                                    Back
-                                </Button>
-                                <h3>{selectedGroup.name}</h3>
-                            </div>
+                            <h3 style={{ margin: 0 }}>{selectedGroup.name}</h3>
 
                             <div className="GroupsSectionTitle">Members</div>
                             {selectedGroup.members.length === 0 ? (

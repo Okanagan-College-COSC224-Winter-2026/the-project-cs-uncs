@@ -604,9 +604,13 @@ export default function AssignmentDetails() {
             </>
           ) : null}
 
-            <h3>Due Date</h3>
-            <p>{formatDueDate(assignment?.due_date ?? null)}</p>
-            {renderStudentTimingMessage()}
+          {!isEditing ? (
+            <>
+              <h3>Due Date</h3>
+              <p>{formatDueDate(assignment?.due_date ?? null)}</p>
+              {renderStudentTimingMessage()}
+            </>
+          ) : null}
           </div>
         </div>
       )}

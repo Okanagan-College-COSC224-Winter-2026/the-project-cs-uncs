@@ -14,6 +14,7 @@ import {
 } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
+import Button from '../components/Button';
 import HeaderTitle from '../components/HeaderTitle';
 import './TeacherReviewDashboard.css';
 import './Assignment.css';
@@ -320,13 +321,9 @@ export default function TeacherReviewDashboard() {
       return (
         <div className="reviews-section">
           <div className="teacher-breadcrumbRow">
-            <button
-              type="button"
-              className="teacher-breadcrumbLink"
-              onClick={() => setSelectedGroupId(null)}
-            >
+            <Button type="secondary" onClick={() => setSelectedGroupId(null)}>
               ← Back to Group Scores
-            </button>
+            </Button>
           </div>
 
           <h3>{selectedGroupName}</h3>
@@ -350,7 +347,7 @@ export default function TeacherReviewDashboard() {
                 return (
                   <div
                     key={`${submission.id}-${evaluation.reviewee_group.id}`}
-                    className="dashboard-review-item completed"
+                    className="dashboard-review-item completed dashboard-review-item--static"
                     style={{ cursor: 'default' }}
                   >
                     <div className="review-summary" style={{ cursor: 'default' }}>
@@ -418,7 +415,7 @@ export default function TeacherReviewDashboard() {
           </div>
         ) : (
           <div className="dashboard-reviews-list">
-            <div className="dashboard-review-item completed" style={{ cursor: 'default' }}>
+            <div className="dashboard-review-item completed dashboard-review-item--static" style={{ cursor: 'default' }}>
               <div className="review-summary" style={{ cursor: 'default' }}>
                 <div className="review-participants" style={{ width: '100%' }}>
                   <div className="participant reviewer" style={{ width: '100%' }}>
@@ -502,16 +499,15 @@ export default function TeacherReviewDashboard() {
       return (
         <div className="reviews-section">
           <div className="teacher-breadcrumbRow">
-            <button
-              type="button"
-              className="teacher-breadcrumbLink"
+            <Button
+              type="secondary"
               onClick={() => {
                 setSelectedGroupId(null)
                 setSelectedStudentId(null)
               }}
             >
               ← Back to Groups
-            </button>
+            </Button>
           </div>
 
           <h3>{selectedGroup.name}</h3>
@@ -543,13 +539,9 @@ export default function TeacherReviewDashboard() {
     return (
       <div className="reviews-section">
         <div className="teacher-breadcrumbRow">
-          <button
-            type="button"
-            className="teacher-breadcrumbLink"
-            onClick={() => setSelectedStudentId(null)}
-          >
+          <Button type="secondary" onClick={() => setSelectedStudentId(null)}>
             ← Back to {selectedGroup.name}
-          </button>
+          </Button>
         </div>
 
         <h3>{selectedStudent.name}</h3>
@@ -560,7 +552,7 @@ export default function TeacherReviewDashboard() {
         ) : (
           <div className="dashboard-reviews-list">
             {received.map(({ review, total }) => (
-              <div key={review.id} className="dashboard-review-item completed" style={{ cursor: 'default' }}>
+              <div key={review.id} className="dashboard-review-item completed dashboard-review-item--static" style={{ cursor: 'default' }}>
                 <div className="review-summary" style={{ cursor: 'default' }}>
                   <div className="review-participants" style={{ width: '100%' }}>
                     <div className="participant reviewer" style={{ width: '100%' }}>
@@ -662,7 +654,8 @@ export default function TeacherReviewDashboard() {
         ]}
       />
 
-      <div className="teacher-dashboard-content">
+      <div className="teacher-dashboard-content TabPageContent">
+        <div className="teacher-dashboard-panel">
         <div className="dashboard-header">
           <div className="header-content">
             <h2>Peer Review Dashboard</h2>
@@ -795,6 +788,7 @@ export default function TeacherReviewDashboard() {
           )}
         </div>
       ) : null}
+        </div>
       </div>
     </div>
   );

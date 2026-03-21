@@ -18,8 +18,19 @@
     gap: var(--spacing-md);
 }
 
+.GroupsTopActions {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    justify-content: flex-start;
+}
+
 @media (min-width: 1100px) {
     .GroupsPanel {
+        max-width: 1100px;
+    }
+
+    .GroupsTopActions {
         max-width: 1100px;
     }
 
@@ -153,17 +164,6 @@
     margin-left: auto;
     color: var(--text-secondary);
     font-size: 0.9rem;
-}
-
-.GroupsDetailHeader {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
-.GroupsDetailHeader h3 {
-    margin: 0;
 }
 
 .GroupsDetailList {

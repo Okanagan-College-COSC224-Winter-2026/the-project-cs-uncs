@@ -912,6 +912,22 @@ export const getMySubmission = async (assignmentId: number) => {
   return await resp.json()
 }
 
+export const deleteMySubmission = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/assignment/my_submission/${assignmentId}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const errorData = await resp.json().catch(() => ({} as any))
+    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
 export const uploadMySubmission = async (assignmentId: number, formData: FormData) => {
   const resp = await fetch(`${BASE_URL}/assignment/submit/${assignmentId}`, {
     method: 'POST',
@@ -1205,7 +1221,8 @@ export async function createAssignment(
   maybeHandleExpire(response);
 
   if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({} as any))
+      throw new Error(errorData.msg || `Response status: ${response.status}`);
   }
 
   return await response.json();

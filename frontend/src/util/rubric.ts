@@ -5,7 +5,12 @@ export const hasEmptyRubricQuestion = (criteria: Array<{ question: string }>) =>
 };
 
 export const hasInvalidRubricScore = (criteria: Array<{ hasScore: boolean; scoreMax: number }>) => {
-  return criteria.some((c) => c.hasScore && (Number.isNaN(c.scoreMax) || c.scoreMax < 0));
+  return criteria.some((c) => {
+    if (!c.hasScore) return false;
+    if (!Number.isFinite(c.scoreMax)) return true;
+    if (!Number.isInteger(c.scoreMax)) return true;
+    return c.scoreMax < 1 || c.scoreMax > 10;
+  });
 };
 
 // Used only where the existing behavior already clamps values (e.g. edit rubric page).

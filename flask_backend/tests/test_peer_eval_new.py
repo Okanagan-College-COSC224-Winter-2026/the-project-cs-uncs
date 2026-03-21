@@ -51,6 +51,40 @@ def _create_group(course_id: int, name: str):
 
 
 class TestPeerEvalGroup:
+    def test_group_peer_eval_create_accepts_date_only_due_date_payload(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher_dateonly@test.com", "teacher")
+        s1 = _create_user("Student 1", "date_s1@test.com", "student")
+        s2 = _create_user("Student 2", "date_s2@test.com", "student")
+        s3 = _create_user("Student 3", "date_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "teacher_dateonly@test.com")
+
+        # Frontend sends YYYY-MM-DD from <input type="date">.
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval (date-only)",
+                "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
+                "included_group_ids": [g1.id, g2.id],
+                "rubric_criteria": [
+                    {"question": "Q1", "scoreMax": 5, "hasScore": True},
+                    {"question": "Q2", "scoreMax": 5, "hasScore": True},
+                ],
+            },
+            headers={"X-Timezone-Offset": "0"},
+        )
+        assert res.status_code == 201
+
     def test_group_peer_eval_allows_custom_rubric_at_create_time(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher_custom@test.com", "teacher")
         s1 = _create_user("Student 1", "cs1@test.com", "student")
@@ -148,6 +182,34 @@ class TestPeerEvalGroup:
         )
         assert res.status_code == 400
 
+    def test_group_peer_eval_rejects_custom_rubric_scoremax_below_1(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher_custom_min@test.com", "teacher")
+        s1 = _create_user("Student 1", "mins1@test.com", "student")
+        s2 = _create_user("Student 2", "mins2@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g2.id, s2.id)
+
+        login_as(test_client, "teacher_custom_min@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval",
+                "assignment_type": "peer_eval_group",
+                "included_group_ids": [g1.id, g2.id],
+                "rubric_criteria": [
+                    {"question": "Custom Q1", "scoreMax": 0, "hasScore": True},
+                    {"question": "Custom Q2", "scoreMax": 5, "hasScore": True},
+                ],
+            },
+        )
+        assert res.status_code == 400
+
 
 class TestRubricScoreMaxCap:
     def test_rubric_endpoints_reject_scoremax_above_10(self, test_client, dbsession):
@@ -187,6 +249,31 @@ class TestRubricScoreMaxCap:
             json={"scoreMax": 11},
         )
         assert update.status_code == 400
+
+    def test_rubric_endpoints_reject_scoremax_below_1(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "rubric_min_teacher@test.com", "teacher")
+        course = _create_course(teacher.id)
+
+        login_as(test_client, "rubric_min_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Peer Eval",
+                "assignment_type": "peer_eval_individual",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+        assert rubric is not None
+
+        too_low = test_client.post(
+            "/create_criteria",
+            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 0, "hasScore": True},
+        )
+        assert too_low.status_code == 400
 
     def test_group_peer_eval_requires_at_least_two_included_groups(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher_min@test.com", "teacher")

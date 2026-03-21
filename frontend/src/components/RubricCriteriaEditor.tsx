@@ -21,6 +21,7 @@ export default function RubricCriteriaEditor({
   minCriteria = 1,
 }: RubricCriteriaEditorProps) {
   const MAX_SCORE = 10
+  const MIN_SCORE = 1
 
   return (
     <>
@@ -39,7 +40,7 @@ export default function RubricCriteriaEditor({
           />
           <input
             type="number"
-            min="0"
+            min="1"
             max={MAX_SCORE}
             value={item.scoreMax}
             onChange={(e) => {
@@ -47,7 +48,7 @@ export default function RubricCriteriaEditor({
               updated[index] = {
                 ...updated[index],
                 hasScore: true,
-                scoreMax: Math.min(MAX_SCORE, Math.max(0, Number(e.target.value))),
+                scoreMax: Math.min(MAX_SCORE, Math.max(MIN_SCORE, Number(e.target.value))),
               }
               onChange(updated)
             }}

@@ -30,6 +30,42 @@ bp = Blueprint("assignment", __name__, url_prefix="/assignment")
 _ASSIGNMENT_TYPES = {"standard", "peer_eval_group", "peer_eval_individual"}
 
 
+def _coerce_int_list(value):
+    """Coerce an input value into a list[int] when possible.
+
+    Accepts:
+    - list of ints/strings
+    - JSON-encoded list string
+    - comma-separated string
+    """
+    if value is None:
+        return None
+    if isinstance(value, list):
+        out = []
+        for item in value:
+            try:
+                out.append(int(item))
+            except (TypeError, ValueError):
+                return None
+        return out
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, list):
+            return _coerce_int_list(parsed)
+        # Fallback: comma-separated values
+        parts = [p.strip() for p in raw.split(",") if p.strip()]
+        if not parts:
+            return None
+        return _coerce_int_list(parts)
+    return None
+
+
 def _default_rubric_template(assignment_type: str):
     if assignment_type == "peer_eval_individual":
         return [
@@ -89,8 +125,8 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
             score_max_int = int(score_max)
         except (TypeError, ValueError):
             raise ValueError("scoreMax must be an integer")
-        if score_max_int < 0:
-            raise ValueError("scoreMax must be >= 0")
+        if score_max_int < 1:
+            raise ValueError("scoreMax must be >= 1")
         if score_max_int > 10:
             raise ValueError("scoreMax must be <= 10")
 
@@ -216,7 +252,7 @@ def create_assignment():
         rubric_text = data.get("rubric")
         due_date = data.get("due_date")
         assignment_type = data.get("assignment_type") or "standard"
-        included_group_ids = data.get("included_group_ids")
+        included_group_ids = _coerce_int_list(data.get("included_group_ids"))
         rubric_criteria = data.get("rubric_criteria")
         uploaded_file = None
     else:
@@ -227,12 +263,7 @@ def create_assignment():
         due_date = request.form.get("due_date")
         assignment_type = request.form.get("assignment_type") or "standard"
         included_group_ids_raw = request.form.get("included_group_ids")
-        included_group_ids = None
-        if included_group_ids_raw:
-            try:
-                included_group_ids = json.loads(included_group_ids_raw)
-            except json.JSONDecodeError:
-                included_group_ids = None
+        included_group_ids = _coerce_int_list(included_group_ids_raw)
         rubric_criteria_raw = request.form.get("rubric_criteria")
         rubric_criteria = None
         if rubric_criteria_raw:
@@ -293,16 +324,30 @@ def create_assignment():
     included_groups = []
     if assignment_type == "peer_eval_group":
         if not isinstance(included_group_ids, list) or not included_group_ids:
+            current_app.logger.warning(
+                "create_assignment(peer_eval_group): missing/invalid included_group_ids (value=%r)",
+                included_group_ids,
+            )
             return jsonify({"msg": "included_group_ids is required for group peer evaluation"}), 400
 
         if len(included_group_ids) < 2:
+            current_app.logger.warning(
+                "create_assignment(peer_eval_group): not enough included groups (count=%s)",
+                len(included_group_ids),
+            )
             return jsonify({"msg": "At least two groups must be included"}), 400
 
         included_groups = Group.query.filter(
-            Group.id.in_([int(gid) for gid in included_group_ids]),
+            Group.id.in_(included_group_ids),
             Group.course_id == int(course_id),
         ).all()
         if len(included_groups) != len({int(gid) for gid in included_group_ids}):
+            current_app.logger.warning(
+                "create_assignment(peer_eval_group): invalid included groups for course_id=%s included=%r resolved=%r",
+                course_id,
+                included_group_ids,
+                [g.id for g in included_groups],
+            )
             return jsonify({"msg": "One or more included groups are invalid"}), 400
 
     rubric_template_override = None

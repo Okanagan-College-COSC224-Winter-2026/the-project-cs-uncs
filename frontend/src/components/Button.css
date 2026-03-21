@@ -36,6 +36,21 @@
   background: var(--button-secondary-hover);
 }
 
+.Button.outline-success {
+  background-color: color-mix(in srgb, var(--success) 20%, transparent);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.Button.outline-success:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--success) 30%, transparent);
+  color: var(--success);
+}
+
+.Button.outline-success:disabled {
+  border: 1px solid var(--button-disabled);
+}
+
 .Button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);

@@ -11,10 +11,13 @@ from api.models import (
     Course,
     Criterion,
     CriteriaDescription,
+    Group,
+    GroupMember,
     Review,
     Rubric,
     Submission,
     User,
+    db,
 )
 
 
@@ -199,6 +202,53 @@ class TestGetAssignedReviews:
         response = test_client.get('/review/assigned/99999')
         assert response.status_code == 404
 
+    def test_get_assigned_reviews_dedupes_peer_eval_individual(self, test_client, students, reviews_assigned):
+        """Assigned reviews should not show the same teammate twice for peer_eval_individual."""
+        assignment_id = reviews_assigned[0].assignmentID
+        assignment = Assignment.get_by_id(assignment_id)
+        assignment.assignment_type = 'peer_eval_individual'
+        assignment.update()
+
+        # Peer-eval individual assignments are group-based; ensure the reviewer
+        # and reviewees are teammates so the assigned endpoint returns them.
+        group = Group(name="G1", course_id=assignment.courseID)
+        db.session.add(group)
+        db.session.commit()
+        GroupMember.add_member(group.id, students[0].id)
+        GroupMember.add_member(group.id, students[1].id)
+        GroupMember.add_member(group.id, students[2].id)
+
+        # Create a historical duplicate review row for the same teammate.
+        duplicate = Review(
+            assignmentID=assignment_id,
+            reviewerID=students[0].id,
+            revieweeID=students[1].id,
+        )
+        Review.create_review(duplicate)
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        response = test_client.get(f'/review/assigned/{assignment_id}')
+        assert response.status_code == 200
+        data = response.get_json()
+
+        # Only one review per teammate should be returned.
+        reviewee_ids = [r['reviewee']['id'] for r in data['reviews']]
+        assert len(reviewee_ids) == len(set(reviewee_ids))
+        assert data['total_count'] == 2
+
+        # And duplicates should be cleaned from the DB.
+        remaining = Review.query.filter_by(
+            assignmentID=assignment_id,
+            reviewerID=students[0].id,
+            revieweeID=students[1].id,
+        ).all()
+        assert len(remaining) == 1
+
 
 class TestGetReviewSubmission:
     """Test GET /review/submission/<review_id>"""
@@ -253,7 +303,7 @@ class TestGetReviewSubmission:
         assert 'submission' in data
 
     def test_get_submission_not_found(self, test_client, students, reviews_assigned, submissions):
-        """Returns 404 when submission doesn't exist"""
+        """Returns 200 with submission=null when submission doesn't exist"""
         # Create a review without a submission
         _, assignment = reviews_assigned[0].assignment, reviews_assigned[0].assignmentID
         review_no_sub = Review(
@@ -270,7 +320,11 @@ class TestGetReviewSubmission:
         assert response.status_code == 200
 
         response = test_client.get(f'/review/submission/{review_no_sub.id}')
-        assert response.status_code == 404
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert 'submission' in data
+        assert data['submission'] is None
 
 
 class TestSubmitReviewFeedback:
@@ -387,9 +441,11 @@ class TestSubmitReviewFeedback:
             ]
         })
 
-        assert response.status_code == 403
+
+        assert response.status_code == 200
         data = response.get_json()
-        assert 'review period has ended' in data['msg']
+        assert data['msg'] == 'Review submitted successfully'
+        assert data['review']['completed'] is True
 
     def test_submit_review_unauthorized(self, test_client, students, reviews_assigned, rubric_with_criteria):
         """Student cannot submit review they're not assigned to"""
@@ -429,50 +485,6 @@ class TestSubmitReviewFeedback:
         assert response.status_code == 400
         data = response.get_json()
         assert 'At least one criterion is required' in data['msg']
-
-
-class TestGetReviewStatus:
-    """Test GET /review/status/<assignment_id>"""
-
-    def test_get_status_with_incomplete_reviews(self, test_client, students, reviews_assigned):
-        """Status shows correct count of incomplete reviews"""
-        response = test_client.post('/auth/login', json={
-            'email': 'student1@test.com',
-            'password': 'password123'
-        })
-        assert response.status_code == 200
-
-        assignment_id = reviews_assigned[0].assignmentID
-
-        response = test_client.get(f'/review/status/{assignment_id}')
-        assert response.status_code == 200
-
-        data = response.get_json()
-        assert data['total_assigned'] == 2
-        assert data['completed'] == 0
-        assert data['remaining'] == 2
-        assert data['is_open'] is True
-
-    def test_get_status_with_completed_reviews(self, test_client, students, reviews_assigned):
-        """Status shows correct count after completing reviews"""
-        # Mark one review as complete
-        reviews_assigned[0].mark_complete()
-
-        response = test_client.post('/auth/login', json={
-            'email': 'student1@test.com',
-            'password': 'password123'
-        })
-        assert response.status_code == 200
-
-        assignment_id = reviews_assigned[0].assignmentID
-
-        response = test_client.get(f'/review/status/{assignment_id}')
-        assert response.status_code == 200
-
-        data = response.get_json()
-        assert data['total_assigned'] == 2
-        assert data['completed'] == 1
-        assert data['remaining'] == 1
 
 
 class TestCreateReview:

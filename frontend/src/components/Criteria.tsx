@@ -8,26 +8,32 @@ interface props {
     hasScores: Array<boolean>;
     onCriterionSelect: (row: number, column: number) => void;
     grades: number[];
+    readOnly?: boolean;
 }
 
 export default function Criteria(props: props) {
     return (
         <div className="Criteria">
             <table className='criteriaTable'>
-                {props.questions.map((question, i) => (
-                    <Criterion 
-                        key={i}
-                        question={question} 
-                        scoreMax={props.scoreMaxes[i]} 
-                        hasScore={props.hasScores[i]}
-                        onCriterionSelect={props.onCriterionSelect}
-                        questionIndex={i}
-                        grade={props.grades[i]}
-                    />
-                ))}
+                {props.questions.map((question, i) => {
+                    const hasScore = props.hasScores[i] !== false;
+                    if (!hasScore) return null;
+
+                    return (
+                        <Criterion
+                            key={i}
+                            question={question}
+                            scoreMax={props.scoreMaxes[i]}
+                            hasScore={hasScore}
+                            onCriterionSelect={props.onCriterionSelect}
+                            questionIndex={i}
+                            grade={props.grades[i]}
+                            readOnly={props.readOnly}
+                        />
+                    );
+                })}
             </table>
-            {props.canComment && 
-            <textarea className="criteriaText" />}
+            {props.canComment && !props.readOnly ? <textarea className="criteriaText" /> : null}
         </div>
     )
 }

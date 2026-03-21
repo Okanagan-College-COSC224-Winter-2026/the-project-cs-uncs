@@ -65,6 +65,9 @@ flask_backend/instance/*.sqlite3
 flask_backend/instance/*.pyc
 flask_backend/instance/.env
 
+# Uploaded files (runtime/user-generated; should not be committed)
+flask_backend/instance/uploads/
+
 ########################
 # Environment secrets  #
 ########################

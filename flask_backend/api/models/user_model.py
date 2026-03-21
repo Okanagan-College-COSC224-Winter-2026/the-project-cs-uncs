@@ -47,7 +47,7 @@ class User(db.Model):
         "Review", back_populates="reviewee", foreign_keys="Review.revieweeID", lazy="dynamic"
     )
     group_memberships = db.relationship(
-        "Group_Members", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
+        "GroupMember", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     def __init__(self, name, email, hash_pass, role="student", must_change_password=False):

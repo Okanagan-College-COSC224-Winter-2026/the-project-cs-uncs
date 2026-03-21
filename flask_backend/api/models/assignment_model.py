@@ -3,7 +3,7 @@ Assignment model for the peer evaluation app.
 """
 
 from .db import db
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 class Assignment(db.Model):
@@ -16,16 +16,22 @@ class Assignment(db.Model):
     name = db.Column(db.String(255), nullable=True)
     rubric_text = db.Column("rubric", db.String(255), nullable=True)
 
+    description = db.Column(db.Text, nullable=True)
+
+    # Optional downloadable attachment
+    attachment_original_name = db.Column(db.String(255), nullable=True)
+    attachment_storage_name = db.Column(db.String(255), nullable=True)
+
     # NEW: due date field (acceptance criteria: edit/delete allowed before due date)
     due_date = db.Column(db.DateTime, nullable=True, index=True)
+
+    # Assignment type determines peer-eval workflows.
+    assignment_type = db.Column(db.String(50), nullable=False, default="standard", index=True)
 
     # relationships
     course = db.relationship("Course", back_populates="assignments", lazy="joined")
     rubrics = db.relationship(
         "Rubric", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
-    )
-    groups = db.relationship(
-        "CourseGroup", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
     )
     submissions = db.relationship(
         "Submission", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
@@ -33,15 +39,26 @@ class Assignment(db.Model):
     reviews = db.relationship(
         "Review", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
     )
-    group_members = db.relationship(
-        "Group_Members", back_populates="assignment", cascade="all, delete-orphan", lazy="dynamic"
-    )
 
-    def __init__(self, courseID, name, rubric_text, due_date=None):
+    def __init__(
+        self,
+        courseID,
+        name,
+        rubric_text,
+        due_date=None,
+        description=None,
+        attachment_original_name=None,
+        attachment_storage_name=None,
+        assignment_type="standard",
+    ):
         self.courseID = courseID
         self.name = name
         self.rubric_text = rubric_text
         self.due_date = due_date
+        self.description = description
+        self.attachment_original_name = attachment_original_name
+        self.attachment_storage_name = attachment_storage_name
+        self.assignment_type = assignment_type
 
     def __repr__(self):
         return f"<Assignment id={self.id} name={self.name}>"
@@ -71,11 +88,32 @@ class Assignment(db.Model):
             return None
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     
-    def can_modify(self):
-        """Check if the assignment can be modified (edited/deleted) at the given time."""
+    def can_modify(self, tz_offset_minutes: int | None = None):
+        """Check if the assignment can be modified (edited/deleted) right now.
+
+        Notes:
+        - For date-only due dates we store an end-of-day timestamp (23:59:59) without tzinfo.
+          Those should behave as a calendar-day cutoff in the requester's local timezone.
+        - For timestamp due dates (including those normalized to UTC), we keep exact time comparison.
+        """
+        if self.due_date is None:
+            return True
+
+        # Date-only (stored as naive 23:59:59) => compare by calendar day.
+        if (
+            self.due_date.tzinfo is None
+            and (self.due_date.hour, self.due_date.minute, self.due_date.second) == (23, 59, 59)
+        ):
+            if tz_offset_minutes is not None:
+                now_utc = datetime.now(timezone.utc)
+                requester_today = (now_utc - timedelta(minutes=tz_offset_minutes)).date()
+            else:
+                requester_today = datetime.now().date()
+            return requester_today <= self.due_date.date()
+
         due = self._ensure_timezone_aware(self.due_date)
         now = self._get_current_utc_time()
-        return (due is None) or (now < due)
+        return now < due
 
     def update(self):
         """Update assignment in the database"""

@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -11,11 +12,12 @@ from .controllers import (
     admin_controller,
     auth_controller,
     class_controller,
-    fake_api_controller,
     user_controller,
     assignment_controller,
     review_controller,
     rubric_controller,
+    group_controller,
+    peer_eval_controller,
 )
 from .models.db import db, ma
 
@@ -50,6 +52,14 @@ def create_app(test_config=None):
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         JWT_SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret"),
+        # JWT expiration: Flask-JWT-Extended defaults to 15 minutes if unset.
+        # That can feel like "random" logouts in local dev (the frontend redirects on 401).
+        # Use a longer dev default but keep production short unless explicitly overridden.
+        JWT_ACCESS_TOKEN_EXPIRES=(
+            timedelta(minutes=int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")))
+            if is_production
+            else timedelta(hours=int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES_HOURS", "12")))
+        ),
         # JWT Cookie settings - secure defaults for production, permissive for development
         JWT_TOKEN_LOCATION=["cookies"],
         JWT_COOKIE_SECURE=is_production,  # True in production (HTTPS required)
@@ -103,7 +113,7 @@ def create_app(test_config=None):
         app,
         origins=cors_origins,
         supports_credentials=True,
-        allow_headers=["Content-Type", "X-CSRF-TOKEN"],
+        allow_headers=["Content-Type", "X-CSRF-TOKEN", "X-Timezone-Offset"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
@@ -119,7 +129,7 @@ def create_app(test_config=None):
     # Blueprint prefixes (and bare endpoints) that should never trigger
     # the must_change_password check.  Skipping these avoids the cost
     # of JWT cookie parsing / decoding on every request.
-    _SKIP_PASSWORD_CHECK_PREFIXES = ("auth.", "static.", "fake.")
+    _SKIP_PASSWORD_CHECK_PREFIXES = ("auth.", "static.")
 
     # Individual non-blueprint endpoints to skip (e.g. top-level routes)
     _SKIP_PASSWORD_CHECK_ENDPOINTS = {"hello", None}
@@ -181,6 +191,7 @@ def create_app(test_config=None):
     app.register_blueprint(assignment_controller.bp)
     app.register_blueprint(review_controller.bp)
     app.register_blueprint(rubric_controller.bp)
-    app.register_blueprint(fake_api_controller.fake)
+    app.register_blueprint(group_controller.bp)
+    app.register_blueprint(peer_eval_controller.bp)
 
     return app

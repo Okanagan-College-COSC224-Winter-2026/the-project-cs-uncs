@@ -1,0 +1,219 @@
+.GroupsPage {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    width: 100%;
+}
+
+.GroupsPanel {
+    width: 100%;
+    max-width: 800px;
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-lg);
+    border: 2px solid var(--border-color);
+    background-color: var(--card-background);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+@media (min-width: 1100px) {
+    .GroupsPanel {
+        max-width: 1100px;
+    }
+
+    .GroupsError {
+        max-width: 1100px;
+    }
+}
+
+.GroupsError {
+    width: 100%;
+    max-width: 800px;
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.GroupsMuted {
+    color: var(--text-secondary);
+}
+
+.GroupsLabel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.GroupsInput {
+    width: 100%;
+    max-width: 420px;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    padding: var(--spacing-sm);
+}
+
+.GroupsMemberPicker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.GroupsMemberPickerHeader {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.GroupsMemberRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--card-background);
+}
+
+.GroupsMemberName {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.GroupsMemberEmail {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.GroupsActions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.GroupsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.GroupItem {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: 0;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--card-background);
+    transition: var(--transition-base);
+    text-align: left;
+}
+
+.GroupItem:hover {
+    background-color: var(--background-secondary);
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.GroupItemMain {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+    background: transparent;
+    border: none;
+    padding: var(--spacing-md);
+    text-align: left;
+    cursor: pointer;
+}
+
+.GroupItemDelete {
+    flex-shrink: 0;
+}
+
+.GroupItemName {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.GroupItemMeta {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.GroupsDetailHeader {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.GroupsDetailHeader h3 {
+    margin: 0;
+}
+
+.GroupsDetailList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.GroupsDetailRow {
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--card-background);
+}
+
+.GroupsSectionTitle {
+    margin-top: var(--spacing-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.GroupsDetailRowEditable {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.GroupsDetailRowName {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.GroupsDetailRowActions {
+    margin-left: auto;
+}
+
+.GroupsAddRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.GroupsSelect {
+    width: 100%;
+    max-width: 520px;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    padding: var(--spacing-sm);
+}

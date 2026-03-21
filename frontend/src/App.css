@@ -21,6 +21,83 @@
   transition: var(--transition-base);
 }
 
+/* Page-level wrapper: use this on every page root to keep
+   BackArrow/header/tabs spacing consistent regardless of page markup. */
+.Page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+}
+
+/* Shared wrapper for tabbed pages (assignment details / peer reviews / feedback).
+   Keep this global to avoid route-level CSS load differences affecting layout. */
+.TabPageContent {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding-top: var(--spacing-lg);
+}
+
+.HeaderTitle {
+  display: inline-block;
+}
+
+.HeaderTitle--loading {
+  color: var(--text-secondary);
+}
+
+/* Global header styles (avoid per-route CSS load order differences) */
+.ClassHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  gap: var(--spacing-md);
+}
+
+.ClassHeader h1,
+.ClassHeader h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.ClassHeaderLeft {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0;
+  gap: var(--spacing-md);
+}
+
+.AssignmentHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  gap: var(--spacing-md);
+}
+
+.AssignmentHeader h1,
+.AssignmentHeader h2 {
+  margin: 0;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.PageStatusText {
+  color: var(--text-secondary);
+}
+
 h1 {
   font-size: 2rem;
   font-weight: 700;

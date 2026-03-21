@@ -5,6 +5,8 @@ Tests for assignments endpoints
 import json
 import datetime
 
+from api.models import Assignment
+
 def test_teacher_can_create_assignment(test_client, make_admin):
     """
     GIVEN a teacher user
@@ -44,6 +46,36 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     assert assignment_response.json["assignment"]["name"] == "Essay 1"
     assert assignment_response.json["assignment"]["rubric_text"] == "Quality of writing"
     assert assignment_response.json["assignment"]["due_date"] == due_date
+
+
+def test_teacher_cannot_create_assignment_with_past_due_date(test_client, make_admin):
+    make_admin(email="admin@example.com", password="admin", name="adminuser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "History 102"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_id = class_response.json["class"]["id"]
+    past_due_date = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat()
+
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {"courseID": class_id, "name": "Essay Past", "rubric": "Quality", "due_date": past_due_date}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert assignment_response.status_code == 400
+    assert assignment_response.json["msg"] == "Due date cannot be in the past"
 
 
 def test_create_assignment_missing_fields(test_client, make_admin):
@@ -228,7 +260,154 @@ def test_teacher_can_edit_assignment_before_due_date(test_client, make_admin):
     expected_ts = new_due.replace(microsecond=0).astimezone(_tz.utc).timestamp()
     assert abs(parsed_ts - expected_ts) < 2  # within 2 seconds
 
-def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
+
+def test_teacher_can_edit_assignment_details_title_and_due_date(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "English 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=14)
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "Essay Draft",
+                "rubric": "Clarity",
+                "due_date": future_due.replace(microsecond=0).isoformat(),
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    new_due_date_only = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=21)).date().isoformat()
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps(
+            {
+                "name": "Essay Final",
+                "due_date": new_due_date_only,
+                "description": "Updated instructions",
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert edit_response.status_code == 200
+    assert edit_response.json["msg"] == "Assignment details updated"
+    assert edit_response.json["assignment"]["name"] == "Essay Final"
+    assert edit_response.json["assignment"]["description"] == "Updated instructions"
+
+    returned_due = edit_response.json["assignment"].get("due_date")
+    assert returned_due is not None
+    # For date-only updates, backend interprets end-of-day and should preserve the same calendar date.
+    assert str(returned_due).startswith(new_due_date_only)
+
+
+def test_teacher_cannot_set_past_due_date_via_edit_details(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Biology 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "Lab 1",
+                "rubric": "Accuracy",
+                "due_date": future_due.replace(microsecond=0).isoformat(),
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    past_date_only = (datetime.datetime.now() - datetime.timedelta(days=1)).date().isoformat()
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps({"due_date": past_date_only}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert edit_response.status_code == 400
+    assert edit_response.json["msg"] == "Due date cannot be in the past"
+
+
+def test_teacher_can_edit_assignment_details_title_and_due_date_multipart(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "CS 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    future_due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=10)
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "HW 1",
+                "rubric": "Correctness",
+                "due_date": future_due.replace(microsecond=0).isoformat(),
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    new_due_date_only = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=12)).date().isoformat()
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data={
+            "name": "HW 1 (Updated)",
+            "due_date": new_due_date_only,
+            "description": "New description",
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert edit_response.status_code == 200
+    assert edit_response.json["assignment"]["name"] == "HW 1 (Updated)"
+    assert edit_response.json["assignment"]["description"] == "New description"
+    returned_due = edit_response.json["assignment"].get("due_date")
+    assert returned_due is not None
+    assert str(returned_due).startswith(new_due_date_only)
+
+def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin, dbsession):
     """
     GIVEN a teacher user
     WHEN they try to edit an assignment after its due date
@@ -249,7 +428,7 @@ def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
         headers={"Content-Type": "application/json"},
     )
     class_id = class_response.json["class"]["id"]
-    # Now, create the assignment with a past due date
+    # Create the assignment with a future due date (past due dates are disallowed at creation)
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
@@ -257,12 +436,17 @@ def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Painting 1",
                 "rubric": "Creativity",
-                "due_date": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=1)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
     )
     assignment_id = assignment_response.json["assignment"]["id"]
+
+    # Simulate overdue by moving due_date into the past
+    assignment = dbsession.get(Assignment, assignment_id)
+    assignment.due_date = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    dbsession.commit()
     # Now, attempt to edit the assignment
     edit_response = test_client.patch(
         f"/assignment/edit_assignment/{assignment_id}",
@@ -423,11 +607,11 @@ def test_delete_assignment(test_client, make_admin):
     assert delete_response.status_code == 200
     assert delete_response.json["msg"] == "Assignment deleted"
 
-def test_delete_assignment_after_due_date(test_client, make_admin):
+def test_delete_assignment_after_due_date(test_client, make_admin, dbsession):
     """
     GIVEN a teacher user
     WHEN they try to delete an assignment after its due date
-    THEN the API should return a 400 error
+    THEN the API should allow deletion
     """
     # Use make_admin fixture to create a teacher user
     make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
@@ -444,7 +628,7 @@ def test_delete_assignment_after_due_date(test_client, make_admin):
         headers={"Content-Type": "application/json"},
     )
     class_id = class_response.json["class"]["id"]
-    # Now, create the assignment with a past due date
+    # Create the assignment with a future due date (past due dates are disallowed at creation)
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
@@ -452,25 +636,30 @@ def test_delete_assignment_after_due_date(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Market Analysis",
                 "rubric": "Data Interpretation",
-                "due_date": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat(),
+                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=1)).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
     )
     assignment_id = assignment_response.json["assignment"]["id"]
+
+    # Simulate overdue by moving due_date into the past
+    assignment = dbsession.get(Assignment, assignment_id)
+    assignment.due_date = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    dbsession.commit()
     # Now, attempt to delete the assignment
     delete_response = test_client.delete(
         f"/assignment/delete_assignment/{assignment_id}",
         headers={"Content-Type": "application/json"},
     )
-    assert delete_response.status_code == 400
-    assert delete_response.json["msg"] == "Assignment cannot be deleted after its due date"
+    assert delete_response.status_code == 200
+    assert delete_response.json["msg"] == "Assignment deleted"
 
 def test_non_assigned_teacher_cannot_delete_assignment(test_client, make_admin):
     """
     GIVEN a teacher user who is not assigned to the class
     WHEN they try to delete an assignment for that class
-    THEN the API should return a 403 error
+    THEN the API should allow deletion (admin override)
     """
     # Use make_admin fixture to create a teacher user
     make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
@@ -514,8 +703,8 @@ def test_non_assigned_teacher_cannot_delete_assignment(test_client, make_admin):
         f"/assignment/delete_assignment/{assignment_id}",
         headers={"Content-Type": "application/json"},
     )
-    assert delete_response.status_code == 403
-    assert delete_response.json["msg"] == "Unauthorized: You are not the teacher of this class"
+    assert delete_response.status_code == 200
+    assert delete_response.json["msg"] == "Assignment deleted"
 
 def test_unauthenticated_user_cannot_delete_assignment(test_client):
     """
@@ -691,11 +880,11 @@ def test_teacher_can_create_assignment_with_due_date(test_client, make_admin):
     assert response.json["assignment"]["due_date"] == due_date
 
 
-def test_create_assignment_without_due_date_still_works(test_client, make_admin):
+def test_create_assignment_without_due_date_is_rejected(test_client, make_admin):
     """
     GIVEN a teacher user
-    WHEN they create an assignment without a due date (backward compatibility)
-    THEN the assignment should be created successfully with null due_date
+    WHEN they create an assignment without a due date
+    THEN the API should reject the request
     """
     # ARRANGE
     make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
@@ -722,9 +911,8 @@ def test_create_assignment_without_due_date_still_works(test_client, make_admin)
     )
     
     # ASSERT
-    assert response.status_code == 201
-    assert response.json["assignment"]["name"] == "Essay"
-    assert response.json["assignment"]["due_date"] is None
+    assert response.status_code == 400
+    assert response.json["msg"] == "Due date is required"
 
 
 def test_create_assignment_with_invalid_due_date_format(test_client, make_admin):

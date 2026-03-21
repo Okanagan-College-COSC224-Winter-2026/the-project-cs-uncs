@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BackArrow from '../components/BackArrow'
 import Button from '../components/Button'
 import Textbox from '../components/Textbox'
 import StatusMessage from '../components/StatusMessage'
@@ -30,7 +31,8 @@ export default function CreateClass() {
   };
 
   return (
-    <div className="CreateClass">
+    <div className="CreateClass Page">
+      <BackArrow />
       <h1>Create Class</h1>
 
       <StatusMessage message={statusMessage} type={statusType} />

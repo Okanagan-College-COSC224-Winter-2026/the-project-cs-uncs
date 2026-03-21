@@ -98,6 +98,94 @@ def get_user_classes():
 
     return jsonify([{"id": c.id, "name": c.name} for c in courses]), 200
 
+
+@bp.route("/members", methods=["POST"])
+@jwt_required()
+def get_course_members():
+    """Return enrolled student members of a course.
+
+    Body accepts any of:
+      { "id": <course_id> }
+      { "class_id": <course_id> }
+      { "course_id": <course_id> }
+
+    Allowed for:
+      - Admin
+      - The course's teacher
+      - A student enrolled in the course
+    """
+    data = request.get_json(silent=True) or {}
+    course_id = data.get("id") or data.get("class_id") or data.get("course_id")
+    if not course_id:
+        return jsonify({"msg": "Course ID is required"}), 400
+
+    course = Course.get_by_id(course_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+    is_enrolled_student = user.is_student() and User_Course.get(user.id, course.id) is not None
+    if not (user.is_admin() or is_course_teacher or is_enrolled_student):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    students = course.students.all() if hasattr(course.students, "all") else list(course.students)
+    results = [
+        {"id": s.id, "name": s.name, "email": s.email, "role": s.role}
+        for s in students
+        if s is not None
+    ]
+
+    return jsonify(results), 200
+
+
+@bp.route("/remove_member", methods=["POST"])
+@jwt_teacher_required
+def remove_course_member():
+    """Remove a student from a class.
+
+    Body accepts:
+      { "class_id": <course_id>, "user_id": <student_user_id> }
+    """
+    data = request.get_json(silent=True) or {}
+    class_id = data.get("class_id") or data.get("course_id")
+    user_id = data.get("user_id") or data.get("student_id")
+
+    if not class_id or not user_id:
+        return jsonify({"msg": "Class ID and user ID are required"}), 400
+
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    current_email = get_jwt_identity()
+    current_user = User.get_by_email(current_email)
+    if not current_user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not current_user.is_admin() and course.teacherID != current_user.id:
+        return jsonify({"msg": "You are not authorized to remove members from this class"}), 403
+
+    if int(user_id) == int(current_user.id):
+        return jsonify({"msg": "Cannot remove yourself from the class"}), 400
+
+    student = User.get_by_id(user_id)
+    if not student:
+        return jsonify({"msg": "User not found"}), 404
+    if student.id == course.teacherID:
+        return jsonify({"msg": "Cannot remove the course teacher"}), 400
+
+    enrollment = User_Course.get(student.id, course.id)
+    if not enrollment:
+        return jsonify({"msg": "User is not enrolled in this class"}), 404
+
+    enrollment.delete()
+    return jsonify({"msg": f"Removed {student.email} from course {course.name}"}), 200
+
 REQUIRED_HEADERS = {"id", "name", "email"}
 def csv_to_list(csv_text):
     """Convert CSV text to a list of emails"""
@@ -194,6 +282,99 @@ def enroll_students():
             enrolled_students.append(email)
 
     return jsonify({"msg": f"{len(enrolled_students)} students added to course {course.name}"}), 200
+
+
+def _parse_emails(value: str) -> List[str]:
+    if not value:
+        return []
+    parts = re.split(r"[\s,;]+", value.strip())
+    return [p.strip() for p in parts if p and p.strip()]
+
+
+@bp.route("/enroll_students_emails", methods=["POST"])
+@jwt_teacher_required
+def enroll_students_emails():
+    """Enroll students into a class by providing emails directly (no CSV).
+
+    Body:
+      {
+        "class_id": number,
+        "emails": "a@x.com, b@y.com"  # comma/space/newline separated
+      }
+    """
+    data = request.get_json(silent=True) or {}
+    class_id = data.get("class_id")
+    emails_value = data.get("emails", "")
+
+    if not class_id or not str(emails_value).strip():
+        return jsonify({"msg": "Class ID and emails are required"}), 400
+
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    # check if the authenticated user is the teacher of the class
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    if not user.is_admin() and course.teacherID != user.id:
+        return jsonify({"msg": "You are not authorized to enroll students in this class"}), 403
+
+    emails = _parse_emails(str(emails_value))
+    if not emails:
+        return jsonify({"msg": "No valid emails provided"}), 400
+
+    enrolled: List[str] = []
+    skipped: List[str] = []
+    errors: List[str] = []
+
+    for email in emails:
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            errors.append(f"Invalid email format: {email}")
+            continue
+
+        student = User.get_by_email(email)
+        if not student:
+            # Default name: use local-part of email
+            default_name = email.split("@", 1)[0]
+            student = User(
+                name=default_name,
+                email=email,
+                hash_pass=generate_password_hash("password123"),
+                role="student",
+            )
+            try:
+                User.create_user(student)
+            except Exception as e:
+                errors.append(f"Error creating user {email}: {str(e)}")
+                continue
+        elif not student.is_student():
+            errors.append(f"User {email} is not a student")
+            continue
+
+        enrollment = User_Course.get(student.id, class_id)
+        if enrollment:
+            skipped.append(email)
+            continue
+
+        try:
+            User_Course.add(student.id, class_id)
+            enrolled.append(email)
+        except Exception as e:
+            errors.append(f"Error enrolling {email}: {str(e)}")
+
+    return (
+        jsonify(
+            {
+                "msg": f"{len(enrolled)} students added to course {course.name}",
+                "enrolled": enrolled,
+                "skipped": skipped,
+                "errors": errors,
+            }
+        ),
+        200,
+    )
 
 
 # Add this endpoint to flask_backend/api/controllers/class_controller.py

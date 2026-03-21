@@ -1,11 +1,14 @@
 .ClassMemberList {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-
+  display: grid;
+  grid-template-columns: 1fr;
   width: 100%;
   gap: var(--spacing-md);
+}
+
+@media (min-width: 900px) {
+  .ClassMemberList {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .ClassMemberList h1 {
@@ -16,26 +19,76 @@
 }
 
 .Member {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
   width: 100%;
-  max-width: 600px;
+  max-width: none;
 
   padding: var(--spacing-md);
   margin: 0;
 
   border-radius: var(--border-radius);
   border: 2px solid var(--border-color);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
   transition: var(--transition-base);
   cursor: pointer;
+}
+
+.MemberName {
+  flex: 1;
+}
+
+.MemberGroup {
+  color: var(--text-secondary);
+}
+
+.MemberRemoveBtn {
+  margin-left: auto;
 }
 
 .Member:hover {
   background-color: var(--background-secondary);
   border-color: var(--accent-primary);
   box-shadow: var(--shadow-md);
-  transform: translateX(4px);
+  transform: translateY(-2px);
 }
 
 .Member:active {
-  transform: translateX(2px);
+  transform: translateY(-1px);
+}
+
+.AddStudentsPanel {
+  width: 100%;
+  max-width: 600px;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.AddStudentsLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.AddStudentsTextarea {
+  width: 100%;
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  padding: var(--spacing-sm);
+}
+
+.AddStudentsActions {
+  margin-top: var(--spacing-md);
+  display: flex;
+  justify-content: flex-end;
 }

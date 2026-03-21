@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
@@ -11,7 +11,6 @@ import LoginPage from "./pages/LoginPage";
 import ClassHome from "./pages/ClassHome";
 import ClassMembers from "./pages/ClassMembers";
 import Assignment from "./pages/Assignment";
-import Group from "./pages/Group";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePassword from "./pages/ChangePassword";
 // CreateTeacher removed in favor of AdminUsers
@@ -20,6 +19,11 @@ import PeerReviews from "./pages/PeerReviews";
 import ReviewSubmission from "./pages/ReviewSubmission";
 import TeacherReviewDashboard from "./pages/TeacherReviewDashboard";
 import ReceivedFeedback from "./pages/ReceivedFeedback";
+import CreateAssignment from "./pages/CreateAssignment";
+import AssignmentDetails from "./pages/AssignmentDetails";
+import Groups from "./pages/Groups";
+import Submissions from "./pages/Submissions";
+import MyGroup from "./pages/MyGroup";
 
 function AppContent() {
   const location = useLocation();
@@ -76,6 +80,25 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
+          <Route path="/classes/:id/groups" element={
+            <ProtectedRoute>
+              <Groups />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/classes/:id/my-group" element={
+            <ProtectedRoute>
+              <MyGroup />
+            </ProtectedRoute>
+          } />
+
+
+          <Route path="/classes/:id/create-assignment" element={
+            <ProtectedRoute>
+              <CreateAssignment />
+            </ProtectedRoute>
+          } />
+
           <Route path="/assignments/:id" element={
             <ProtectedRoute>
               <Assignment />
@@ -88,15 +111,32 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/assignments/:id/group" element={
+          <Route path="/assignment/:id/details" element={
             <ProtectedRoute>
-              <Group />
+              <AssignmentDetails />
             </ProtectedRoute>
           } />
 
-          <Route path="/assignment/:id/group" element={
+          <Route path="/assignment/:id/groups" element={
             <ProtectedRoute>
-              <Group />
+              <Groups />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assignment/:id/submissions" element={
+            <ProtectedRoute>
+              <Submissions />
+            </ProtectedRoute>
+          } />
+
+          <Route
+            path="/assignment/:id/group-submissions"
+            element={<Navigate to="../submissions" replace />}
+          />
+
+          <Route path="/assignment/:id/my-group" element={
+            <ProtectedRoute>
+              <MyGroup />
             </ProtectedRoute>
           } />
 

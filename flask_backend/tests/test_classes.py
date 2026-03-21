@@ -120,6 +120,61 @@ def test_get_courses_for_teacher(test_client, make_admin):
         data=json.dumps({"name": "Math 101"}),
         headers={"Content-Type": "application/json"},
     )
+
+
+def test_teacher_can_enroll_students_by_email(test_client, make_admin):
+    make_admin(email="admin@example.com", password="admin", name="adminuser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "History 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    enroll_resp = test_client.post(
+        "/class/enroll_students_emails",
+        data=json.dumps({"class_id": class_id, "emails": "a@example.com\nb@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert enroll_resp.status_code == 200
+    assert "students added" in enroll_resp.json["msg"]
+    assert "a@example.com" in enroll_resp.json["enrolled"]
+    assert "b@example.com" in enroll_resp.json["enrolled"]
+
+
+def test_student_cannot_enroll_students_by_email(test_client, make_admin):
+    test_client.post(
+        "/auth/register",
+        data=json.dumps(
+            {"name": "studentuser", "password": "123456", "email": "student@example.com"}
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+
+    # Create a teacher/admin account for the next step in the test
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "student@example.com", "password": "123456"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    resp = test_client.post(
+        "/class/enroll_students_emails",
+        data=json.dumps({"class_id": 1, "emails": "a@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert resp.status_code == 403
+    assert resp.json["msg"] == "Insufficient permissions"
     # Login other user
     test_client.post(
         "/auth/login",

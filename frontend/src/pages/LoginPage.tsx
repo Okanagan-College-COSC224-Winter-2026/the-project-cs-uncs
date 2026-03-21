@@ -36,42 +36,51 @@ export default function LoginPage() {
       <div className="InputBlock">
         <h1>Login</h1>
 
-        <div className="LoginInner">
-          <div className="LoginInputs">
-            <div className="LoginInputChunk">
-              <label htmlFor="login-email">Email</label>
-              <Textbox
-                id='login-email'
-                placeholder='Email...'
-                onInput={setEmail}
-                className='LoginInput'
-              />
+        <form
+          className="LoginForm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            attemptLogin();
+          }}
+        >
+          <div className="LoginInner">
+            <div className="LoginInputs">
+              <div className="LoginInputChunk">
+                <label htmlFor="login-email">Email</label>
+                <Textbox
+                  id='login-email'
+                  placeholder='Email...'
+                  onInput={setEmail}
+                  className='LoginInput'
+                />
+              </div>
+
+              <div className="LoginInputChunk">
+                <label htmlFor="login-password">Password</label>
+                <Textbox
+                  id='login-password'
+                  type='password'
+                  placeholder='Password...'
+                  onInput={setPassword}
+                  className='LoginInput'
+                />
+              </div>
             </div>
 
-            <div className="LoginInputChunk">
-              <label htmlFor="login-password">Password</label>
-              <Textbox
-                id='login-password'
-                type='password'
-                placeholder='Password...'
-                onInput={setPassword}
-                className='LoginInput'
-              />
-            </div>
           </div>
-
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button
-            onClick={()=> attemptLogin()}
-            children="Login"
-          />
-          <Button
-            onClick={() => navigate('/register')}
-            type='secondary'
-            children="Register"
-          />
-        </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              htmlType="submit"
+              children="Login"
+            />
+            <Button
+              htmlType="button"
+              onClick={() => navigate('/register')}
+              type='secondary'
+              children="Register"
+            />
+          </div>
+        </form>
       </div>
     </div>
   );

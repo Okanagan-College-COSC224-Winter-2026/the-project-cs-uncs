@@ -14,7 +14,8 @@
 
   border-radius: var(--border-radius);
   border: 2px solid var(--border-color);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
 
   font-weight: 600;
   font-size: 1rem;

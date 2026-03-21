@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
@@ -22,7 +22,7 @@ import ReceivedFeedback from "./pages/ReceivedFeedback";
 import CreateAssignment from "./pages/CreateAssignment";
 import AssignmentDetails from "./pages/AssignmentDetails";
 import Groups from "./pages/Groups";
-import GroupSubmissions from "./pages/GroupSubmissions";
+import Submissions from "./pages/Submissions";
 import MyGroup from "./pages/MyGroup";
 
 function AppContent() {
@@ -123,11 +123,16 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/assignment/:id/group-submissions" element={
+          <Route path="/assignment/:id/submissions" element={
             <ProtectedRoute>
-              <GroupSubmissions />
+              <Submissions />
             </ProtectedRoute>
           } />
+
+          <Route
+            path="/assignment/:id/group-submissions"
+            element={<Navigate to="../submissions" replace />}
+          />
 
           <Route path="/assignment/:id/my-group" element={
             <ProtectedRoute>

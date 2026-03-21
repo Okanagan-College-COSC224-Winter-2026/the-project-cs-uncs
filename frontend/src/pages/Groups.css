@@ -11,7 +11,8 @@
     padding: var(--spacing-lg);
     border-radius: var(--border-radius-lg);
     border: 2px solid var(--border-color);
-    background-color: var(--background-primary);
+    background-color: var(--card-background);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
@@ -79,7 +80,7 @@
     padding: var(--spacing-sm);
     border-radius: var(--border-radius);
     border: 2px solid var(--border-color);
-    background-color: var(--background-primary);
+    background-color: var(--card-background);
 }
 
 .GroupsMemberName {
@@ -114,7 +115,7 @@
     padding: 0;
     border-radius: var(--border-radius);
     border: 2px solid var(--border-color);
-    background-color: var(--background-primary);
+    background-color: var(--card-background);
     transition: var(--transition-base);
     text-align: left;
 }
@@ -175,7 +176,7 @@
     padding: var(--spacing-md);
     border-radius: var(--border-radius);
     border: 2px solid var(--border-color);
-    background-color: var(--background-primary);
+    background-color: var(--card-background);
 }
 
 .GroupsSectionTitle {

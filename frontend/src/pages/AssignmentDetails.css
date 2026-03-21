@@ -4,9 +4,10 @@
 
 .assignment-details-content {
   padding: var(--spacing-md);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
   border: 2px solid var(--border-color);
   border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .assignment-details-content h3 {

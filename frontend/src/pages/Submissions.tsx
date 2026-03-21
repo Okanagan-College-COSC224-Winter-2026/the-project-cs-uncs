@@ -10,6 +10,7 @@ import {
   CourseGroup,
   getTeacherGroupPeerEvalOverview,
   listCourseGroups,
+  listCourseMembers,
   listSubmissions,
   getAssignmentDetails,
   getSubmissionDownloadUrl,
@@ -17,6 +18,13 @@ import {
   peekAssignmentDetails,
 } from "../util/api";
 import "./Groups.css";
+
+type CourseMember = {
+  id: number;
+  name?: string | null;
+  email?: string | null;
+  role?: string | null;
+};
 
 type Submission = {
   id: number;
@@ -32,7 +40,7 @@ type AssignmentDetails = {
   assignment_type?: string | null;
 };
 
-export default function GroupSubmissions() {
+export default function Submissions() {
   const { id } = useParams<{ id: string }>();
 
   const [assignmentName, setAssignmentName] = useState<string | null>(null);
@@ -40,11 +48,13 @@ export default function GroupSubmissions() {
   const [assignmentType, setAssignmentType] = useState<string | null>(null);
 
   const [groups, setGroups] = useState<CourseGroup[]>([]);
+  const [students, setStudents] = useState<CourseMember[]>([]);
   const [submissionsByStudentId, setSubmissionsByStudentId] = useState<Record<number, Submission>>({});
   const [groupPeerEvalByGroupId, setGroupPeerEvalByGroupId] = useState<Record<number, TeacherGroupPeerEvalOverviewResponse["submissions"][number]>>({});
 
   const [selectedGroup, setSelectedGroup] = useState<CourseGroup | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingRoster, setLoadingRoster] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isTeacherOrAdmin = hasRole("teacher", "admin");
@@ -53,10 +63,11 @@ export default function GroupSubmissions() {
     const showRubricTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && isTeacherOrAdmin;
     const showTeacherPeerReviewsTab = (assignmentType === "peer_eval_group" || assignmentType === "peer_eval_individual") && isTeacherOrAdmin;
     const showGroupSubmissionsTab = assignmentType !== "peer_eval_individual";
+    const submissionsLabel = assignmentType === "standard" ? "Student Submissions" : "Group Submissions";
     const tabsForTeacher = [
       ...(showRubricTab ? [{ label: "Rubric", path: `/assignment/${id}` }] : []),
       { label: "Details", path: `/assignment/${id}/details` },
-      ...(showGroupSubmissionsTab ? [{ label: "Group Submissions", path: `/assignment/${id}/group-submissions` }] : []),
+      ...(showGroupSubmissionsTab ? [{ label: submissionsLabel, path: `/assignment/${id}/submissions` }] : []),
       ...(showTeacherPeerReviewsTab ? [{ label: "Peer Reviews", path: `/assignment/${id}/teacher-reviews` }] : []),
     ];
 
@@ -95,6 +106,8 @@ export default function GroupSubmissions() {
 
         const resolvedCourseId = Number(details?.course?.id ?? details?.courseID);
         setCourseId(Number.isFinite(resolvedCourseId) ? resolvedCourseId : null);
+
+        setSelectedGroup(null);
       } catch (e: unknown) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : String(e);
@@ -119,10 +132,36 @@ export default function GroupSubmissions() {
       if (!assignmentType) return;
 
       try {
+        setLoadingRoster(true);
+
+        if (assignmentType === "standard") {
+          const [studentsResp, submissionsResp] = await Promise.all([
+            listCourseMembers(String(courseId)),
+            listSubmissions(Number(id)),
+          ]);
+          if (cancelled) return;
+
+          const roster = (Array.isArray(studentsResp) ? studentsResp : []) as CourseMember[];
+          roster.sort((a, b) => String(a?.name ?? "").localeCompare(String(b?.name ?? "")));
+          setStudents(roster);
+
+          const submissions = ((submissionsResp as any)?.submissions ?? []) as Submission[];
+          const map: Record<number, Submission> = {};
+          for (const sub of submissions) {
+            if (sub?.student?.id) map[sub.student.id] = sub;
+          }
+          setSubmissionsByStudentId(map);
+
+          setGroups([]);
+          setGroupPeerEvalByGroupId({});
+          return;
+        }
+
         const groupsResp = await listCourseGroups(courseId);
         if (cancelled) return;
 
         setGroups(groupsResp);
+        setStudents([]);
 
         if (assignmentType === "peer_eval_group") {
           const overview = await getTeacherGroupPeerEvalOverview(Number(id));
@@ -151,6 +190,8 @@ export default function GroupSubmissions() {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg || "Failed to load groups/submissions");
+      } finally {
+        if (!cancelled) setLoadingRoster(false);
       }
     })();
 
@@ -191,22 +232,58 @@ export default function GroupSubmissions() {
   return (
     <div className="Page">
       <BackArrow />
-      <div className="ClassHeader">
-        <div className="ClassHeaderLeft">
-          <h2>
-            <HeaderTitle title={assignmentName} loading={loading} fallback="Assignment" />
-          </h2>
-        </div>
+      <div className="AssignmentHeader">
+        <h2>
+          <HeaderTitle title={assignmentName} loading={loading} fallback="Assignment" />
+        </h2>
       </div>
 
       <TabNavigation tabs={tabs} />
 
-      <div className="GroupsPage">
-        {error ? <div className="GroupsError">{error}</div> : null}
-        {loading ? <div className="PageStatusText">Loading…</div> : null}
+      <div className="TabPageContent">
+        <div className="GroupsPage">
+          {error ? <div className="GroupsError">{error}</div> : null}
+          {loading ? <div className="PageStatusText">Loading…</div> : null}
+          {!loading && loadingRoster ? <div className="PageStatusText">Loading…</div> : null}
 
-        <div className="GroupsPanel">
-          {selectedGroup ? (
+          <div className="GroupsPanel">
+            {assignmentType === "standard" ? (
+            <>
+              <h3>Student Submissions</h3>
+              {students.length === 0 ? (
+                <div className="GroupsMuted">No students found.</div>
+              ) : (
+                <div className="GroupsDetailList">
+                  {students.map((s) => {
+                    const sub = submissionsByStudentId[s.id];
+                    const displayName = (s.name ?? "").trim() || s.email || `Student #${s.id}`;
+
+                    return (
+                      <div key={s.id} className="GroupsDetailRow">
+                        <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                          <div style={{ fontWeight: 600 }}>{displayName}</div>
+                          {s.email ? <div className="GroupsMuted">{s.email}</div> : null}
+                        </div>
+
+                        <div className="GroupsMuted" style={{ marginTop: 6 }}>
+                          {sub ? (
+                            <>
+                              Submitted{sub.file_name ? `: ${sub.file_name}` : ""} —{" "}
+                              <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
+                                Download
+                              </a>
+                            </>
+                          ) : (
+                            "No submission"
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+            ) : selectedGroup ? (
             <>
               <div className="GroupsDetailHeader">
                 <Button type="secondary" onClick={() => setSelectedGroup(null)}>
@@ -329,7 +406,8 @@ export default function GroupSubmissions() {
                 </div>
               )}
             </>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

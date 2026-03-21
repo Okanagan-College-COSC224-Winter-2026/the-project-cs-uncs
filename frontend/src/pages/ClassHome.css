@@ -101,13 +101,14 @@
 }
 
 .ModalContent {
-  background: var(--background-primary);
+  background: var(--card-background);
   color: var(--text-primary);
   padding: 24px;
   border-radius: 8px;
   width: 90%;
   max-width: 400px;
   border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-md);
 }
 
 .ModalButtons {

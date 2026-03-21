@@ -31,7 +31,8 @@
 
   border-radius: var(--border-radius);
   border: 2px solid var(--border-color);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
   transition: var(--transition-base);
   cursor: pointer;
 }
@@ -65,7 +66,8 @@
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   border: 2px solid var(--border-color);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
   margin-bottom: var(--spacing-md);
 }
 

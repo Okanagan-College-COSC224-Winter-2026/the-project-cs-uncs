@@ -180,6 +180,7 @@ export default function TeacherReviewDashboard() {
     const cachedIsPeerEval = cachedType === 'peer_eval_group' || cachedType === 'peer_eval_individual'
     const cachedName = (cached as any)?.name ?? null
     const cachedIsIndividual = cachedType === 'peer_eval_individual'
+    const cachedSubmissionsLabel = cachedType === 'standard' ? 'Student Submissions' : 'Group Submissions'
 
     return (
       <div className="teacher-dashboard-container Page">
@@ -209,8 +210,8 @@ export default function TeacherReviewDashboard() {
               ? []
               : [
                   {
-                    label: "Group Submissions",
-                    path: `/assignment/${id}/group-submissions`,
+                    label: cachedSubmissionsLabel,
+                    path: `/assignment/${id}/submissions`,
                   },
                 ]),
             ...(cachedIsPeerEval
@@ -629,8 +630,8 @@ export default function TeacherReviewDashboard() {
             ? []
             : [
                 {
-                  label: "Group Submissions",
-                  path: `/assignment/${id}/group-submissions`,
+                  label: assignmentType === 'standard' ? 'Student Submissions' : 'Group Submissions',
+                  path: `/assignment/${id}/submissions`,
                 },
               ]),
           ...(isPeerEval

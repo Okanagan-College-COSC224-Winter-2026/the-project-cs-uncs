@@ -82,13 +82,17 @@ export default function ReceivedFeedback() {
 
   const tabs: { label: string; path: string }[] = [];
   const showRubricTab = isTeacherOrAdmin && (assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual');
+  const submissionsLabel = assignmentType === 'standard' ? 'Student Submissions' : 'Group Submissions';
+  const showSubmissionsTab = assignmentType !== 'peer_eval_individual';
   if (showRubricTab) {
     tabs.push({ label: 'Rubric', path: `/assignment/${assignmentId}` });
   }
   tabs.push({ label: 'Details', path: `/assignment/${assignmentId}/details` });
 
   if (isTeacherOrAdmin) {
-    tabs.push({ label: 'Group Submissions', path: `/assignment/${assignmentId}/group-submissions` });
+    if (showSubmissionsTab) {
+      tabs.push({ label: submissionsLabel, path: `/assignment/${assignmentId}/submissions` });
+    }
     if (assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual') {
       tabs.push({ label: 'Peer Reviews', path: `/assignment/${assignmentId}/teacher-reviews` });
     }

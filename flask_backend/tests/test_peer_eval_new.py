@@ -106,6 +106,7 @@ class TestPeerEvalGroup:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
                     {"question": "Custom Q1", "scoreMax": 7, "hasScore": True},
@@ -144,6 +145,7 @@ class TestPeerEvalGroup:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
                     {"question": "Custom Q1", "scoreMax": 7, "hasScore": True},
@@ -174,6 +176,7 @@ class TestPeerEvalGroup:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
                     {"question": "Too high", "scoreMax": 11, "hasScore": True},
@@ -201,6 +204,7 @@ class TestPeerEvalGroup:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
                     {"question": "Custom Q1", "scoreMax": 0, "hasScore": True},
@@ -223,6 +227,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Peer Eval",
                 "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
             },
         )
         assert res.status_code == 201
@@ -261,6 +266,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Peer Eval",
                 "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
             },
         )
         assert res.status_code == 201
@@ -290,6 +296,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id],
             },
         )
@@ -320,6 +327,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id, g3.id],
             },
         )
@@ -402,6 +410,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Group Peer Eval Deadline",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
             },
         )
@@ -460,6 +469,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id, g3.id],
             },
         )
@@ -527,6 +537,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
             },
         )
@@ -589,6 +600,7 @@ class TestRubricScoreMaxCap:
                 "courseID": course.id,
                 "name": "Group Peer Eval",
                 "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id, g3.id],
                 "rubric_criteria": [
                     {"question": "Q1", "scoreMax": 5, "hasScore": True},
@@ -673,6 +685,7 @@ class TestPeerEvalIndividualEligibility:
                 "courseID": course.id,
                 "name": "Individual Peer Eval",
                 "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
             },
         )
         assert res.status_code == 201
@@ -727,6 +740,7 @@ class TestPeerEvalIndividualEligibility:
                 "courseID": course.id,
                 "name": "Individual Peer Eval",
                 "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
             },
         )
         assert res.status_code == 201

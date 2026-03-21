@@ -9,6 +9,7 @@ interface Props {
   due_date?: string
   assignment_type?: string
   onDelete?: (id: number | string) => void;
+  hideDueStatus?: boolean
 }
 
 function getAssignmentStatus(dueDate?: string): { status: string; label: string; color: string } {
@@ -49,6 +50,7 @@ function formatDate(dateString?: string): string {
 
 export default function AssignmentCard(props: Props) {
   const statusInfo = getAssignmentStatus(props.due_date);
+  const showStatusBubble = !(isTeacher() || isAdmin()) && !props.hideDueStatus;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent the card's onClick from firing
@@ -83,9 +85,11 @@ export default function AssignmentCard(props: Props) {
         <div className="A_Card_Name">{props.name}</div>
         <div className="A_Card_Info">
           <span className="A_Card_DueDate">{formatDate(props.due_date)}</span>
-          <span className={`A_Card_Status A_Card_Status_${statusInfo.status}`}>
-            {statusInfo.label}
-          </span>
+          {showStatusBubble ? (
+            <span className={`A_Card_Status A_Card_Status_${statusInfo.status}`}>
+              {statusInfo.label}
+            </span>
+          ) : null}
         </div>
       </div>
       {props.onDelete && (

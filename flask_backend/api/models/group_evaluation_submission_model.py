@@ -16,7 +16,7 @@ class GroupEvaluationSubmission(db.Model):
     assignment_id = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
     reviewer_group_id = db.Column(db.Integer, db.ForeignKey("groups.id"), nullable=False, index=True)
     submitted_by_user_id = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
-    submitted_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    submitted_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     __table_args__ = (
         db.UniqueConstraint(

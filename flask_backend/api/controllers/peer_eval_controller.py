@@ -143,10 +143,6 @@ def submit_group_peer_eval(assignment_id: int):
     if assignment.assignment_type != "peer_eval_group":
         return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
 
-    # Respect assignment deadline.
-    if assignment.due_date and not assignment.can_modify():
-        return jsonify({"msg": "The review period has ended. Submissions are no longer accepted."}), 403
-
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
 
@@ -361,11 +357,16 @@ def teacher_group_overview(assignment_id: int):
 
     result = []
     for sub in submissions:
+        on_time = None
+        if assignment.due_date and sub.submitted_at:
+            on_time = sub.submitted_at <= assignment.due_date
+
         sub_data = {
             "id": sub.id,
             "reviewer_group": {"id": sub.reviewer_group.id, "name": sub.reviewer_group.name},
             "submitted_by": {"id": sub.submitted_by.id, "name": sub.submitted_by.name},
             "submitted_at": sub.submitted_at.isoformat() if sub.submitted_at else None,
+            "on_time": on_time,
             "evaluations": [],
         }
 

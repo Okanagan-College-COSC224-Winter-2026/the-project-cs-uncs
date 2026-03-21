@@ -441,9 +441,11 @@ class TestSubmitReviewFeedback:
             ]
         })
 
-        assert response.status_code == 403
+
+        assert response.status_code == 200
         data = response.get_json()
-        assert 'review period has ended' in data['msg']
+        assert data['msg'] == 'Review submitted successfully'
+        assert data['review']['completed'] is True
 
     def test_submit_review_unauthorized(self, test_client, students, reviews_assigned, rubric_with_criteria):
         """Student cannot submit review they're not assigned to"""

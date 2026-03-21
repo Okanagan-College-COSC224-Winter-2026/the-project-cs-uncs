@@ -46,6 +46,8 @@ interface Assignment {
   courseID: number;
   rubric?: string;
   due_date?: string;
+  assignment_type?: 'standard' | 'peer_eval_group' | 'peer_eval_individual' | string;
+  student_done?: boolean;
 }
 
 interface CourseWithAssignments extends Course {

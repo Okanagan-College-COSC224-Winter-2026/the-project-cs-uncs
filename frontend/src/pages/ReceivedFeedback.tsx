@@ -156,44 +156,56 @@ export default function ReceivedFeedback() {
           </div>
         )}
 
-        {feedback.map((review, index) => (
-          <div key={review.review_id} className="feedback-card">
-            <div className="feedback-card-header">
-              <h3>Review {index + 1}</h3>
-            </div>
+        {feedback.map((review, index) => {
+          const additionalComments = (() => {
+            const comments = (review.criteria ?? [])
+              .map((c) => (c.comments ?? '').trim())
+              .filter((txt) => txt.length > 0);
+            return Array.from(new Set(comments)).join('\n\n');
+          })();
 
-            {review.criteria.length === 0 ? (
-              <p className="no-criteria">No criteria submitted for this review.</p>
-            ) : (
-              <div className="criteria-list">
-                {review.criteria.map((criterion) => (
-                  <div key={criterion.criterionRowID} className="criterion-feedback">
-                    <div className="criterion-question">
-                      <strong>{criterion.question}</strong>
-                    </div>
-
-                    {criterion.hasScore && criterion.scoreMax !== null && (
-                      <div className="criterion-score">
-                        <span className="score-label">Score:</span>
-                        <span className="score-value">
-                          {criterion.grade !== null ? criterion.grade : '—'}
-                          <span className="score-max"> / {criterion.scoreMax}</span>
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="criterion-comments">
-                      <span className="comments-label">Comments:</span>
-                      <span className="comments-text">
-                        {criterion.comments ? criterion.comments : <em>No comments provided.</em>}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+          return (
+            <div key={review.review_id} className="feedback-card">
+              <div className="feedback-card-header">
+                <h3>Review {index + 1}</h3>
               </div>
-            )}
-          </div>
-        ))}
+
+              {review.criteria.length === 0 ? (
+                <p className="no-criteria">No criteria submitted for this review.</p>
+              ) : (
+                <div className="criteria-list">
+                  {review.criteria.map((criterion) => (
+                    <div key={criterion.criterionRowID} className="criterion-feedback">
+                      <div className="criterion-question">
+                        <strong>{criterion.question}</strong>
+                      </div>
+
+                      {criterion.hasScore && criterion.scoreMax !== null && (
+                        <div className="criterion-score">
+                          <span className="score-label">Score:</span>
+                          <span className="score-value">
+                            {criterion.grade !== null ? criterion.grade : '—'}
+                            <span className="score-max"> / {criterion.scoreMax}</span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="review-additional-comments">
+                <label>Additional comments (optional)</label>
+                <textarea
+                  value={additionalComments}
+                  disabled={true}
+                  placeholder="No additional comments provided."
+                  rows={3}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

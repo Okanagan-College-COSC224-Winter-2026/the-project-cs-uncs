@@ -56,6 +56,70 @@
 
 .assignment-details-file {
   margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  font: inherit;
+}
+
+.assignment-details-file::file-selector-button {
+  appearance: none;
+  background: var(--button-secondary);
+  color: #ffffff;
+
+  border: none;
+  border-radius: 6px;
+
+  padding: 8px 16px;
+
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+
+  margin-right: var(--spacing-md);
+
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.assignment-details-file::-webkit-file-upload-button {
+  appearance: none;
+  background: var(--button-secondary);
+  color: #ffffff;
+
+  border: none;
+  border-radius: 6px;
+
+  padding: 8px 16px;
+
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+
+  margin-right: var(--spacing-md);
+
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.assignment-details-file::file-selector-button:hover {
+  background: var(--button-secondary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.assignment-details-file::-webkit-file-upload-button:hover {
+  background: var(--button-secondary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.assignment-details-file::file-selector-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.assignment-details-file::-webkit-file-upload-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
 .assignment-details-checkbox {

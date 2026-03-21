@@ -15,7 +15,9 @@ from ..models import (
     Course,
     CriteriaDescription,
     Group,
+    GroupEvaluationSubmission,
     GroupMember,
+    Review,
     Rubric,
     Submission,
     User,
@@ -292,16 +294,6 @@ def create_assignment():
         except ValueError:
             tz_offset_minutes = None
 
-    if not due_date:
-        due_date = None
-    else:
-        try:
-            due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
-        except (ValueError, TypeError) as e:
-            if str(e) == "past":
-                return jsonify({"msg": "Due date cannot be in the past"}), 400
-            return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
-
     if not course_id:
         return jsonify({"msg": "Course ID is required"}), 400
     if not assignment_name:
@@ -320,6 +312,16 @@ def create_assignment():
         return jsonify({"msg": "Class not found"}), 404
     if course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
+
+    if not due_date:
+        return jsonify({"msg": "Due date is required"}), 400
+
+    try:
+        due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
+    except (ValueError, TypeError) as e:
+        if str(e) == "past":
+            return jsonify({"msg": "Due date cannot be in the past"}), 400
+        return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     included_groups = []
     if assignment_type == "peer_eval_group":
@@ -498,14 +500,13 @@ def edit_assignment_details(assignment_id):
 
     if due_date is not None:
         if not due_date:
-            assignment.due_date = None
-        else:
-            try:
-                assignment.due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
-            except (ValueError, TypeError) as e:
-                if str(e) == "past":
-                    return jsonify({"msg": "Due date cannot be in the past"}), 400
-                return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
+            return jsonify({"msg": "Due date is required"}), 400
+        try:
+            assignment.due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
+        except (ValueError, TypeError) as e:
+            if str(e) == "past":
+                return jsonify({"msg": "Due date cannot be in the past"}), 400
+            return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     if description is not None:
         assignment.description = description if description and description.strip() else None
@@ -587,7 +588,53 @@ def get_assignment_details(assignment_id):
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
-    return jsonify(AssignmentSchema().dump(assignment)), 200
+    payload = AssignmentSchema().dump(assignment)
+
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if user and user.is_student():
+        enrollment = User_Course.get(user.id, assignment.courseID)
+        if not enrollment:
+            return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
+
+        done = False
+        latest_at = None
+
+        assignment_type = assignment.assignment_type or "standard"
+
+        if assignment_type == "standard":
+            sub = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+            if sub is not None:
+                done = True
+                latest_at = sub.submitted_at
+
+        elif assignment_type == "peer_eval_group":
+            my_group, _ = _get_user_group_for_course(user.id, assignment.courseID)
+            if my_group:
+                included = AssignmentIncludedGroup.query.filter_by(
+                    assignment_id=assignment.id, group_id=my_group.id
+                ).first()
+                if included:
+                    sub = GroupEvaluationSubmission.get_by_assignment_and_group(assignment.id, my_group.id)
+                    if sub is not None:
+                        done = True
+                        latest_at = sub.submitted_at
+
+        elif assignment_type == "peer_eval_individual":
+            reviews = Review.query.filter_by(assignmentID=assignment.id, reviewerID=user.id).all()
+            total = len(reviews)
+            completed = sum(1 for r in reviews if r.completed)
+            done = total > 0 and completed == total
+            completed_times = [r.completed_at for r in reviews if r.completed and r.completed_at is not None]
+            latest_at = max(completed_times) if completed_times else None
+
+            payload["student_reviews_total"] = total
+            payload["student_reviews_completed"] = completed
+
+        payload["student_done"] = done
+        payload["student_latest_submission_at"] = latest_at.isoformat() if latest_at else None
+
+    return jsonify(payload), 200
 
 
 @bp.route("/attachment/<int:assignment_id>", methods=["GET"])
@@ -627,45 +674,67 @@ def get_my_submission(assignment_id):
     if not enrollment:
         return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
 
-    group, member_ids = _get_user_group_for_course(user.id, assignment.courseID)
-
-    if group and member_ids:
-        submission = (
-            Submission.query.filter(
-                Submission.assignmentID == assignment.id,
-                Submission.studentID.in_(member_ids),
-            )
-            .order_by(Submission.id.asc())
-            .first()
-        )
-    else:
-        submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+    submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
 
     if not submission:
         return jsonify({"submission": None, "locked": False}), 200
 
     storage_name = Path(submission.path).name if submission.path else None
     file_name = _original_filename_from_storage_name(storage_name)
-    submitted_by = None
-    try:
-        submitted_by_user = submission.student
-        if submitted_by_user:
-            submitted_by = {"id": submitted_by_user.id, "name": submitted_by_user.name}
-    except Exception:
-        submitted_by = None
-
-    locked = bool(group and submission.studentID != user.id)
+    submitted_by = {"id": user.id, "name": user.name}
 
     return (
         jsonify(
             {
-                "submission": {"id": submission.id, "file_name": file_name},
+                "submission": {
+                    "id": submission.id,
+                    "file_name": file_name,
+                    "submitted_at": submission.submitted_at.isoformat() if getattr(submission, "submitted_at", None) else None,
+                },
                 "submitted_by": submitted_by,
-                "locked": locked,
+                "locked": False,
             }
         ),
         200,
     )
+
+
+@bp.route("/my_submission/<int:assignment_id>", methods=["DELETE"])
+@jwt_role_required("student")
+def delete_my_submission(assignment_id):
+    """Delete the current student's submission for a standard assignment (if any)."""
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    assignment_type = getattr(assignment, "assignment_type", None) or "standard"
+    if assignment_type != "standard":
+        return jsonify({"msg": "This assignment does not accept file submissions"}), 400
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    enrollment = User_Course.get(user.id, assignment.courseID)
+    if not enrollment:
+        return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
+
+    submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
+    if not submission:
+        return jsonify({"msg": "No submission to delete"}), 200
+
+    if submission.path:
+        uploads_root = Path(current_app.instance_path) / "uploads"
+        try:
+            (uploads_root / submission.path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    db.session.delete(submission)
+    db.session.commit()
+
+    return jsonify({"msg": "Submission removed"}), 200
 
 
 @bp.route("/submit/<int:assignment_id>", methods=["POST"])
@@ -701,19 +770,6 @@ def upload_submission(assignment_id):
     storage_name = f"{uuid4().hex}__{safe_name}"
     abs_path = abs_dir / storage_name
 
-    group, member_ids = _get_user_group_for_course(user.id, assignment.courseID)
-    if group and member_ids:
-        existing_group_submission = (
-            Submission.query.filter(
-                Submission.assignmentID == assignment.id,
-                Submission.studentID.in_(member_ids),
-            )
-            .order_by(Submission.id.asc())
-            .first()
-        )
-        if existing_group_submission and existing_group_submission.studentID != user.id:
-            return jsonify({"msg": "Your group has already submitted for this assignment"}), 403
-
     submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
     if submission and submission.path:
         try:
@@ -724,11 +780,13 @@ def upload_submission(assignment_id):
     uploaded_file.save(str(abs_path))
     rel_path = (rel_dir / storage_name).as_posix()
 
+    now_local = datetime.now()
     if not submission:
-        submission = Submission(path=rel_path, studentID=user.id, assignmentID=assignment.id)
+        submission = Submission(path=rel_path, studentID=user.id, assignmentID=assignment.id, submitted_at=now_local)
         db.session.add(submission)
     else:
         submission.path = rel_path
+        submission.submitted_at = now_local
 
     db.session.commit()
 
@@ -767,6 +825,12 @@ def list_submissions(assignment_id):
         student = sub.student
         storage_name = Path(sub.path).name if sub.path else None
         file_name = _original_filename_from_storage_name(storage_name)
+
+        submitted_at = getattr(sub, "submitted_at", None)
+        on_time = None
+        if assignment.due_date and submitted_at:
+            on_time = submitted_at <= assignment.due_date
+
         results.append(
             {
                 "id": sub.id,
@@ -776,6 +840,8 @@ def list_submissions(assignment_id):
                     "email": student.email if student else None,
                 },
                 "file_name": file_name,
+                "submitted_at": submitted_at.isoformat() if submitted_at else None,
+                "on_time": on_time,
             }
         )
 
@@ -811,15 +877,8 @@ def download_submission(submission_id):
 
     is_owner_student = user.is_student() and submission.studentID == user.id
     is_course_teacher = user.is_teacher() and course.teacherID == user.id
-    is_groupmate_student = False
-    if user.is_student() and not is_owner_student:
-        group, _ = _get_user_group_for_course(user.id, course.id)
-        if group:
-            is_groupmate_student = (
-                GroupMember.query.filter_by(group_id=group.id, user_id=submission.studentID).first() is not None
-            )
 
-    if not (user.is_admin() or is_owner_student or is_course_teacher or is_groupmate_student):
+    if not (user.is_admin() or is_owner_student or is_course_teacher):
         return jsonify({"msg": "Unauthorized"}), 403
 
     if not submission.path:
@@ -848,4 +907,79 @@ def get_assignments(class_id):
 
     assignments = Assignment.get_by_class_id(class_id)
     assignments_data = AssignmentSchema(many=True).dump(assignments)
+
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if user and user.is_student():
+        assignment_ids = [a.id for a in assignments]
+        done_by_assignment_id = {aid: False for aid in assignment_ids}
+
+        if assignment_ids:
+            # Standard assignments: done when the student has a submission.
+            standard_ids = [a.id for a in assignments if (a.assignment_type or "standard") == "standard"]
+            if standard_ids:
+                subs = (
+                    Submission.query.filter(
+                        Submission.studentID == user.id,
+                        Submission.assignmentID.in_(standard_ids),
+                    )
+                    .with_entities(Submission.assignmentID)
+                    .all()
+                )
+                for (aid,) in subs:
+                    done_by_assignment_id[int(aid)] = True
+
+            # Group peer eval: done when the student's group has submitted.
+            group_ids = [a.id for a in assignments if (a.assignment_type or "standard") == "peer_eval_group"]
+            my_group, _ = _get_user_group_for_course(user.id, class_id)
+            if my_group and group_ids:
+                included_rows = (
+                    AssignmentIncludedGroup.query.filter(
+                        AssignmentIncludedGroup.assignment_id.in_(group_ids),
+                        AssignmentIncludedGroup.group_id == my_group.id,
+                    )
+                    .with_entities(AssignmentIncludedGroup.assignment_id)
+                    .all()
+                )
+                included_assignment_ids = {int(aid) for (aid,) in included_rows}
+
+                if included_assignment_ids:
+                    group_subs = (
+                        GroupEvaluationSubmission.query.filter(
+                            GroupEvaluationSubmission.reviewer_group_id == my_group.id,
+                            GroupEvaluationSubmission.assignment_id.in_(list(included_assignment_ids)),
+                        )
+                        .with_entities(GroupEvaluationSubmission.assignment_id)
+                        .all()
+                    )
+                    for (aid,) in group_subs:
+                        done_by_assignment_id[int(aid)] = True
+
+            # Individual peer eval: done when all assigned reviews are completed.
+            individual_ids = [a.id for a in assignments if (a.assignment_type or "standard") == "peer_eval_individual"]
+            if individual_ids:
+                reviews = Review.query.filter(
+                    Review.reviewerID == user.id,
+                    Review.assignmentID.in_(individual_ids),
+                ).all()
+                counts = {aid: {"total": 0, "completed": 0} for aid in individual_ids}
+                for r in reviews:
+                    entry = counts.get(int(r.assignmentID))
+                    if entry is None:
+                        continue
+                    entry["total"] += 1
+                    if r.completed:
+                        entry["completed"] += 1
+
+                for aid, entry in counts.items():
+                    if entry["total"] > 0 and entry["completed"] == entry["total"]:
+                        done_by_assignment_id[int(aid)] = True
+
+        for row in assignments_data:
+            try:
+                aid = int(row.get("id"))
+            except Exception:
+                continue
+            row["student_done"] = bool(done_by_assignment_id.get(aid, False))
+
     return jsonify(assignments_data), 200

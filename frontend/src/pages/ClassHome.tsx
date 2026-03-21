@@ -23,17 +23,64 @@ export default function ClassHome() {
   const [emailsText, setEmailsText] = useState("");
   const [adding, setAdding] = useState(false);
 
+  const isTeacherOrAdmin = isTeacher() || isAdmin();
+
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!id) return;
       setLoadingHeader(true);
       const resp = await listAssignments(String(id));
       const classes = await listClasses();
       const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
+      if (cancelled) return;
       setAssignments(resp);
       setClassName(currentClass?.name || null);
       setLoadingHeader(false);
-    })();
+    };
+
+    void load();
+
+    const onFocus = () => void load();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [id]);
+
+  const now = new Date();
+
+  const dueDateMs = (a: Assignment): number => {
+    if (!a.due_date) return Number.POSITIVE_INFINITY;
+    const ms = new Date(a.due_date).getTime();
+    return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+  };
+
+  const sortByDueDateAsc = (list: Assignment[]) =>
+    [...list].sort((a, b) => dueDateMs(a) - dueDateMs(b));
+
+  const teacherFinishedAssignments = isTeacherOrAdmin
+    ? sortByDueDateAsc(assignments.filter((a) => a.due_date && new Date(a.due_date) < now))
+    : [];
+  const teacherUpcomingAssignments = isTeacherOrAdmin
+    ? sortByDueDateAsc(assignments.filter((a) => !a.due_date || new Date(a.due_date) >= now))
+    : [];
+
+  const studentTodoAssignments = !isTeacherOrAdmin
+    ? sortByDueDateAsc(assignments.filter((a) => !(a as any)?.student_done))
+    : [];
+  const studentDoneAssignments = !isTeacherOrAdmin
+    ? sortByDueDateAsc(assignments.filter((a) => !!(a as any)?.student_done))
+    : [];
 
   const handleDeleteAssignment = async (assignmentId: number | string) => {
     if (window.confirm('Are you sure you want to delete this assignment?')) {
@@ -142,21 +189,70 @@ export default function ClassHome() {
 
       <div className="Class">
         <div className="Assignments">
-          <ul className="Assignment">
-            {assignments.map((assignment) => {
-              return (
-                <li key={assignment.id}>
-                  <AssignmentCard 
-                    id={assignment.id}
-                    name={assignment.name}
-                    due_date={assignment.due_date}
-                    assignment_type={(assignment as any).assignment_type}
-                    onDelete={(isTeacher() || isAdmin()) ? handleDeleteAssignment : undefined}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          {isTeacherOrAdmin ? (
+            <>
+              <h3>Finished Assignments</h3>
+              <ul className="Assignment">
+                {teacherFinishedAssignments.map((assignment) => (
+                  <li key={assignment.id}>
+                    <AssignmentCard
+                      id={assignment.id}
+                      name={assignment.name}
+                      due_date={assignment.due_date}
+                      assignment_type={(assignment as any).assignment_type}
+                      onDelete={handleDeleteAssignment}
+                    />
+                  </li>
+                ))}
+              </ul>
+
+              <h3>Upcoming Assignments</h3>
+              <ul className="Assignment">
+                {teacherUpcomingAssignments.map((assignment) => (
+                  <li key={assignment.id}>
+                    <AssignmentCard
+                      id={assignment.id}
+                      name={assignment.name}
+                      due_date={assignment.due_date}
+                      assignment_type={(assignment as any).assignment_type}
+                      onDelete={handleDeleteAssignment}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <h3>To-do</h3>
+              <ul className="Assignment">
+                {studentTodoAssignments.map((assignment) => (
+                  <li key={assignment.id}>
+                    <AssignmentCard
+                      id={assignment.id}
+                      name={assignment.name}
+                      due_date={assignment.due_date}
+                      assignment_type={(assignment as any).assignment_type}
+                    />
+                  </li>
+                ))}
+              </ul>
+
+              <h3>Done</h3>
+              <ul className="Assignment">
+                {studentDoneAssignments.map((assignment) => (
+                  <li key={assignment.id}>
+                    <AssignmentCard
+                      id={assignment.id}
+                      name={assignment.name}
+                      due_date={assignment.due_date}
+                      assignment_type={(assignment as any).assignment_type}
+                      hideDueStatus={true}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
 
         {isTeacher() ? (

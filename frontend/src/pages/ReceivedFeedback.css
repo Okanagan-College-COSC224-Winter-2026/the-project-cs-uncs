@@ -102,6 +102,33 @@
   gap: 0.25rem;
 }
 
+.review-additional-comments {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.review-additional-comments label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.review-additional-comments textarea {
+  padding: var(--spacing-sm);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.review-additional-comments textarea:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
 .comments-label {
   color: var(--text-secondary);
   font-size: 0.9rem;

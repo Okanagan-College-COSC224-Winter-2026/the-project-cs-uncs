@@ -148,7 +148,8 @@ def get_assigned_reviews(assignment_id):
             "id": assignment.id,
             "name": assignment.name,
             "due_date": assignment.due_date.isoformat() if assignment.due_date else None,
-            "can_submit": assignment.can_modify()  # Checks if before due date
+            # Due date is used for on-time/late messaging, but does not close submissions.
+            "can_submit": True
         }
     }), 200
 
@@ -253,13 +254,6 @@ def submit_review_feedback(review_id):
         )
         if not reviewer_group or not reviewee_group or reviewer_group.id != reviewee_group.id:
             return jsonify({"msg": "You are not eligible to submit this review"}), 403
-
-    # Check if review period is still open
-    if assignment.due_date and not assignment.can_modify():
-        return jsonify({
-            "msg": "The review period has ended. Submissions are no longer accepted.",
-            "due_date": assignment.due_date.isoformat()
-        }), 403
 
     # Check if already completed
     if review.completed:

@@ -1058,6 +1058,7 @@ export type TeacherGroupPeerEvalOverviewResponse = {
     reviewer_group: { id: number; name: string };
     submitted_by: { id: number; name: string | null };
     submitted_at: string | null;
+    on_time?: boolean | null;
     evaluations: Array<{
       reviewee_group: { id: number; name: string };
       criteria: Array<{

@@ -880,11 +880,11 @@ def test_teacher_can_create_assignment_with_due_date(test_client, make_admin):
     assert response.json["assignment"]["due_date"] == due_date
 
 
-def test_create_assignment_without_due_date_still_works(test_client, make_admin):
+def test_create_assignment_without_due_date_is_rejected(test_client, make_admin):
     """
     GIVEN a teacher user
-    WHEN they create an assignment without a due date (backward compatibility)
-    THEN the assignment should be created successfully with null due_date
+    WHEN they create an assignment without a due date
+    THEN the API should reject the request
     """
     # ARRANGE
     make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
@@ -911,9 +911,8 @@ def test_create_assignment_without_due_date_still_works(test_client, make_admin)
     )
     
     # ASSERT
-    assert response.status_code == 201
-    assert response.json["assignment"]["name"] == "Essay"
-    assert response.json["assignment"]["due_date"] is None
+    assert response.status_code == 400
+    assert response.json["msg"] == "Due date is required"
 
 
 def test_create_assignment_with_invalid_due_date_format(test_client, make_admin):

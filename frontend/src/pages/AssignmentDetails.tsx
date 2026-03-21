@@ -8,6 +8,7 @@ import { isAdmin, isStudent, isTeacher } from "../util/login";
 import {
   getAssignmentAttachmentUrl,
   getAssignmentDetails,
+  deleteMySubmission,
   getMySubmission,
   getSubmissionDownloadUrl,
   peekAssignmentDetails,
@@ -25,6 +26,10 @@ interface AssignmentDetailsData {
   attachment_storage_name?: string | null;
   attachment_original_name?: string | null;
   assignment_type?: string | null;
+  student_done?: boolean;
+  student_latest_submission_at?: string | null;
+  student_reviews_total?: number;
+  student_reviews_completed?: number;
 }
 
 interface MySubmissionData {
@@ -58,6 +63,7 @@ export default function AssignmentDetails() {
 
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [uploadingSubmission, setUploadingSubmission] = useState(false);
+  const [removingSubmission, setRemovingSubmission] = useState(false);
   const [mySubmission, setMySubmission] = useState<MySubmissionData | null>(null);
   const [submissionForbidden, setSubmissionForbidden] = useState(false);
   const [submissionForbiddenMessage, setSubmissionForbiddenMessage] = useState<string | null>(null);
@@ -87,6 +93,46 @@ export default function AssignmentDetails() {
 
     const [y, m, d] = parts;
     return new Date(y, m - 1, d).toLocaleDateString();
+  };
+
+  const formatDelta = (seconds: number) => {
+    const absSeconds = Math.abs(Math.trunc(seconds));
+
+    // Display in minutes granularity (no seconds) to keep it readable.
+    // Round to the nearest minute and floor at 1 minute.
+    const totalMinutes = Math.max(1, Math.round(absSeconds / 60));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    const parts: string[] = [];
+    if (days) parts.push(`${days} ${days === 1 ? "day" : "days"}`);
+    if (hours) parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
+    if (minutes || parts.length === 0)
+      parts.push(`${minutes} ${minutes === 1 ? "minute" : "minutes"}`);
+    return parts.join(", ");
+  };
+
+  const renderStudentTimingMessage = () => {
+    if (!isStudent()) return null;
+    const dueRaw = assignment?.due_date ?? null;
+    const latestRaw = assignment?.student_latest_submission_at ?? null;
+    if (!dueRaw || !latestRaw) return null;
+
+    const due = new Date(dueRaw);
+    const latest = new Date(latestRaw);
+    if (!Number.isFinite(due.getTime()) || !Number.isFinite(latest.getTime())) return null;
+
+    const deltaSeconds = Math.round((latest.getTime() - due.getTime()) / 1000);
+    if (deltaSeconds === 0) {
+      return <p>Submitted exactly at the due date (on time).</p>;
+    }
+
+    if (deltaSeconds < 0) {
+      return <p>Submitted {formatDelta(deltaSeconds)} early.</p>;
+    }
+
+    return <p>Submitted {formatDelta(deltaSeconds)} late.</p>;
   };
 
   useEffect(() => {
@@ -291,6 +337,19 @@ export default function AssignmentDetails() {
       formData.append("file", submissionFile);
 
       await uploadMySubmission(Number(id), formData);
+
+      // Update local assignment state right away so the due-date timing message
+      // (which depends on student_latest_submission_at) shows immediately.
+      const nowIso = new Date().toISOString();
+      setAssignment((prev) =>
+        prev
+          ? {
+              ...prev,
+              student_latest_submission_at: nowIso,
+              student_done: true,
+            }
+          : prev
+      );
       setSuccessMessage("Submission uploaded.");
       setSubmissionFile(null);
 
@@ -310,11 +369,63 @@ export default function AssignmentDetails() {
         } else {
           setMySubmission(typed?.submission ?? null);
       }
+
+      // Sync from backend to ensure timestamps/state match server-side values.
+      const refreshed = await getAssignmentDetails(Number(id));
+      setAssignment(refreshed);
     } catch (err) {
       console.error("Error uploading submission:", err);
       setError((err as Error).message || "Failed to upload submission.");
     } finally {
       setUploadingSubmission(false);
+    }
+  };
+
+  const handleRemoveSubmission = async () => {
+    if (!id) return;
+    if (submissionForbidden) {
+      setError(submissionForbiddenMessage || "You are not allowed to submit for this assignment.");
+      return;
+    }
+
+    try {
+      setRemovingSubmission(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      await deleteMySubmission(Number(id));
+
+      // Immediately clear timing state so the early/late message disappears.
+      setAssignment((prev) =>
+        prev
+          ? {
+              ...prev,
+              student_latest_submission_at: null,
+              student_done: false,
+            }
+          : prev
+      );
+      setSuccessMessage("Submission removed.");
+      setSubmissionFile(null);
+
+      const resp = await getMySubmission(Number(id));
+      const typed = resp as MySubmissionResponse;
+
+      if (typed?.forbidden) {
+        setSubmissionForbidden(true);
+        setSubmissionForbiddenMessage(typed?.msg ?? "You are not allowed to submit for this assignment.");
+        setMySubmission(null);
+      } else {
+        setMySubmission(typed?.submission ?? null);
+      }
+
+      const refreshed = await getAssignmentDetails(Number(id));
+      setAssignment(refreshed);
+    } catch (err) {
+      console.error("Error removing submission:", err);
+      setError((err as Error).message || "Failed to remove submission.");
+    } finally {
+      setRemovingSubmission(false);
     }
   };
 
@@ -379,7 +490,7 @@ export default function AssignmentDetails() {
               {!submissionForbidden ? (
                 <>
                   <label className="assignment-details-label">
-                    Upload submission (uploading again will replace the current submission)
+                    Upload submission
                     <input
                       className="assignment-details-file"
                       type="file"
@@ -388,9 +499,18 @@ export default function AssignmentDetails() {
                   </label>
 
                   <div className="assignment-details-actions">
-                    <Button onClick={handleUploadSubmission} disabled={uploadingSubmission}>
-                      {uploadingSubmission ? "Uploading..." : "Upload"}
+                    <Button onClick={handleUploadSubmission} disabled={uploadingSubmission || removingSubmission}>
+                      {uploadingSubmission ? "Submitting..." : "Submit"}
                     </Button>
+                    {mySubmission ? (
+                      <Button
+                        type="secondary"
+                        onClick={handleRemoveSubmission}
+                        disabled={uploadingSubmission || removingSubmission}
+                      >
+                        {removingSubmission ? "Removing..." : "Remove"}
+                      </Button>
+                    ) : null}
                   </div>
                 </>
               ) : null}
@@ -486,6 +606,7 @@ export default function AssignmentDetails() {
 
             <h3>Due Date</h3>
             <p>{formatDueDate(assignment?.due_date ?? null)}</p>
+            {renderStudentTimingMessage()}
           </div>
         </div>
       )}

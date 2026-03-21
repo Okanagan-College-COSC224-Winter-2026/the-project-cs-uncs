@@ -30,6 +30,8 @@ type Submission = {
   id: number;
   student: { id: number; name?: string | null; email?: string | null };
   file_name?: string | null;
+  submitted_at?: string | null;
+  on_time?: boolean | null;
 };
 
 type AssignmentDetails = {
@@ -268,7 +270,8 @@ export default function Submissions() {
                         <div className="GroupsMuted" style={{ marginTop: 6 }}>
                           {sub ? (
                             <>
-                              Submitted{sub.file_name ? `: ${sub.file_name}` : ""} —{" "}
+                              Submitted{sub.file_name ? `: ${sub.file_name}` : ""}
+                              {typeof sub.on_time === "boolean" ? (sub.on_time ? " (On time)" : " (Late)") : ""} —{" "}
                               <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
                                 Download
                               </a>
@@ -389,6 +392,11 @@ export default function Submissions() {
                 <div className="GroupsList">
                   {groups.map((group) => {
                     const submittedCount = submittedCountForGroup(group);
+                    const groupSub = assignmentType === "peer_eval_group" ? getGroupPeerEvalSubmission(group) : null;
+                    const onTimeLabel =
+                      assignmentType === "peer_eval_group" && typeof (groupSub as any)?.on_time === "boolean"
+                        ? ((groupSub as any).on_time ? " (On time)" : " (Late)")
+                        : "";
 
                     return (
                       <div key={group.id} className="GroupItem">
@@ -398,7 +406,7 @@ export default function Submissions() {
                           type="button"
                         >
                           <div className="GroupItemName">{group.name}</div>
-                          <div className="GroupItemMeta">{submittedCount > 0 ? "Submitted" : "No submission"}</div>
+                          <div className="GroupItemMeta">{submittedCount > 0 ? `Submitted${onTimeLabel}` : "No submission"}</div>
                         </button>
                       </div>
                     );

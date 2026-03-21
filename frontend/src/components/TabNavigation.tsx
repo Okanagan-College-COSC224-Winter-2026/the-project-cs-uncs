@@ -14,17 +14,21 @@ export default function TabNavigation(props: Props) {
   const navigate = useNavigate()
 
   return (
-    <div className="TabNav">
+    <div className="TabNav" role="tablist">
       {
         props.tabs.map(tab => {
+          const isActive = tab.path === location.pathname
           return (
-            <div
+            <button
               key={tab.path}
-              className={`Tab ${tab.path === location.pathname ? 'active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={`Tab ${isActive ? 'active' : ''}`}
               onClick={() => navigate(tab.path)}
             >
               {tab.label}
-            </div>
+            </button>
           )
         })
       }

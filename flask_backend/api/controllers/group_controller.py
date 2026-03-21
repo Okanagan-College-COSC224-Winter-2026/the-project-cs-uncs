@@ -17,6 +17,14 @@ def _can_manage_course_groups(user: User, course: Course) -> bool:
     return bool(user and course and (user.is_admin() or _is_teacher_for_course(user, course)))
 
 
+def _can_view_course_groups(user: User, course: Course) -> bool:
+    if not user or not course:
+        return False
+    if user.is_admin() or _is_teacher_for_course(user, course):
+        return True
+    return bool(user.is_student() and User_Course.get(user.id, course.id) is not None)
+
+
 def _remove_user_from_other_course_groups(course_id: int, user_id: int, keep_group_id: int):
     """Ensure a user is only in one group for a course.
 
@@ -43,7 +51,9 @@ bp = Blueprint("groups", __name__, url_prefix="/groups")
 @bp.route("/course/<int:course_id>", methods=["POST"])
 @jwt_teacher_required
 def create_group(course_id):
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"msg": "Invalid or missing JSON in request body"}), 400
     name = data.get("name")
     members = data.get("members") # List of user IDs
 
@@ -82,6 +92,17 @@ def create_group(course_id):
 @bp.route("/course/<int:course_id>", methods=["GET"])
 @jwt_required()
 def get_groups_for_course(course_id):
+    course = Course.get_by_id(course_id)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    user = _get_current_user()
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not _can_view_course_groups(user, course):
+        return jsonify({"msg": "Unauthorized"}), 403
+
     groups = Group.query.filter_by(course_id=course_id).all()
     response = []
     for group in groups:
@@ -159,8 +180,28 @@ def get_group_details(group_id):
     group = Group.get_by_id(group_id)
     if not group:
         return jsonify({"msg": "Group not found"}), 404
-    
-    members = [{"id": m.user.id, "name": m.user.name, "email": m.user.email} for m in group.members]
+
+    course = Course.get_by_id(group.course_id)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    user = _get_current_user()
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not _can_view_course_groups(user, course):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    include_email = bool(user.is_admin() or _is_teacher_for_course(user, course))
+    members = [
+        {
+            "id": m.user.id,
+            "name": m.user.name,
+            **({"email": m.user.email} if include_email else {}),
+        }
+        for m in group.members
+        if m.user is not None
+    ]
     return jsonify({
         "id": group.id,
         "name": group.name,

@@ -76,10 +76,10 @@ export default function ClassHome() {
     : [];
 
   const studentTodoAssignments = !isTeacherOrAdmin
-    ? sortByDueDateAsc(assignments.filter((a) => !(a as any)?.student_done))
+    ? sortByDueDateAsc(assignments.filter((a) => !a.student_done))
     : [];
   const studentDoneAssignments = !isTeacherOrAdmin
-    ? sortByDueDateAsc(assignments.filter((a) => !!(a as any)?.student_done))
+    ? sortByDueDateAsc(assignments.filter((a) => !!a.student_done))
     : [];
 
   const handleDeleteAssignment = async (assignmentId: number | string) => {
@@ -199,7 +199,7 @@ export default function ClassHome() {
                       id={assignment.id}
                       name={assignment.name}
                       due_date={assignment.due_date}
-                      assignment_type={(assignment as any).assignment_type}
+                      assignment_type={assignment.assignment_type}
                       onDelete={handleDeleteAssignment}
                     />
                   </li>
@@ -214,7 +214,7 @@ export default function ClassHome() {
                       id={assignment.id}
                       name={assignment.name}
                       due_date={assignment.due_date}
-                      assignment_type={(assignment as any).assignment_type}
+                      assignment_type={assignment.assignment_type}
                       onDelete={handleDeleteAssignment}
                     />
                   </li>
@@ -231,7 +231,7 @@ export default function ClassHome() {
                       id={assignment.id}
                       name={assignment.name}
                       due_date={assignment.due_date}
-                      assignment_type={(assignment as any).assignment_type}
+                      assignment_type={assignment.assignment_type}
                     />
                   </li>
                 ))}
@@ -245,7 +245,7 @@ export default function ClassHome() {
                       id={assignment.id}
                       name={assignment.name}
                       due_date={assignment.due_date}
-                      assignment_type={(assignment as any).assignment_type}
+                      assignment_type={assignment.assignment_type}
                       hideDueStatus={true}
                     />
                   </li>

@@ -389,7 +389,7 @@ class TestRubricScoreMaxCap:
         assert isinstance(first_eval.get("criteria"), list)
         assert len(first_eval["criteria"]) == len(status_data["criteria"])
 
-    def test_group_peer_eval_submit_rejected_after_deadline(self, test_client, dbsession):
+    def test_group_peer_eval_submit_allowed_after_deadline(self, test_client, dbsession):
         teacher = _create_user("Teacher", "deadline_teacher@test.com", "teacher")
         s1 = _create_user("Student 1", "deadline_s1@test.com", "student")
         s2 = _create_user("Student 2", "deadline_s2@test.com", "student")
@@ -432,10 +432,10 @@ class TestRubricScoreMaxCap:
 
         criteria_payload = []
         for c in status_data["criteria"]:
-                        item = {"criterionRowID": c["id"], "comments": "ok"}
-                        if c["hasScore"]:
-                                item["grade"] = 0
-                        criteria_payload.append(item)
+            item = {"criterionRowID": c["id"], "comments": "ok"}
+            if c["hasScore"]:
+                item["grade"] = 0
+            criteria_payload.append(item)
 
         submit = test_client.post(
             f"/peer_eval/group/submit/{assignment_id}",
@@ -445,7 +445,11 @@ class TestRubricScoreMaxCap:
                 ]
             },
         )
-        assert submit.status_code == 403
+        assert submit.status_code == 200
+
+        status2 = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status2.status_code == 200
+        assert status2.get_json()["submitted"] is True
 
     def test_group_change_affects_eligibility_immediately(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher2@test.com", "teacher")

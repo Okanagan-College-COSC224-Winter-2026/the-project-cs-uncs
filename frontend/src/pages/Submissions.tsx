@@ -42,6 +42,10 @@ type AssignmentDetails = {
   assignment_type?: string | null;
 };
 
+type GroupPeerEvalSubmission = TeacherGroupPeerEvalOverviewResponse["submissions"][number];
+type GroupPeerEvalEvaluation = GroupPeerEvalSubmission["evaluations"][number];
+type GroupPeerEvalCriterion = GroupPeerEvalEvaluation["criteria"][number];
+
 export default function Submissions() {
   const { id } = useParams<{ id: string }>();
 
@@ -96,8 +100,11 @@ export default function Submissions() {
         // Seed from cache so the tab bar doesn't jump while the network request is in flight.
         const cached = peekAssignmentDetails(Number(id));
         if (cached) {
-          setAssignmentName((cached as any)?.name ?? null);
-          setAssignmentType((cached as any)?.assignment_type ?? null);
+          if (typeof cached === "object") {
+            const record = cached as Record<string, unknown>;
+            setAssignmentName(typeof record.name === "string" ? record.name : null);
+            setAssignmentType(typeof record.assignment_type === "string" ? record.assignment_type : null);
+          }
         }
 
         const details = (await getAssignmentDetails(Number(id))) as AssignmentDetails;
@@ -147,7 +154,7 @@ export default function Submissions() {
           roster.sort((a, b) => String(a?.name ?? "").localeCompare(String(b?.name ?? "")));
           setStudents(roster);
 
-          const submissions = ((submissionsResp as any)?.submissions ?? []) as Submission[];
+          const submissions = (submissionsResp?.submissions ?? []) as Submission[];
           const map: Record<number, Submission> = {};
           for (const sub of submissions) {
             if (sub?.student?.id) map[sub.student.id] = sub;
@@ -321,15 +328,15 @@ export default function Submissions() {
                       {(groupSubmission.evaluations ?? []).length === 0 ? (
                         <div className="GroupsMuted">No peer reviews yet.</div>
                       ) : (
-                        groupSubmission.evaluations?.map((ev: any, idx: number) => {
-                          const sorted = [...((ev?.criteria ?? []) as any[])].sort(
-                            (a: any, b: any) => Number(a.criterionRowID) - Number(b.criterionRowID)
+                        groupSubmission.evaluations?.map((ev: GroupPeerEvalEvaluation, idx: number) => {
+                          const sorted: GroupPeerEvalCriterion[] = [...(ev?.criteria ?? [])].sort(
+                            (a, b) => Number(a.criterionRowID) - Number(b.criterionRowID)
                           );
 
-                          const questions = sorted.map((c: any) => c.question);
-                          const scoreMaxes = sorted.map((c: any) => (c.scoreMax == null ? 0 : c.scoreMax));
-                          const hasScores = sorted.map((c: any) => c.hasScore);
-                          const grades = sorted.map((c: any) => c.grade ?? 0);
+                          const questions = sorted.map((c) => c.question);
+                          const scoreMaxes = sorted.map((c) => (c.scoreMax == null ? 0 : c.scoreMax));
+                          const hasScores = sorted.map((c) => c.hasScore);
+                          const grades = sorted.map((c) => c.grade ?? 0);
 
                           return (
                             <div key={ev?.reviewee_group?.id ?? idx} className="GroupsDetailRow">
@@ -346,9 +353,9 @@ export default function Submissions() {
                                 readOnly
                               />
 
-                              {sorted.some((c: any) => (c.comments ?? "").trim().length > 0) ? (
+                              {sorted.some((c) => (c.comments ?? "").trim().length > 0) ? (
                                 <div className="GroupsDetailList" style={{ marginTop: 8 }}>
-                                  {sorted.map((c: any) => (
+                                  {sorted.map((c) => (
                                     <div key={c.criterionRowID} className="GroupsDetailRow">
                                       <div style={{ fontWeight: 600 }}>{c.question}</div>
                                       <div className="GroupsMuted">{(c.comments ?? "").trim() || "No comments"}</div>
@@ -394,8 +401,8 @@ export default function Submissions() {
                     const submittedCount = submittedCountForGroup(group);
                     const groupSub = assignmentType === "peer_eval_group" ? getGroupPeerEvalSubmission(group) : null;
                     const onTimeLabel =
-                      assignmentType === "peer_eval_group" && typeof (groupSub as any)?.on_time === "boolean"
-                        ? ((groupSub as any).on_time ? " (On time)" : " (Late)")
+                      assignmentType === "peer_eval_group" && typeof groupSub?.on_time === "boolean"
+                        ? (groupSub.on_time ? " (On time)" : " (Late)")
                         : "";
 
                     return (

@@ -21,9 +21,10 @@ import './Assignment.css';
 interface Criterion {
   id: number;
   criterionRowID: number;
-  grade: number;
-  comments: string;
-  scoreMax: number;
+  grade: number | null;
+  comments: string | null;
+  scoreMax?: number | null;
+  hasScore?: boolean;
 }
 
 interface ReviewDetail {
@@ -72,7 +73,9 @@ export default function TeacherReviewDashboard() {
   const [assignmentType, setAssignmentType] = useState<string | null>(() => {
     if (!id) return null
     const cached = peekAssignmentDetails(Number(id))
-    return (cached as any)?.assignment_type ?? null
+    if (!cached || typeof cached !== 'object') return null
+    const record = cached as Record<string, unknown>
+    return typeof record.assignment_type === 'string' ? record.assignment_type : null
   });
   const [groupOverview, setGroupOverview] = useState<TeacherGroupPeerEvalOverviewResponse | null>(null);
   const [groupSummary, setGroupSummary] = useState<TeacherGroupPeerEvalSummaryResponse | null>(null);
@@ -81,7 +84,7 @@ export default function TeacherReviewDashboard() {
 
   const getAdditionalComments = (criteria: Array<{ comments?: unknown }> | null | undefined) => {
     const comments = (criteria ?? [])
-      .map((c) => String((c as any)?.comments ?? '').trim())
+      .map((c) => String(c?.comments ?? '').trim())
       .filter((txt) => txt.length > 0)
     return Array.from(new Set(comments)).join('\n\n')
   }
@@ -100,7 +103,11 @@ export default function TeacherReviewDashboard() {
         setError(null);
 
         const cached = peekAssignmentDetails(Number(id))
-        const cachedType = (cached as any)?.assignment_type ?? null
+        const cachedType = (() => {
+          if (!cached || typeof cached !== 'object') return null
+          const record = cached as Record<string, unknown>
+          return typeof record.assignment_type === 'string' ? record.assignment_type : null
+        })()
         if (cachedType) {
           setAssignmentType(cachedType)
         }
@@ -120,12 +127,14 @@ export default function TeacherReviewDashboard() {
           const map: Record<number, { question: string; hasScore: boolean; scoreMax: number }> = {}
           if (Array.isArray(rubricCriteria)) {
             for (const c of rubricCriteria) {
-              const rowId = Number((c as any)?.id)
+              if (!c || typeof c !== 'object') continue
+              const record = c as Record<string, unknown>
+              const rowId = Number(record.id)
               if (!Number.isFinite(rowId)) continue
               map[rowId] = {
-                question: String((c as any)?.question ?? '').trim() || `Criterion ${rowId}`,
-                hasScore: Boolean((c as any)?.hasScore ?? true),
-                scoreMax: Number((c as any)?.scoreMax ?? 0),
+                question: String(record.question ?? '').trim() || `Criterion ${rowId}`,
+                hasScore: Boolean(record.hasScore ?? true),
+                scoreMax: Number(record.scoreMax ?? 0),
               }
             }
           }
@@ -176,9 +185,17 @@ export default function TeacherReviewDashboard() {
 
   if (loading) {
     const cached = id ? peekAssignmentDetails(Number(id)) : null
-    const cachedType = (cached as any)?.assignment_type ?? null
+    const cachedType = (() => {
+      if (!cached || typeof cached !== 'object') return null
+      const record = cached as Record<string, unknown>
+      return typeof record.assignment_type === 'string' ? record.assignment_type : null
+    })()
     const cachedIsPeerEval = cachedType === 'peer_eval_group' || cachedType === 'peer_eval_individual'
-    const cachedName = (cached as any)?.name ?? null
+    const cachedName = (() => {
+      if (!cached || typeof cached !== 'object') return null
+      const record = cached as Record<string, unknown>
+      return typeof record.name === 'string' ? record.name : null
+    })()
     const cachedIsIndividual = cachedType === 'peer_eval_individual'
     const cachedSubmissionsLabel = cachedType === 'standard' ? 'Student Submissions' : 'Group Submissions'
 
@@ -262,11 +279,11 @@ export default function TeacherReviewDashboard() {
   const scoreForReview = (review: ReviewDetail) => {
     let total = 0
     for (const c of review.criteria ?? []) {
-      const rowId = Number((c as any)?.criterionRowID)
+      const rowId = Number(c.criterionRowID)
       const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
       const include = meta ? meta.hasScore : true
       if (!include) continue
-      const grade = Number((c as any)?.grade ?? 0)
+      const grade = Number(c.grade ?? 0)
       total += Number.isFinite(grade) ? grade : 0
     }
     return total
@@ -371,7 +388,7 @@ export default function TeacherReviewDashboard() {
                         })}
 
                         {(() => {
-                          const combined = getAdditionalComments(evaluation.criteria as any)
+                          const combined = getAdditionalComments(evaluation.criteria)
                           if (!combined) return null
                           return (
                             <div className="dashboard-criterion-comments">
@@ -560,19 +577,19 @@ export default function TeacherReviewDashboard() {
                 <div className="review-details" style={{ display: 'block' }}>
                   <div className="dashboard-criteria-list">
                     {review.criteria.filter((c) => {
-                      const rowId = Number((c as any)?.criterionRowID)
+                      const rowId = Number(c.criterionRowID)
                       const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
                       const hasScore = meta?.hasScore ?? true
                       return hasScore
                     }).map((c) => {
-                      const rowId = Number((c as any)?.criterionRowID)
+                      const rowId = Number(c.criterionRowID)
                       const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
                       const question = meta?.question ?? `Criterion ${rowId}`
                       const max = meta?.scoreMax
-                      const grade = Number((c as any)?.grade ?? 0)
+                      const grade = Number(c.grade ?? 0)
 
                       return (
-                        <div key={String((c as any)?.id ?? rowId)} className="criterion-detail">
+                        <div key={String(c.id ?? rowId)} className="criterion-detail">
                           <div className="criterion-header">
                             <span className="criterion-label">{question}</span>
                             <span className="grade-badge">
@@ -584,7 +601,7 @@ export default function TeacherReviewDashboard() {
                     })}
 
                     {(() => {
-                      const combined = getAdditionalComments(review.criteria as any)
+                      const combined = getAdditionalComments(review.criteria)
                       if (!combined) return null
                       return (
                         <div className="dashboard-criterion-comments">
@@ -745,7 +762,7 @@ export default function TeacherReviewDashboard() {
                       ) : (
                         <div className="dashboard-criteria-list">
                           <h4>Submitted Feedback:</h4>
-                          {review.criteria.filter((criterion) => (criterion as any).hasScore !== false).map((criterion) => (
+                          {review.criteria.filter((criterion) => criterion.hasScore !== false).map((criterion) => (
                             <div key={criterion.id} className="criterion-detail">
                               <div className="criterion-header">
                                 <span className="criterion-label">
@@ -759,7 +776,7 @@ export default function TeacherReviewDashboard() {
                           ))}
 
                           {(() => {
-                            const combined = getAdditionalComments(review.criteria as any)
+                            const combined = getAdditionalComments(review.criteria)
                             if (!combined) return null
                             return (
                               <div className="dashboard-criterion-comments">

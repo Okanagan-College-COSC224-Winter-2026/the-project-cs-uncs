@@ -12,6 +12,16 @@ interface Props {
 
 const assignmentToCourseHomeCache = new Map<number, string>()
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const extractCourseId = (details: unknown) => {
+  if (!isRecord(details)) return null
+  const courseRecord = isRecord(details.course) ? details.course : null
+  const courseId = Number(details.courseID ?? details.course_id ?? courseRecord?.id)
+  return Number.isFinite(courseId) ? courseId : null
+}
+
 function parseAssignmentId(pathname: string): number | null {
   // Supports:
   // - /assignment/:id
@@ -77,12 +87,8 @@ export default function BackArrow(props: Props) {
       try {
         const details = await getAssignmentDetails(assignmentId)
         if (cancelled) return
-        const courseId = Number(
-          (details as any)?.courseID ??
-            (details as any)?.course_id ??
-            (details as any)?.course?.id
-        )
-        if (!Number.isFinite(courseId)) return
+        const courseId = extractCourseId(details)
+        if (courseId == null) return
         assignmentToCourseHomeCache.set(assignmentId, `/classes/${courseId}/home`)
       } catch {
         // ignore; we'll fall back on click
@@ -105,12 +111,8 @@ export default function BackArrow(props: Props) {
       try {
         setResolving(true)
         const details = await getAssignmentDetails(assignmentId)
-        const courseId = Number(
-          (details as any)?.courseID ??
-            (details as any)?.course_id ??
-            (details as any)?.course?.id
-        )
-        if (Number.isFinite(courseId)) {
+        const courseId = extractCourseId(details)
+        if (courseId != null) {
           const target = `/classes/${courseId}/home`
           assignmentToCourseHomeCache.set(assignmentId, target)
           navigate(target)

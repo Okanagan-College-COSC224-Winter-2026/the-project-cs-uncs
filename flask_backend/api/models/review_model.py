@@ -15,10 +15,12 @@ class Review(db.Model):
     __tablename__ = "Review"
 
     id = db.Column(db.Integer, primary_key=True)
-    assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), index=True)
-    reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), index=True)
-    revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), index=True)
-    completed = db.Column(db.Boolean, default=False)
+    assignmentID = db.Column(
+        db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True
+    )
+    reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
+    revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
+    completed = db.Column(db.Boolean, default=False, nullable=False)
     completed_at = db.Column(db.DateTime, nullable=True, index=True)
 
     # relationships

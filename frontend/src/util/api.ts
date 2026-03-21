@@ -103,11 +103,11 @@ export const uploadCurrentUserPhoto = async (file: File) => {
   maybeHandleExpire(response)
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({} as any))
+    const errorData = await response.json().catch(() => ({}))
     throw new Error(errorData.msg || `Failed to upload photo: ${response.status}`)
   }
 
-  return await response.json().catch(() => ({} as any))
+  return await response.json().catch(() => ({}))
 }
 
 export const deleteAssignment = async (assignmentId: number) => {
@@ -218,14 +218,14 @@ export const enrollStudentsByEmail = async (courseID: number, emails: string) =>
   maybeHandleExpire(response)
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({} as any))
+    const errorData = await response.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${response.status}`)
   }
 
   return await response.json()
 }
 
-const assignmentsListInFlight = new Map<string, Promise<any>>()
+const assignmentsListInFlight = new Map()
 
 export const listAssignments = async (classId: string) => {
   const existing = assignmentsListInFlight.get(classId)
@@ -249,7 +249,7 @@ export const listAssignments = async (classId: string) => {
     const json = await resp.json()
     if (Array.isArray(json)) {
       for (const a of json) {
-        const assignmentId = Number((a as any)?.id)
+        const assignmentId = Number(a?.id)
         if (!Number.isFinite(assignmentId)) continue
         cacheAssignmentDetails(assignmentId, a)
       }
@@ -300,7 +300,7 @@ export const listCourseGroups = async (courseId: number): Promise<CourseGroup[]>
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Failed to list groups: ${resp.status}`)
   }
 
@@ -321,7 +321,7 @@ export const createCourseGroup = async (
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({} as any))
+  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(json.msg || `Failed to create group: ${resp.status}`)
   }
@@ -337,7 +337,7 @@ export const getMyCourseGroup = async (courseId: number): Promise<{ group: Cours
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({} as any))
+  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(json.msg || `Failed to fetch my group: ${resp.status}`)
   }
@@ -355,7 +355,7 @@ export const addCourseGroupMember = async (groupId: number, userId: number): Pro
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({} as any))
+  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(json.msg || `Failed to add group member: ${resp.status}`)
   }
@@ -371,7 +371,7 @@ export const removeCourseGroupMember = async (groupId: number, userId: number): 
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({} as any))
+  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(json.msg || `Failed to remove group member: ${resp.status}`)
   }
@@ -387,7 +387,7 @@ export const deleteCourseGroup = async (groupId: number): Promise<{ msg?: string
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({} as any))
+  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(json.msg || `Failed to delete group: ${resp.status}`)
   }
@@ -410,7 +410,7 @@ export const removeCourseMember = async (classId: number, userId: number) => {
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({} as any))
+  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(json.msg || `Response status: ${resp.status}`)
   }
@@ -485,7 +485,7 @@ export const getCriteria = async (assignmentID: number) => {
   return await resp.json()
 }
 
-const rubricCriteriaInFlight = new Map<number, Promise<any>>()
+const rubricCriteriaInFlight = new Map()
 
 export const getRubricCriteria = async (assignmentID: number) => {
   const existing = rubricCriteriaInFlight.get(assignmentID)
@@ -573,11 +573,11 @@ export const deleteCriteriaDescription = async (criteriaId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
-  return await resp.json().catch(() => ({} as any))
+  return await resp.json().catch(() => ({}))
 }
 
 export const updateCriteriaDescription = async (
@@ -596,11 +596,11 @@ export const updateCriteriaDescription = async (
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
-  return await resp.json().catch(() => ({} as any))
+  return await resp.json().catch(() => ({}))
 }
 
 // ============================================================
@@ -610,7 +610,7 @@ export const updateCriteriaDescription = async (
 /**
  * Get all reviews assigned to the current user for a specific assignment
  */
-const assignedReviewsInFlight = new Map<number, Promise<any>>()
+const assignedReviewsInFlight = new Map()
 
 export const getAssignedReviews = async (assignmentId: number) => {
   const key = Number(assignmentId)
@@ -649,7 +649,7 @@ export const getReviewSubmission = async (reviewId: number) => {
   maybeHandleExpire(response);
 
   if (response.status === 404) {
-    return { submission: null } as any;
+    return { submission: null };
   }
 
   if (!response.ok) {
@@ -738,7 +738,7 @@ export const createReviewAssignment = async (
  * Get all reviews for an assignment (teacher/admin only)
  * Returns detailed information about all peer reviews including completion stats
  */
-const allReviewsForAssignmentInFlight = new Map<number, Promise<any>>()
+const allReviewsForAssignmentInFlight = new Map()
 
 export const getAllReviewsForAssignment = async (assignmentId: number) => {
   const key = Number(assignmentId)
@@ -771,7 +771,7 @@ export const getAllReviewsForAssignment = async (assignmentId: number) => {
  * Returns completed peer reviews where the student is the reviewee,
  * with grades and comments for each criterion. Reviewer identity is anonymous.
  */
-const receivedFeedbackInFlight = new Map<number, Promise<any>>()
+const receivedFeedbackInFlight = new Map()
 
 export const getReceivedFeedback = async (assignmentId: number) => {
   const key = Number(assignmentId)
@@ -812,25 +812,38 @@ export const getRubric = async (rubricID: number) => {
   return await resp.json();
 }
 
-const assignmentDetailsInFlight = new Map<number, Promise<any>>()
-const assignmentDetailsCache = new Map<number, any>()
+const assignmentDetailsInFlight = new Map()
+const assignmentDetailsCache = new Map()
 
 const assignmentDetailsStorageKey = (assignmentId: number) => `assignmentDetails:${assignmentId}`
 
-function cacheAssignmentDetails(assignmentId: number, details: any) {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const toNumberOrNull = (value: unknown) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function cacheAssignmentDetails(assignmentId: number, details: unknown) {
   assignmentDetailsCache.set(assignmentId, details)
 
   // Persist a minimal subset so first-visit tab rendering can avoid collapsing.
   try {
+    if (!isRecord(details)) return
+    const courseRecord = isRecord(details.course) ? details.course : null
     const courseId =
-      (details as any)?.courseID ?? (details as any)?.course_id ?? (details as any)?.course?.id
+      toNumberOrNull(details.courseID) ??
+      toNumberOrNull(details.course_id) ??
+      toNumberOrNull(courseRecord?.id)
+
     const minimal = {
-      id: (details as any)?.id ?? assignmentId,
-      name: (details as any)?.name,
-      assignment_type: (details as any)?.assignment_type,
-      due_date: (details as any)?.due_date,
-      courseID: courseId,
-      course: Number.isFinite(Number((details as any)?.course?.id)) ? { id: (details as any).course.id } : undefined,
+      id: toNumberOrNull(details.id) ?? assignmentId,
+      name: typeof details.name === 'string' ? details.name : null,
+      assignment_type: typeof details.assignment_type === 'string' ? details.assignment_type : null,
+      due_date: typeof details.due_date === 'string' ? details.due_date : null,
+      courseID: courseId ?? undefined,
+      course: courseId != null ? { id: courseId } : undefined,
     }
     sessionStorage.setItem(assignmentDetailsStorageKey(assignmentId), JSON.stringify(minimal))
   } catch {
@@ -900,12 +913,12 @@ export const getMySubmission = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (resp.status === 403) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     return { submission: null, forbidden: true, msg: errorData.msg }
   }
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -921,7 +934,7 @@ export const deleteMySubmission = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -938,7 +951,7 @@ export const uploadMySubmission = async (assignmentId: number, formData: FormDat
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -977,7 +990,7 @@ export const getGroupPeerEvalStatus = async (assignmentId: number): Promise<Peer
     maybeHandleExpire(resp)
 
     if (!resp.ok) {
-      const errorData = await resp.json().catch(() => ({} as any))
+      const errorData = await resp.json().catch(() => ({}))
       throw new Error(errorData.msg || `Response status: ${resp.status}`)
     }
 
@@ -1013,7 +1026,7 @@ export const submitGroupPeerEval = async (assignmentId: number, evaluations: Pee
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1044,7 +1057,7 @@ export const getReceivedGroupPeerEvalFeedback = async (assignmentId: number): Pr
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1082,7 +1095,7 @@ export const getTeacherGroupPeerEvalOverview = async (assignmentId: number): Pro
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1108,7 +1121,7 @@ export const getTeacherGroupPeerEvalSummary = async (assignmentId: number): Prom
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1124,7 +1137,7 @@ export const syncIndividualPeerEvalReviews = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1139,12 +1152,12 @@ export const listSubmissions = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (resp.status === 403) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     return { submissions: [], forbidden: true, msg: errorData.msg }
   }
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1165,7 +1178,7 @@ export const updateAssignmentDetails = async (assignmentId: number, formData: Fo
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({} as any))
+    const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
   }
 
@@ -1184,9 +1197,6 @@ export type CreateAssignmentRequest = {
   rubric_criteria?: Array<{ question: string; scoreMax?: number; hasScore?: boolean }>;
 };
 
-export function createAssignment(courseID: number, name: string, due_date?: string): Promise<any>;
-export function createAssignment(body: CreateAssignmentRequest): Promise<any>;
-export function createAssignment(formData: FormData): Promise<any>;
 export async function createAssignment(
   arg1: number | CreateAssignmentRequest | FormData,
   name?: string,
@@ -1222,7 +1232,7 @@ export async function createAssignment(
   maybeHandleExpire(response);
 
   if (!response.ok) {
-      const errorData = await response.json().catch(() => ({} as any))
+      const errorData = await response.json().catch(() => ({}))
       throw new Error(errorData.msg || `Response status: ${response.status}`);
   }
 

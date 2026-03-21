@@ -20,6 +20,11 @@
   padding: var(--spacing-md) var(--spacing-lg);
   margin: 0;
 
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: inherit;
+
   border-bottom: 3px solid transparent;
   cursor: pointer;
   color: var(--text-secondary);
@@ -31,6 +36,11 @@
 .TabNav .Tab:hover {
   color: var(--text-primary);
   border-bottom-color: var(--border-color);
+}
+
+.TabNav .Tab:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .TabNav .Tab.active {

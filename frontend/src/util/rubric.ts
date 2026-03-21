@@ -18,6 +18,6 @@ export const normalizeRubricDraftForEdit = (criteria: RubricCriterionDraft[], ma
   return criteria.map((c) => ({
     ...c,
     question: c.question.trim(),
-    scoreMax: c.hasScore ? Math.min(maxCriterionPoints, Math.max(0, c.scoreMax || 0)) : 0,
+    scoreMax: c.hasScore ? Math.min(maxCriterionPoints, Math.max(1, c.scoreMax || 0)) : 0,
   }));
 };

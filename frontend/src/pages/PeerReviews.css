@@ -25,45 +25,6 @@
   font-weight: bold;
 }
 
-.review-status {
-  background-color: var(--background-secondary);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 2rem;
-}
-
-.review-status h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-}
-
-.status-details {
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.status-item {
-  font-size: 1rem;
-  color: var(--text-secondary);
-}
-
-.status-item strong {
-  font-size: 1.2rem;
-  margin-left: 0.25rem;
-  color: var(--text-primary);
-}
-
-.status-item .completed {
-  color: var(--success);
-}
-
-.status-item .remaining {
-  color: var(--warning);
-}
-
 .no-reviews {
   text-align: center;
   padding: 3rem;

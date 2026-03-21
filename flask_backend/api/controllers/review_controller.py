@@ -307,39 +307,6 @@ def submit_review_feedback(review_id):
     }), 200
 
 
-@bp.route("/status/<int:assignment_id>", methods=["GET"])
-@jwt_role_required("student", "teacher", "admin")
-def get_review_status(assignment_id):
-    """
-    Get review completion status for the current user on an assignment
-
-    Returns summary of assigned vs completed reviews
-    """
-    current_email = get_jwt_identity()
-    user = User.get_by_email(current_email)
-
-    assignment = Assignment.get_by_id(assignment_id)
-    if not assignment:
-        return jsonify({"msg": "Assignment not found"}), 404
-
-    reviews = Review.get_by_reviewer_and_assignment(user.id, assignment_id)
-    if assignment.assignment_type == "peer_eval_individual" and reviews:
-        teammate_ids = _get_current_teammate_ids_for_course(user.id, assignment.courseID)
-        reviews = [r for r in reviews if int(r.revieweeID) in teammate_ids]
-
-    completed_count = sum(1 for review in reviews if review.completed)
-    total_count = len(reviews)
-
-    return jsonify({
-        "assignment_id": assignment_id,
-        "total_assigned": total_count,
-        "completed": completed_count,
-        "remaining": total_count - completed_count,
-        "is_open": assignment.can_modify(),
-        "due_date": assignment.due_date.isoformat() if assignment.due_date else None
-    }), 200
-
-
 @bp.route("/create", methods=["POST"])
 @jwt_role_required("teacher", "admin")
 def create_review():

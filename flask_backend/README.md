@@ -422,7 +422,6 @@ flask_backend/
 - `GET /review/assigned/<assignment_id>` - Get reviews assigned to current user
 - `GET /review/submission/<review_id>` - Get submission for a review
 - `POST /review/submit/<review_id>` - Submit peer review feedback
-- `GET /review/status/<assignment_id>` - Get review completion status
 - `POST /review/create` - Create review assignment (teacher/admin)
 - `GET /review/<review_id>` - Get review details with criteria
 - `GET /review/criteria/<assignment_id>` - Get rubric criteria for assignment

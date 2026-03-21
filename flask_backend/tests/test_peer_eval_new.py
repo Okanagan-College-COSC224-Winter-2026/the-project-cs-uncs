@@ -688,11 +688,6 @@ class TestPeerEvalIndividualEligibility:
         assigned2_data = assigned2.get_json()
         assert {r["reviewee"]["id"] for r in assigned2_data["reviews"]} == {s3.id}
 
-        status = test_client.get(f"/review/status/{assignment_id}")
-        assert status.status_code == 200
-        status_data = status.get_json()
-        assert status_data["total_assigned"] == 1
-
         # Teacher can still see the historical submitted review for Student 2.
         login_as(test_client, "teacher4@test.com")
         all_reviews = test_client.get(f"/review/assignment/{assignment_id}/all")

@@ -485,50 +485,6 @@ class TestSubmitReviewFeedback:
         assert 'At least one criterion is required' in data['msg']
 
 
-class TestGetReviewStatus:
-    """Test GET /review/status/<assignment_id>"""
-
-    def test_get_status_with_incomplete_reviews(self, test_client, students, reviews_assigned):
-        """Status shows correct count of incomplete reviews"""
-        response = test_client.post('/auth/login', json={
-            'email': 'student1@test.com',
-            'password': 'password123'
-        })
-        assert response.status_code == 200
-
-        assignment_id = reviews_assigned[0].assignmentID
-
-        response = test_client.get(f'/review/status/{assignment_id}')
-        assert response.status_code == 200
-
-        data = response.get_json()
-        assert data['total_assigned'] == 2
-        assert data['completed'] == 0
-        assert data['remaining'] == 2
-        assert data['is_open'] is True
-
-    def test_get_status_with_completed_reviews(self, test_client, students, reviews_assigned):
-        """Status shows correct count after completing reviews"""
-        # Mark one review as complete
-        reviews_assigned[0].mark_complete()
-
-        response = test_client.post('/auth/login', json={
-            'email': 'student1@test.com',
-            'password': 'password123'
-        })
-        assert response.status_code == 200
-
-        assignment_id = reviews_assigned[0].assignmentID
-
-        response = test_client.get(f'/review/status/{assignment_id}')
-        assert response.status_code == 200
-
-        data = response.get_json()
-        assert data['total_assigned'] == 2
-        assert data['completed'] == 1
-        assert data['remaining'] == 1
-
-
 class TestCreateReview:
     """Test POST /review/create (teacher/admin only)"""
 

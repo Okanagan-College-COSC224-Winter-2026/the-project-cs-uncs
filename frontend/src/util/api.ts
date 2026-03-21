@@ -686,36 +686,6 @@ export const submitReviewFeedback = async (
 }
 
 /**
- * Get review completion status for current user on an assignment
- */
-const reviewStatusInFlight = new Map<number, Promise<any>>()
-
-export const getReviewStatus = async (assignmentId: number) => {
-  const key = Number(assignmentId)
-  const existing = reviewStatusInFlight.get(key)
-  if (existing) return existing
-
-  const request = (async () => {
-    const response = await fetch(`${BASE_URL}/review/status/${assignmentId}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    maybeHandleExpire(response);
-
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
-
-    return await response.json();
-  })()
-
-  reviewStatusInFlight.set(key, request)
-  request.finally(() => reviewStatusInFlight.delete(key))
-  return request
-}
-
-/**
  * Get details of a specific review including all criteria
  */
 export const getReviewDetails = async (reviewId: number) => {

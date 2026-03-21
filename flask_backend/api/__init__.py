@@ -12,7 +12,6 @@ from .controllers import (
     admin_controller,
     auth_controller,
     class_controller,
-    fake_api_controller,
     user_controller,
     assignment_controller,
     review_controller,
@@ -130,7 +129,7 @@ def create_app(test_config=None):
     # Blueprint prefixes (and bare endpoints) that should never trigger
     # the must_change_password check.  Skipping these avoids the cost
     # of JWT cookie parsing / decoding on every request.
-    _SKIP_PASSWORD_CHECK_PREFIXES = ("auth.", "static.", "fake.")
+    _SKIP_PASSWORD_CHECK_PREFIXES = ("auth.", "static.")
 
     # Individual non-blueprint endpoints to skip (e.g. top-level routes)
     _SKIP_PASSWORD_CHECK_ENDPOINTS = {"hello", None}
@@ -194,6 +193,5 @@ def create_app(test_config=None):
     app.register_blueprint(rubric_controller.bp)
     app.register_blueprint(group_controller.bp)
     app.register_blueprint(peer_eval_controller.bp)
-    app.register_blueprint(fake_api_controller.fake)
 
     return app

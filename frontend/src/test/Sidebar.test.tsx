@@ -7,6 +7,7 @@ import { ThemeProvider } from '../context/ThemeContext'
 
 // Mock the login utility to avoid real network calls
 vi.mock('../util/login', () => ({
+  getUserRole: vi.fn(() => 'student'),
   logout: vi.fn(),
 }))
 

@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Toodle</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var theme = stored === 'dark' || stored === 'light' ? stored : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          // If localStorage is blocked, default to light.
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

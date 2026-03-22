@@ -193,6 +193,25 @@ export const getCurrentUser = async () => {
   return await response.json();
 }
 
+export const updateCurrentUser = async (payload: { name?: string; email?: string }) => {
+  const response = await safeFetch(`${BASE_URL}/user/`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload),
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessageFromResponse(response, 'Unable to update your account'))
+  }
+
+  return await response.json()
+}
+
 export const getCurrentUserPhotoUrl = (cacheBuster?: string | number) => {
   const suffix = cacheBuster ? `?v=${encodeURIComponent(String(cacheBuster))}` : ''
   return `${BASE_URL}/user/photo${suffix}`

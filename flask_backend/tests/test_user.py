@@ -66,13 +66,47 @@ def test_update_current_user(test_client):
     )
     # Cookie is automatically stored in test_client
 
-    # Update user
+    # Update user name
     response = test_client.put(
         "/user/", data=json.dumps({"name": "Updated"}), headers={"Content-Type": "application/json"}
     )
 
     assert response.status_code == 200
     assert response.json["name"] == "Updated"
+
+
+def test_update_current_user_email_reissues_jwt(test_client):
+    """
+    GIVEN a logged-in user
+    WHEN PUT /user/ is called with a new email
+    THEN the email should update and future authenticated requests should still succeed
+    (JWT identity is the email, so the access cookie must be reissued).
+    """
+    test_client.post(
+        "/auth/register",
+        data=json.dumps({"name": "testuser", "password": "123456", "email": "test@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "test@example.com", "password": "123456"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.put(
+        "/user/",
+        data=json.dumps({"email": "updated@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["email"] == "updated@example.com"
+
+    # Should still be authenticated and resolve the user by new email identity
+    verify = test_client.get("/user/")
+    assert verify.status_code == 200
+    assert verify.json["email"] == "updated@example.com"
 
 
 def test_get_user_by_id(test_client):

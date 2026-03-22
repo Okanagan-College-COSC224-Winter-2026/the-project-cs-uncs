@@ -6,6 +6,7 @@ import Button from "../components/Button";
 import { importCSV } from "../util/csv";
 import { enrollStudentsByEmail, listCourseGroups, listCourseMembers, listClasses, removeCourseMember, type CourseGroup } from "../util/api";
 import HeaderTitle from "../components/HeaderTitle";
+import StatusMessage from "../components/StatusMessage";
 
 import './ClassMembers.css'
 import { isAdmin, isTeacher } from "../util/login";
@@ -23,6 +24,10 @@ export default function ClassMembers() {
   const [emailsText, setEmailsText] = useState("");
   const [adding, setAdding] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
+  const [confirmRemoveMemberId, setConfirmRemoveMemberId] = useState<number | null>(null);
+
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState<'error' | 'success'>('error');
 
   useEffect(() => {
     if (!teacherOrAdmin) return
@@ -67,20 +72,23 @@ export default function ClassMembers() {
   const handleAddStudents = async () => {
     if (!id) return;
     if (!emailsText.trim()) {
-      alert("Please enter at least one email.");
+      setStatusType('error');
+      setStatusMessage('Please enter at least one email.');
       return;
     }
 
     try {
       setAdding(true);
       const result = await enrollStudentsByEmail(Number(id), emailsText);
-      alert(result.msg || "Students added successfully!");
+      setStatusType('success');
+      setStatusMessage(result.msg || 'Students added successfully!');
       setEmailsText("");
       setShowAddStudents(false);
       const refreshed = await listCourseMembers(id as string);
       setMembers(refreshed);
     } catch (error) {
-      alert("Error: " + error);
+      setStatusType('error');
+      setStatusMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setAdding(false);
     }
@@ -88,14 +96,25 @@ export default function ClassMembers() {
 
   const handleRemoveMember = async (userId: number) => {
     if (!id) return;
-    if (!window.confirm('Remove this student from the class?')) return;
+
+    if (confirmRemoveMemberId !== userId) {
+      setConfirmRemoveMemberId(userId);
+      setStatusType('error');
+      setStatusMessage('Click Remove again to confirm.');
+      return;
+    }
 
     try {
+      setStatusMessage('');
       setRemovingMemberId(userId);
       await removeCourseMember(Number(id), userId);
       setMembers((prev) => prev.filter((m) => m.id !== userId));
+      setConfirmRemoveMemberId(null);
+      setStatusType('success');
+      setStatusMessage('Student removed.');
     } catch (error) {
-      alert('Error: ' + error);
+      setStatusType('error');
+      setStatusMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setRemovingMemberId(null);
     }
@@ -114,7 +133,23 @@ export default function ClassMembers() {
         <div className="ClassHeaderRight">
           {isTeacher() ? (
             <>
-              <Button onClick={() => importCSV(id as string)}>Add Students via CSV</Button>
+              <Button
+                onClick={() =>
+                  importCSV(id as string, {
+                    onSuccess: (msg) => {
+                      setStatusType('success');
+                      setStatusMessage(msg);
+                      void listCourseMembers(id as string).then(setMembers);
+                    },
+                    onError: (msg) => {
+                      setStatusType('error');
+                      setStatusMessage(msg);
+                    },
+                  })
+                }
+              >
+                Add Students via CSV
+              </Button>
               <Button
                 type="secondary"
                 onClick={() => setShowAddStudents((v) => !v)}
@@ -126,6 +161,8 @@ export default function ClassMembers() {
           ) : null}
         </div>
       </div>
+
+      <StatusMessage message={statusMessage} type={statusType} />
 
       {isTeacher() && showAddStudents ? (
         <div className="AddStudentsPanel">
@@ -183,7 +220,7 @@ export default function ClassMembers() {
                     onClick={() => handleRemoveMember(member.id)}
                     disabled={removingMemberId === member.id}
                   >
-                    Remove
+                    {confirmRemoveMemberId === member.id ? 'Confirm Remove' : 'Remove'}
                   </Button>
                 ) : null}
               </div>

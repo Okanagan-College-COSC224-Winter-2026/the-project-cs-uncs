@@ -84,7 +84,6 @@ def rubric_with_criteria(db, course_with_assignment):
             rubricID=rubric.id,
             question=f"Question {i+1}",
             scoreMax=10,
-            hasScore=True
         )
         db.session.add(criterion)
         criteria.append(criterion)

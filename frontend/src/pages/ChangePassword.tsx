@@ -65,7 +65,7 @@ export default function ChangePassword() {
 
   return (
     <div className="InputPage">
-      <div className="InputBlock Page">
+      <div className="InputBlock">
         <h1>Change Password</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {isForced
@@ -118,7 +118,7 @@ export default function ChangePassword() {
           </div>
         </div>
 
-        <div>
+        <div className="ChangePasswordActions">
           <Button
             onClick={handleChangePassword}
             disabled={success}

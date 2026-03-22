@@ -611,7 +611,6 @@ def get_received_feedback(assignment_id):
             criteria_descriptions[desc.id] = {
                 "question": desc.question,
                 "scoreMax": desc.scoreMax,
-                "hasScore": desc.hasScore
             }
 
     feedback_list = []
@@ -629,7 +628,6 @@ def get_received_feedback(assignment_id):
                 "criterionRowID": criterion.criterionRowID,
                 "question": desc.get("question", "Question unavailable"),
                 "scoreMax": desc.get("scoreMax"),
-                "hasScore": desc.get("hasScore", True),
                 "grade": criterion.grade,
                 "comments": criterion.comments
             })

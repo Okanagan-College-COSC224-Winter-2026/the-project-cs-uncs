@@ -12,13 +12,15 @@ export default function CreateClass() {
   const [statusType, setStatusType] = useState<'error' | 'success'>('error')
 
   const attemptCreateClass = async () => {
+    if (!name.trim()) {
+      setStatusType('error')
+      setStatusMessage('Class name is required')
+      return
+    }
+
     try {
       setStatusMessage('');
-      const response = await createClass(name);
-      
-      if (!response.ok) {
-        throw new Error('Failed to create class');
-      }
+      await createClass(name.trim());
 
       setStatusType('success');
       setStatusMessage('Class created successfully!');
@@ -26,7 +28,7 @@ export default function CreateClass() {
     } catch (error) {
       console.error('Error creating class:', error);
       setStatusType('error');
-      setStatusMessage('Error creating class.');
+      setStatusMessage(error instanceof Error ? error.message : 'Error creating class.');
     }
   };
 

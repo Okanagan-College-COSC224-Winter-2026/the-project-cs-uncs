@@ -2,16 +2,138 @@ import { didExpire, removeToken } from "./login";
 
 const BASE_URL = 'http://localhost:5000'
 
-const getMsgFromErrorPayload = (payload: unknown): string | null => {
-  if (!payload || typeof payload !== 'object') return null
-  const msg = (payload as Record<string, unknown>).msg
-  return typeof msg === 'string' ? msg : null
+const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  try {
+    return await fetch(input, init)
+  } catch {
+    throw new Error("We couldn't reach the server. Please check your connection and try again.")
+  }
 }
 
-// export const getProfile = async (id: string) => {
-//   // TODO
-// }
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
 
+const normalizeErrorText = (text: string) => {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+
+  // If the backend returns an HTML error page (e.g. Flask 500), don't show it verbatim.
+  if (/<!doctype\s+html|<html\b/i.test(cleaned)) return ''
+
+  return cleaned
+}
+
+const prettifyValidationMessage = (message: string) => {
+  const trimmed = message.trim()
+
+  if (trimmed === 'Missing data for required field.') return 'This field is required.'
+  if (trimmed === 'Not a valid email address.') return 'Please enter a valid email address.'
+
+  const minLengthMatch = trimmed.match(/^Shorter than minimum length (\d+)\.$/)
+  if (minLengthMatch) return `Must be at least ${minLengthMatch[1]} characters.`
+
+  return trimmed
+}
+
+const translateBackendMsg = (msg: string) => {
+  const normalized = msg.trim().toLowerCase()
+  if (normalized === 'missing json in request') return 'Something went wrong. Please try again.'
+  if (normalized === 'insufficient permissions') return "You don't have permission to do that."
+  return msg
+}
+
+const stringifyErrorValue = (value: unknown): string | null => {
+  if (typeof value === 'string') return prettifyValidationMessage(value)
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((v) => (typeof v === 'string' ? prettifyValidationMessage(v) : null))
+      .filter((v): v is string => Boolean(v))
+    return parts.length ? parts.join('; ') : null
+  }
+  return null
+}
+
+const isGenericValidationMsg = (msg: string) => {
+  const normalized = msg.trim().toLowerCase()
+  return normalized === 'validation error' || normalized === 'validation failed'
+}
+
+const prettyFieldName = (key: string) => {
+  if (!key) return key
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+const formatErrorDetails = (errors: unknown): string | null => {
+  if (!errors) return null
+
+  if (Array.isArray(errors)) {
+    const parts = errors
+      .map((v) => (typeof v === 'string' ? v : null))
+      .filter((v): v is string => Boolean(v))
+    return parts.length ? parts.join('; ') : null
+  }
+
+  if (isRecord(errors)) {
+    const parts: string[] = []
+    for (const [key, value] of Object.entries(errors)) {
+      const rendered = stringifyErrorValue(value)
+      if (rendered) parts.push(`${prettyFieldName(key)}: ${rendered}`)
+    }
+    return parts.length ? parts.join('; ') : null
+  }
+
+  return null
+}
+
+const getMsgFromErrorPayload = (payload: unknown): string | null => {
+  if (!isRecord(payload)) return null
+
+  const details = formatErrorDetails(payload.errors)
+
+  const msg = payload.msg
+  if (typeof msg === 'string' && msg.trim()) {
+    if (isGenericValidationMsg(msg) && details) return details
+    return translateBackendMsg(msg)
+  }
+
+  const message = payload.message
+  if (typeof message === 'string' && message.trim()) return message
+
+  if (details) return details
+
+  return null
+}
+
+const defaultFriendlyErrorForStatus = (status: number) => {
+  if (status === 400) return 'Please check what you entered and try again.'
+  if (status === 401) return 'Please log in and try again.'
+  if (status === 403) return "You don't have permission to do that."
+  if (status === 404) return "We couldn't find what you were looking for."
+  return 'Something went wrong. Please try again.'
+}
+
+const getErrorMessageFromResponse = async (
+  response: Response,
+  fallbackPrefix: string = 'Request failed'
+): Promise<string> => {
+  const copyForJson = response.clone()
+  const parsed: unknown = await copyForJson.json().catch(() => null)
+  const parsedMsg = getMsgFromErrorPayload(parsed)
+  if (parsedMsg) return parsedMsg
+
+  const copyForText = response.clone()
+  const text = await copyForText.text().catch(() => '')
+  const cleaned = normalizeErrorText(text)
+  if (cleaned) return cleaned
+
+  if (fallbackPrefix && fallbackPrefix !== 'Request failed') {
+    return `${fallbackPrefix}. ${defaultFriendlyErrorForStatus(response.status)}`
+  }
+
+  return defaultFriendlyErrorForStatus(response.status)
+}
 
 export const maybeHandleExpire = (response: Response) => {
   if (didExpire(response)) {
@@ -23,61 +145,49 @@ export const maybeHandleExpire = (response: Response) => {
 }
 
 export const tryLogin = async (email: string, password: string) => {
-  try {
-    const response = await fetch(`${BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email: email, password: password }),
-      credentials: 'include'  // Include cookies in request/response
-    });
-    
-    if (!response.ok) { 
-      // Throw if login fails for any reason
-      throw new Error(`Response status: ${response.status}`);
-    }
-
-    const json = await response.json();
-    
-    // Store user info (but not token - that's in httponly cookie now)
-    localStorage.setItem('user', JSON.stringify(json));
-    //console.log("Logged in:", json);
-
-    return json;
-  } catch (error) {
-    // Login is wrong
-    console.error(error);
-    // window.location.href = '/';
+  const response = await safeFetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email: email, password: password }),
+    credentials: 'include'  // Include cookies in request/response
+  });
+  
+  if (!response.ok) {
+    // 401 is a user-facing validation error handled by the page.
+    if (response.status === 401) return false
+    throw new Error(await getErrorMessageFromResponse(response, 'Login failed'))
   }
 
-  return false
+  const json = await response.json();
+  
+  // Store user info (but not token - that's in httponly cookie now)
+  localStorage.setItem('user', JSON.stringify(json));
+
+  return json;
 }
 
 export const tryRegister = async (name: string, email: string, password: string) => {
-  try {
-    const response = await fetch(`${BASE_URL}/auth/register`, {
-      method: 'POST',
-      body: JSON.stringify({
-        name,
-        email,
-        password
-      }),
-      headers: {
-        'Content-Type': 'application/json'
-      },
-    });
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(error);
+  const response = await safeFetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      email,
+      password
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+  });
+  if (!response.ok) {
+    throw new Error(await getErrorMessageFromResponse(response, 'Registration failed'))
   }
+  return await response.json();
 }
 
 export const getCurrentUser = async () => {
-  const response = await fetch(`${BASE_URL}/user/`, {
+  const response = await safeFetch(`${BASE_URL}/user/`, {
     method: 'GET',
     credentials: 'include'
   });
@@ -85,10 +195,29 @@ export const getCurrentUser = async () => {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch current user: ${response.status} ${response.statusText}`);
+    throw new Error(await getErrorMessageFromResponse(response, 'Unable to load your account'))
   }
 
   return await response.json();
+}
+
+export const updateCurrentUser = async (payload: { name?: string; email?: string }) => {
+  const response = await safeFetch(`${BASE_URL}/user/`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload),
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessageFromResponse(response, 'Unable to update your account'))
+  }
+
+  return await response.json()
 }
 
 export const getCurrentUserPhotoUrl = (cacheBuster?: string | number) => {
@@ -100,7 +229,7 @@ export const uploadCurrentUserPhoto = async (file: File) => {
   const formData = new FormData()
   formData.append('file', file)
 
-  const response = await fetch(`${BASE_URL}/user/photo`, {
+  const response = await safeFetch(`${BASE_URL}/user/photo`, {
     method: 'POST',
     body: formData,
     credentials: 'include',
@@ -109,15 +238,14 @@ export const uploadCurrentUserPhoto = async (file: File) => {
   maybeHandleExpire(response)
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Failed to upload photo: ${response.status}`)
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to upload photo'))
   }
 
   return await response.json().catch(() => ({}))
 }
 
 export const deleteAssignment = async (assignmentId: number) => {
-  const response = await fetch(`${BASE_URL}/assignment/delete_assignment/${assignmentId}`, {
+  const response = await safeFetch(`${BASE_URL}/assignment/delete_assignment/${assignmentId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
@@ -128,15 +256,14 @@ export const deleteAssignment = async (assignmentId: number) => {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Failed to delete assignment: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to delete assignment'))
   }
 
   return await response.json();
 };
 
 export const createClass = async (name: string) => {
-  const response = await fetch(`${BASE_URL}/class/create_class`, {
+  const response = await safeFetch(`${BASE_URL}/class/create_class`, {
     method: 'POST',
     body: JSON.stringify({
       name,
@@ -150,14 +277,15 @@ export const createClass = async (name: string) => {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to create class'))
   }
-  return response
+
+  return await response.json().catch(() => ({}))
 }
 
 export const listClasses = async () => {
   // TODO get session info and whatnot
-  const resp = await fetch(`${BASE_URL}/class/classes`, {
+  const resp = await safeFetch(`${BASE_URL}/class/classes`, {
     method: 'GET',
     credentials: 'include'  // Include cookies (JWT token)
   })
@@ -165,14 +293,14 @@ export const listClasses = async () => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const searchClasses = async (query: string) => {
-  const resp = await fetch(`${BASE_URL}/class/search?q=${encodeURIComponent(query)}`, {
+  const resp = await safeFetch(`${BASE_URL}/class/search?q=${encodeURIComponent(query)}`, {
     method: 'GET',
     credentials: 'include'
   })
@@ -180,14 +308,14 @@ export const searchClasses = async (query: string) => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json();
 }
 
 export const importStudentsForCourse = async (courseID: number, students: string) => {
-  const response = await fetch(`${BASE_URL}/class/enroll_students`, {
+  const response = await safeFetch(`${BASE_URL}/class/enroll_students`, {
     method: 'POST',
     body: JSON.stringify({
       students,
@@ -202,14 +330,15 @@ export const importStudentsForCourse = async (courseID: number, students: string
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
-  return await response.json();  // ADD THIS LINE
+
+  return await response.json();
 
 }
 
 export const enrollStudentsByEmail = async (courseID: number, emails: string) => {
-  const response = await fetch(`${BASE_URL}/class/enroll_students_emails`, {
+  const response = await safeFetch(`${BASE_URL}/class/enroll_students_emails`, {
     method: 'POST',
     body: JSON.stringify({
       emails,
@@ -224,8 +353,7 @@ export const enrollStudentsByEmail = async (courseID: number, emails: string) =>
   maybeHandleExpire(response)
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${response.status}`)
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json()
@@ -238,7 +366,7 @@ export const listAssignments = async (classId: string) => {
   if (existing) return existing
 
   const request = (async () => {
-    const resp = await fetch(`${BASE_URL}/assignment/` + classId, {
+    const resp = await safeFetch(`${BASE_URL}/assignment/` + classId, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -249,7 +377,7 @@ export const listAssignments = async (classId: string) => {
     maybeHandleExpire(resp)
 
     if (!resp.ok) {
-      throw new Error(`Response status: ${resp.status}`)
+      throw new Error(await getErrorMessageFromResponse(resp))
     }
 
     const json = await resp.json()
@@ -270,7 +398,7 @@ export const listAssignments = async (classId: string) => {
 }
 
 export const listCourseMembers = async (classId: string) => {
-  const resp = await fetch(`${BASE_URL}/class/members`, {
+  const resp = await safeFetch(`${BASE_URL}/class/members`, {
     method: 'POST',
     body: JSON.stringify({
       id: classId,
@@ -284,7 +412,7 @@ export const listCourseMembers = async (classId: string) => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
   
   return await resp.json()
@@ -298,7 +426,7 @@ export type CourseGroupMember = { id: number; name: string; email?: string }
 export type CourseGroup = { id: number; name: string; members: CourseGroupMember[] }
 
 export const listCourseGroups = async (courseId: number): Promise<CourseGroup[]> => {
-  const resp = await fetch(`${BASE_URL}/groups/course/${courseId}`, {
+  const resp = await safeFetch(`${BASE_URL}/groups/course/${courseId}`, {
     method: 'GET',
     credentials: 'include',
   })
@@ -306,8 +434,7 @@ export const listCourseGroups = async (courseId: number): Promise<CourseGroup[]>
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Failed to list groups: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp, 'Unable to load groups'))
   }
 
   return await resp.json()
@@ -318,7 +445,7 @@ export const createCourseGroup = async (
   name: string,
   memberIds: number[]
 ): Promise<{ msg: string; group_id: number }> => {
-  const resp = await fetch(`${BASE_URL}/groups/course/${courseId}`, {
+  const resp = await safeFetch(`${BASE_URL}/groups/course/${courseId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, members: memberIds }),
@@ -329,14 +456,14 @@ export const createCourseGroup = async (
 
   const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    throw new Error(json.msg || `Failed to create group: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp, 'Unable to create the group'))
   }
 
   return json
 }
 
 export const getMyCourseGroup = async (courseId: number): Promise<{ group: CourseGroup | null; multiple?: boolean }> => {
-  const resp = await fetch(`${BASE_URL}/groups/course/${courseId}/my`, {
+  const resp = await safeFetch(`${BASE_URL}/groups/course/${courseId}/my`, {
     method: 'GET',
     credentials: 'include',
   })
@@ -345,14 +472,14 @@ export const getMyCourseGroup = async (courseId: number): Promise<{ group: Cours
 
   const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    throw new Error(json.msg || `Failed to fetch my group: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp, 'Unable to load your group'))
   }
 
   return json
 }
 
 export const addCourseGroupMember = async (groupId: number, userId: number): Promise<CourseGroup> => {
-  const resp = await fetch(`${BASE_URL}/groups/${groupId}/members`, {
+  const resp = await safeFetch(`${BASE_URL}/groups/${groupId}/members`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId }),
@@ -363,14 +490,14 @@ export const addCourseGroupMember = async (groupId: number, userId: number): Pro
 
   const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    throw new Error(json.msg || `Failed to add group member: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp, 'Unable to add the student to the group'))
   }
 
   return json
 }
 
 export const removeCourseGroupMember = async (groupId: number, userId: number): Promise<CourseGroup> => {
-  const resp = await fetch(`${BASE_URL}/groups/${groupId}/members/${userId}`, {
+  const resp = await safeFetch(`${BASE_URL}/groups/${groupId}/members/${userId}`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -379,14 +506,14 @@ export const removeCourseGroupMember = async (groupId: number, userId: number): 
 
   const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    throw new Error(json.msg || `Failed to remove group member: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp, 'Unable to remove the student from the group'))
   }
 
   return json
 }
 
 export const deleteCourseGroup = async (groupId: number): Promise<{ msg?: string }> => {
-  const resp = await fetch(`${BASE_URL}/groups/${groupId}`, {
+  const resp = await safeFetch(`${BASE_URL}/groups/${groupId}`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -395,14 +522,14 @@ export const deleteCourseGroup = async (groupId: number): Promise<{ msg?: string
 
   const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    throw new Error(json.msg || `Failed to delete group: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp, 'Unable to delete the group'))
   }
 
   return json
 }
 
 export const removeCourseMember = async (classId: number, userId: number) => {
-  const resp = await fetch(`${BASE_URL}/class/remove_member`, {
+  const resp = await safeFetch(`${BASE_URL}/class/remove_member`, {
     method: 'POST',
     body: JSON.stringify({
       class_id: classId,
@@ -416,18 +543,18 @@ export const removeCourseMember = async (classId: number, userId: number) => {
 
   maybeHandleExpire(resp)
 
-  const json = await resp.json().catch(() => ({}))
   if (!resp.ok) {
-    throw new Error(json.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
-  return json
+
+  return await resp.json().catch(() => ({}))
 }
 
 
 
 
 export const listGroupMembers = async (assignmentId : number, groupID: number) => {
-  const resp = await fetch(`${BASE_URL}/list_group_members/` + assignmentId + '/' + groupID, {
+  const resp = await safeFetch(`${BASE_URL}/list_group_members/` + assignmentId + '/' + groupID, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -438,14 +565,14 @@ export const listGroupMembers = async (assignmentId : number, groupID: number) =
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
   
   return await resp.json()
 } 
 
 export const getUserId = async () => {
-  const resp = await fetch(`${BASE_URL}/user_id`, {
+  const resp = await safeFetch(`${BASE_URL}/user_id`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -456,14 +583,14 @@ export const getUserId = async () => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
   
   return await resp.json()
 } 
 
 export const saveGroups = async (groupID: number, userID: number, assignmentID : number) =>{
-  await fetch(`${BASE_URL}/save_groups`, {
+  await safeFetch(`${BASE_URL}/save_groups`, {
     method: 'POST',
     body: JSON.stringify({
       groupID,
@@ -478,14 +605,14 @@ export const saveGroups = async (groupID: number, userID: number, assignmentID :
 }
 
 export const getCriteria = async (assignmentID: number) => {
-  const resp = await fetch(`${BASE_URL}/review/criteria/${assignmentID}`, {
+  const resp = await safeFetch(`${BASE_URL}/review/criteria/${assignmentID}`, {
     credentials: 'include'
   })
 
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -498,14 +625,14 @@ export const getRubricCriteria = async (assignmentID: number) => {
   if (existing) return existing
 
   const request = (async () => {
-    const resp = await fetch(`${BASE_URL}/get_criteria/${assignmentID}`, {
+    const resp = await safeFetch(`${BASE_URL}/get_criteria/${assignmentID}`, {
       credentials: 'include'
     })
 
     maybeHandleExpire(resp)
 
     if (!resp.ok) {
-      throw new Error(`Response status: ${resp.status}`)
+      throw new Error(await getErrorMessageFromResponse(resp))
     }
 
     return await resp.json()
@@ -516,11 +643,11 @@ export const getRubricCriteria = async (assignmentID: number) => {
   return request
 }
 
-export const createCriteria = async (rubricID: number, question: string, scoreMax: number, canComment: boolean, hasScore: boolean = true) => {
-  const response = await fetch(`${BASE_URL}/create_criteria`, {
+export const createCriteria = async (rubricID: number, question: string, scoreMax: number, canComment: boolean) => {
+  const response = await safeFetch(`${BASE_URL}/create_criteria`, {
     method: 'POST',
     body: JSON.stringify({
-      rubricID, question, scoreMax, canComment, hasScore
+      rubricID, question, scoreMax, canComment
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -531,12 +658,12 @@ export const createCriteria = async (rubricID: number, question: string, scoreMa
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 }
 
 export const createRubric = async (id: number, assignmentID: number, canComment: boolean): Promise<{ id: number }> => {
-  const response = await fetch(`${BASE_URL}/create_rubric`, {
+  const response = await safeFetch(`${BASE_URL}/create_rubric`, {
     method: 'POST',
     body: JSON.stringify({
       id, assignmentID, canComment
@@ -550,28 +677,28 @@ export const createRubric = async (id: number, assignmentID: number, canComment:
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
 }
 
 export const getRubricForAssignment = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/get_rubric/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/get_rubric/${assignmentId}`, {
     credentials: 'include'
   })
 
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const deleteCriteriaDescription = async (criteriaId: number) => {
-  const resp = await fetch(`${BASE_URL}/delete_criteria/${criteriaId}`, {
+  const resp = await safeFetch(`${BASE_URL}/delete_criteria/${criteriaId}`, {
     method: 'DELETE',
     credentials: 'include'
   })
@@ -579,8 +706,7 @@ export const deleteCriteriaDescription = async (criteriaId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json().catch(() => ({}))
@@ -588,9 +714,9 @@ export const deleteCriteriaDescription = async (criteriaId: number) => {
 
 export const updateCriteriaDescription = async (
   criteriaId: number,
-  payload: { question?: string; scoreMax?: number; hasScore?: boolean }
+  payload: { question?: string; scoreMax?: number }
 ) => {
-  const resp = await fetch(`${BASE_URL}/update_criteria/${criteriaId}`, {
+  const resp = await safeFetch(`${BASE_URL}/update_criteria/${criteriaId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: {
@@ -602,8 +728,7 @@ export const updateCriteriaDescription = async (
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json().catch(() => ({}))
@@ -624,7 +749,7 @@ export const getAssignedReviews = async (assignmentId: number) => {
   if (existing) return existing
 
   const request = (async () => {
-    const response = await fetch(`${BASE_URL}/review/assigned/${assignmentId}`, {
+    const response = await safeFetch(`${BASE_URL}/review/assigned/${assignmentId}`, {
       method: 'GET',
       credentials: 'include'
     });
@@ -632,7 +757,7 @@ export const getAssignedReviews = async (assignmentId: number) => {
     maybeHandleExpire(response);
 
     if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      throw new Error(await getErrorMessageFromResponse(response))
     }
 
     return await response.json();
@@ -647,7 +772,7 @@ export const getAssignedReviews = async (assignmentId: number) => {
  * Get the submission content for a specific review
  */
 export const getReviewSubmission = async (reviewId: number) => {
-  const response = await fetch(`${BASE_URL}/review/submission/${reviewId}`, {
+  const response = await safeFetch(`${BASE_URL}/review/submission/${reviewId}`, {
     method: 'GET',
     credentials: 'include'
   });
@@ -659,7 +784,7 @@ export const getReviewSubmission = async (reviewId: number) => {
   }
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -672,7 +797,7 @@ export const submitReviewFeedback = async (
   reviewId: number,
   criteria: { criterionRowID: number; grade: number; comments: string }[]
 ) => {
-  const response = await fetch(`${BASE_URL}/review/submit/${reviewId}`, {
+  const response = await safeFetch(`${BASE_URL}/review/submit/${reviewId}`, {
     method: 'POST',
     body: JSON.stringify({ criteria }),
     headers: {
@@ -684,8 +809,7 @@ export const submitReviewFeedback = async (
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -698,7 +822,7 @@ export const updateReviewFeedback = async (
   reviewId: number,
   criteria: { criterionRowID: number; grade: number; comments: string }[]
 ) => {
-  const response = await fetch(`${BASE_URL}/review/update/${reviewId}`, {
+  const response = await safeFetch(`${BASE_URL}/review/update/${reviewId}`, {
     method: 'POST',
     body: JSON.stringify({ criteria }),
     headers: {
@@ -710,15 +834,7 @@ export const updateReviewFeedback = async (
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const parsed: unknown = await response.json().catch(() => null)
-      const msg = getMsgFromErrorPayload(parsed)
-      throw new Error(msg || `Response status: ${response.status}`);
-    }
-
-    await response.text().catch(() => '');
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -728,7 +844,7 @@ export const updateReviewFeedback = async (
  * Unsubmit a completed peer review so it can be edited and re-submitted
  */
 export const unsubmitReviewFeedback = async (reviewId: number) => {
-  const response = await fetch(`${BASE_URL}/review/unsubmit/${reviewId}`, {
+  const response = await safeFetch(`${BASE_URL}/review/unsubmit/${reviewId}`, {
     method: 'POST',
     credentials: 'include'
   });
@@ -736,16 +852,7 @@ export const unsubmitReviewFeedback = async (reviewId: number) => {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const parsed: unknown = await response.json().catch(() => null)
-      const msg = getMsgFromErrorPayload(parsed)
-      throw new Error(msg || `Response status: ${response.status}`);
-    }
-
-    // If the backend returns HTML (e.g., 404/500 default page), avoid JSON parse errors.
-    await response.text().catch(() => '');
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -755,7 +862,7 @@ export const unsubmitReviewFeedback = async (reviewId: number) => {
  * Get details of a specific review including all criteria
  */
 export const getReviewDetails = async (reviewId: number) => {
-  const response = await fetch(`${BASE_URL}/review/${reviewId}`, {
+  const response = await safeFetch(`${BASE_URL}/review/${reviewId}`, {
     method: 'GET',
     credentials: 'include'
   });
@@ -763,7 +870,7 @@ export const getReviewDetails = async (reviewId: number) => {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -777,7 +884,7 @@ export const createReviewAssignment = async (
   reviewerId: number,
   revieweeId: number
 ) => {
-  const response = await fetch(`${BASE_URL}/review/create`, {
+  const response = await safeFetch(`${BASE_URL}/review/create`, {
     method: 'POST',
     body: JSON.stringify({
       assignmentID: assignmentId,
@@ -793,8 +900,7 @@ export const createReviewAssignment = async (
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -812,7 +918,7 @@ export const getAllReviewsForAssignment = async (assignmentId: number) => {
   if (existing) return existing
 
   const request = (async () => {
-    const response = await fetch(`${BASE_URL}/review/assignment/${assignmentId}/all`, {
+    const response = await safeFetch(`${BASE_URL}/review/assignment/${assignmentId}/all`, {
       method: 'GET',
       credentials: 'include'
     });
@@ -820,8 +926,7 @@ export const getAllReviewsForAssignment = async (assignmentId: number) => {
     maybeHandleExpire(response);
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.msg || `Response status: ${response.status}`);
+      throw new Error(await getErrorMessageFromResponse(response))
     }
 
     return await response.json();
@@ -845,7 +950,7 @@ export const getReceivedFeedback = async (assignmentId: number) => {
   if (existing) return existing
 
   const request = (async () => {
-    const response = await fetch(`${BASE_URL}/review/received/${assignmentId}`, {
+    const response = await safeFetch(`${BASE_URL}/review/received/${assignmentId}`, {
       method: 'GET',
       credentials: 'include'
     });
@@ -853,7 +958,7 @@ export const getReceivedFeedback = async (assignmentId: number) => {
     maybeHandleExpire(response);
 
     if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      throw new Error(await getErrorMessageFromResponse(response))
     }
 
     return await response.json();
@@ -865,14 +970,14 @@ export const getReceivedFeedback = async (assignmentId: number) => {
 }
 
 export const getRubric = async (rubricID: number) => {
-  const resp = await fetch(`${BASE_URL}/rubric?rubricID=${rubricID}`, {
+  const resp = await safeFetch(`${BASE_URL}/rubric?rubricID=${rubricID}`, {
       credentials: 'include'
   });
 
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-      throw new Error(`Response status: ${resp.status}`);
+      throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json();
@@ -882,9 +987,6 @@ const assignmentDetailsInFlight = new Map()
 const assignmentDetailsCache = new Map()
 
 const assignmentDetailsStorageKey = (assignmentId: number) => `assignmentDetails:${assignmentId}`
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null
 
 const toNumberOrNull = (value: unknown) => {
   const n = Number(value)
@@ -943,14 +1045,14 @@ export const getAssignmentDetails = async (assignmentId: number) => {
   if (existing) return existing
 
   const request = (async () => {
-    const resp = await fetch(`${BASE_URL}/assignment/details/${assignmentId}`, {
+    const resp = await safeFetch(`${BASE_URL}/assignment/details/${assignmentId}`, {
       credentials: 'include'
     })
 
     maybeHandleExpire(resp)
 
     if (!resp.ok) {
-      throw new Error(`Response status: ${resp.status}`)
+      throw new Error(await getErrorMessageFromResponse(resp))
     }
 
     const json = await resp.json()
@@ -971,8 +1073,12 @@ export const getSubmissionDownloadUrl = (submissionId: number) => {
   return `${BASE_URL}/assignment/submission/download/${submissionId}`
 }
 
+export const getSubmissionAttachmentDownloadUrl = (attachmentId: number) => {
+  return `${BASE_URL}/assignment/submission/attachment/download/${attachmentId}`
+}
+
 export const getMySubmission = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/assignment/my_submission/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/assignment/my_submission/${assignmentId}`, {
     credentials: 'include'
   })
 
@@ -984,15 +1090,14 @@ export const getMySubmission = async (assignmentId: number) => {
   }
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const deleteMySubmission = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/assignment/my_submission/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/assignment/my_submission/${assignmentId}`, {
     method: 'DELETE',
     credentials: 'include'
   })
@@ -1000,15 +1105,14 @@ export const deleteMySubmission = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const uploadMySubmission = async (assignmentId: number, formData: FormData) => {
-  const resp = await fetch(`${BASE_URL}/assignment/submit/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/assignment/submit/${assignmentId}`, {
     method: 'POST',
     body: formData,
     credentials: 'include'
@@ -1017,8 +1121,7 @@ export const uploadMySubmission = async (assignmentId: number, formData: FormDat
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -1029,7 +1132,7 @@ export type PeerEvalGroupStatusResponse = {
   reviewer_group: { id: number; name: string };
   submitted: boolean;
   targets: Array<{ id: number; name: string }>;
-  criteria: Array<{ id: number; question: string; scoreMax: number; hasScore: boolean }>;
+  criteria: Array<{ id: number; question: string; scoreMax: number }>;
   submission?: {
     id: number;
     submitted_at: string | null;
@@ -1050,15 +1153,14 @@ export const getGroupPeerEvalStatus = async (assignmentId: number): Promise<Peer
   if (existing) return existing
 
   const request: Promise<PeerEvalGroupStatusResponse> = (async () => {
-    const resp = await fetch(`${BASE_URL}/peer_eval/group/status/${assignmentId}`, {
+    const resp = await safeFetch(`${BASE_URL}/peer_eval/group/status/${assignmentId}`, {
       credentials: 'include'
     })
 
     maybeHandleExpire(resp)
 
     if (!resp.ok) {
-      const errorData = await resp.json().catch(() => ({}))
-      throw new Error(errorData.msg || `Response status: ${resp.status}`)
+      throw new Error(await getErrorMessageFromResponse(resp))
     }
 
     return await resp.json()
@@ -1081,7 +1183,7 @@ export type PeerEvalGroupEvaluation = {
 }
 
 export const submitGroupPeerEval = async (assignmentId: number, evaluations: PeerEvalGroupEvaluation[]) => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/submit/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/group/submit/${assignmentId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -1093,15 +1195,14 @@ export const submitGroupPeerEval = async (assignmentId: number, evaluations: Pee
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const unsubmitGroupPeerEval = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/unsubmit/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/group/unsubmit/${assignmentId}`, {
     method: 'POST',
     credentials: 'include'
   })
@@ -1109,22 +1210,14 @@ export const unsubmitGroupPeerEval = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const contentType = resp.headers.get('content-type') || ''
-    if (contentType.includes('application/json')) {
-      const parsed: unknown = await resp.json().catch(() => null)
-      const msg = getMsgFromErrorPayload(parsed)
-      throw new Error(msg || `Response status: ${resp.status}`)
-    }
-
-    await resp.text().catch(() => '')
-    throw new Error(`Request failed: ${resp.status} ${resp.statusText}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const updateGroupPeerEval = async (assignmentId: number, evaluations: PeerEvalGroupEvaluation[]) => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/update/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/group/update/${assignmentId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -1136,15 +1229,7 @@ export const updateGroupPeerEval = async (assignmentId: number, evaluations: Pee
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const contentType = resp.headers.get('content-type') || ''
-    if (contentType.includes('application/json')) {
-      const parsed: unknown = await resp.json().catch(() => null)
-      const msg = getMsgFromErrorPayload(parsed)
-      throw new Error(msg || `Response status: ${resp.status}`)
-    }
-
-    await resp.text().catch(() => '')
-    throw new Error(`Request failed: ${resp.status} ${resp.statusText}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -1158,7 +1243,6 @@ export type PeerEvalGroupReceivedResponse = {
       criterionRowID: number;
       question: string;
       scoreMax: number | null;
-      hasScore: boolean;
       grade: number | null;
       comments: string | null;
     }>;
@@ -1167,15 +1251,14 @@ export type PeerEvalGroupReceivedResponse = {
 }
 
 export const getReceivedGroupPeerEvalFeedback = async (assignmentId: number): Promise<PeerEvalGroupReceivedResponse> => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/received/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/group/received/${assignmentId}`, {
     credentials: 'include'
   })
 
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -1195,7 +1278,6 @@ export type TeacherGroupPeerEvalOverviewResponse = {
         criterionRowID: number;
         question: string;
         scoreMax: number | null;
-        hasScore: boolean;
         grade: number | null;
         comments: string | null;
       }>;
@@ -1205,15 +1287,14 @@ export type TeacherGroupPeerEvalOverviewResponse = {
 }
 
 export const getTeacherGroupPeerEvalOverview = async (assignmentId: number): Promise<TeacherGroupPeerEvalOverviewResponse> => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/assignment/${assignmentId}/all`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/group/assignment/${assignmentId}/all`, {
     credentials: 'include'
   })
 
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -1231,22 +1312,21 @@ export type TeacherGroupPeerEvalSummaryResponse = {
 }
 
 export const getTeacherGroupPeerEvalSummary = async (assignmentId: number): Promise<TeacherGroupPeerEvalSummaryResponse> => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/group/assignment/${assignmentId}/summary`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/group/assignment/${assignmentId}/summary`, {
     credentials: 'include'
   })
 
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const syncIndividualPeerEvalReviews = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/peer_eval/individual/sync/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/peer_eval/individual/sync/${assignmentId}`, {
     method: 'POST',
     credentials: 'include'
   })
@@ -1254,15 +1334,14 @@ export const syncIndividualPeerEvalReviews = async (assignmentId: number) => {
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
 }
 
 export const listSubmissions = async (assignmentId: number) => {
-  const resp = await fetch(`${BASE_URL}/assignment/submissions/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/assignment/submissions/${assignmentId}`, {
     credentials: 'include'
   })
 
@@ -1274,8 +1353,7 @@ export const listSubmissions = async (assignmentId: number) => {
   }
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -1283,7 +1361,7 @@ export const listSubmissions = async (assignmentId: number) => {
 
 export const updateAssignmentDetails = async (assignmentId: number, formData: FormData) => {
   const tzOffset = String(new Date().getTimezoneOffset())
-  const resp = await fetch(`${BASE_URL}/assignment/edit_details/${assignmentId}`, {
+  const resp = await safeFetch(`${BASE_URL}/assignment/edit_details/${assignmentId}`, {
     method: 'PATCH',
     body: formData,
     headers: {
@@ -1295,8 +1373,7 @@ export const updateAssignmentDetails = async (assignmentId: number, formData: Fo
   maybeHandleExpire(resp)
 
   if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({}))
-    throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json()
@@ -1311,7 +1388,7 @@ export type CreateAssignmentRequest = {
   due_date?: string;
   assignment_type?: 'standard' | 'peer_eval_group' | 'peer_eval_individual';
   included_group_ids?: number[];
-  rubric_criteria?: Array<{ question: string; scoreMax?: number; hasScore?: boolean }>;
+  rubric_criteria?: Array<{ question: string; scoreMax?: number }>;
 };
 
 export async function createAssignment(
@@ -1330,7 +1407,7 @@ export async function createAssignment(
     return arg1 as CreateAssignmentRequest;
   })();
 
-  const response = await fetch(`${BASE_URL}/assignment/create_assignment`, {
+  const response = await safeFetch(`${BASE_URL}/assignment/create_assignment`, {
     method: 'POST',
     body: isMultipart
       ? arg1
@@ -1349,15 +1426,14 @@ export async function createAssignment(
   maybeHandleExpire(response);
 
   if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.msg || `Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to create assignment'))
   }
 
   return await response.json();
 }
 
 export const deleteGroup = async (groupID: number) => {
-  await fetch(`${BASE_URL}/delete_group`, {
+  await safeFetch(`${BASE_URL}/delete_group`, {
     method: 'POST',
     body: JSON.stringify({
       groupID,
@@ -1370,7 +1446,7 @@ export const deleteGroup = async (groupID: number) => {
 }
 
 export const createReview = async (assignmentID: number, reviewerID: number, revieweeID: number) => {
-  const response = await fetch(`${BASE_URL}/create_review`, {
+  const response = await safeFetch(`${BASE_URL}/create_review`, {
     method: 'POST',
     body: JSON.stringify({
       assignmentID,
@@ -1386,13 +1462,13 @@ export const createReview = async (assignmentID: number, reviewerID: number, rev
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
   return response
 }
 
 export const createCriterion = async (reviewID: number, criterionRowID: number, grade: number, comments: string) => {
-  const response = await fetch(`${BASE_URL}/create_criterion`, {
+  const response = await safeFetch(`${BASE_URL}/create_criterion`, {
     method: 'POST',
     body: JSON.stringify({
       reviewID,
@@ -1409,27 +1485,27 @@ export const createCriterion = async (reviewID: number, criterionRowID: number, 
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response))
   }
   return response
 }
 
 export const getReview = async (assignmentID: number, reviewerID: number, revieweeID: number) => {
-  const resp = await fetch(`${BASE_URL}/review?assignmentID=${assignmentID}&reviewerID=${reviewerID}&revieweeID=${revieweeID}`, {
+  const resp = await safeFetch(`${BASE_URL}/review?assignmentID=${assignmentID}&reviewerID=${reviewerID}&revieweeID=${revieweeID}`, {
     credentials: 'include'
   })
 
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return resp
 }
 
 export const getNextGroupID = async(assignmentID: number)=> {
-  const response = await fetch(`${BASE_URL}/next_groupid?assignmentID=${assignmentID}`, {
+  const response = await safeFetch(`${BASE_URL}/next_groupid?assignmentID=${assignmentID}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -1440,14 +1516,14 @@ export const getNextGroupID = async(assignmentID: number)=> {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
 }
 
 export const createGroup = async(assignmentID: number, name: string, id: number) =>{
-  const response = await fetch(`${BASE_URL}/create_group`,{
+  const response = await safeFetch(`${BASE_URL}/create_group`,{
     method:"POST",
     body: JSON.stringify({
       assignmentID, name, id
@@ -1460,7 +1536,7 @@ export const createGroup = async(assignmentID: number, name: string, id: number)
   maybeHandleExpire(response);
 
   if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      throw new Error(await getErrorMessageFromResponse(response))
   }
 
   return await response.json();
@@ -1470,7 +1546,7 @@ export const createGroup = async(assignmentID: number, name: string, id: number)
 
 // Admin - Generic Create User (any role)
 export const createUserAdmin = async (name: string, email: string, password: string, role: string = 'student', mustChangePassword: boolean = false) => {
-  const response = await fetch(`${BASE_URL}/admin/users/create`, {
+  const response = await safeFetch(`${BASE_URL}/admin/users/create`, {
     method: 'POST',
     body: JSON.stringify({ 
       name,
@@ -1488,8 +1564,7 @@ export const createUserAdmin = async (name: string, email: string, password: str
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to create user'))
   }
 
   return await response.json();
@@ -1497,7 +1572,7 @@ export const createUserAdmin = async (name: string, email: string, password: str
 
 // Admin - List all users
 export const listAllUsers = async () => {
-  const resp = await fetch(`${BASE_URL}/admin/users`, {
+  const resp = await safeFetch(`${BASE_URL}/admin/users`, {
     method: 'GET',
     credentials: 'include'
   });
@@ -1505,7 +1580,7 @@ export const listAllUsers = async () => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json();
@@ -1513,7 +1588,7 @@ export const listAllUsers = async () => {
 
 // Admin - Update user details (name/email)
 export const updateUserAdmin = async (userId: number, data: { name?: string; email?: string }) => {
-  const resp = await fetch(`${BASE_URL}/admin/users/${userId}`, {
+  const resp = await safeFetch(`${BASE_URL}/admin/users/${userId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
     headers: { 'Content-Type': 'application/json' },
@@ -1523,18 +1598,7 @@ export const updateUserAdmin = async (userId: number, data: { name?: string; ema
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    // Some error responses may be HTML (debug pages). Clone the response
-    // so we can attempt JSON parse and fall back to text without consuming
-    // the original body stream twice.
-    const copyForJson = resp.clone();
-    const copyForText = resp.clone();
-    try {
-      const err = await copyForJson.json();
-      throw new Error(err.msg || `Response status: ${resp.status}`);
-    } catch {
-      const text = await copyForText.text();
-      throw new Error(text || `Response status: ${resp.status}`);
-    }
+    throw new Error(await getErrorMessageFromResponse(resp, 'Failed to update user'))
   }
 
   return await resp.json();
@@ -1542,7 +1606,7 @@ export const updateUserAdmin = async (userId: number, data: { name?: string; ema
 
 // Admin - Update user role
 export const updateUserRoleAdmin = async (userId: number, role: string) => {
-  const resp = await fetch(`${BASE_URL}/admin/users/${userId}/role`, {
+  const resp = await safeFetch(`${BASE_URL}/admin/users/${userId}/role`, {
     method: 'PUT',
     body: JSON.stringify({ role }),
     headers: { 'Content-Type': 'application/json' },
@@ -1552,15 +1616,7 @@ export const updateUserRoleAdmin = async (userId: number, role: string) => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    const copyForJson = resp.clone();
-    const copyForText = resp.clone();
-    try {
-      const err = await copyForJson.json();
-      throw new Error(err.msg || `Response status: ${resp.status}`);
-    } catch {
-      const text = await copyForText.text();
-      throw new Error(text || `Response status: ${resp.status}`);
-    }
+    throw new Error(await getErrorMessageFromResponse(resp, 'Failed to update user role'))
   }
 
   return await resp.json();
@@ -1568,7 +1624,7 @@ export const updateUserRoleAdmin = async (userId: number, role: string) => {
 
 // Admin - Delete user
 export const deleteUserAdmin = async (userId: number) => {
-  const resp = await fetch(`${BASE_URL}/admin/users/${userId}`, {
+  const resp = await safeFetch(`${BASE_URL}/admin/users/${userId}`, {
     method: 'DELETE',
     credentials: 'include'
   });
@@ -1576,15 +1632,7 @@ export const deleteUserAdmin = async (userId: number) => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    const copyForJson = resp.clone();
-    const copyForText = resp.clone();
-    try {
-      const err = await copyForJson.json();
-      throw new Error(err.msg || `Response status: ${resp.status}`);
-    } catch {
-      const text = await copyForText.text();
-      throw new Error(text || `Response status: ${resp.status}`);
-    }
+    throw new Error(await getErrorMessageFromResponse(resp, 'Failed to delete user'))
   }
 
   return await resp.json();
@@ -1596,7 +1644,7 @@ export const deleteUserAdmin = async (userId: number) => {
 // which is a user-facing validation error — not an expired session. Calling
 // maybeHandleExpire() here would incorrectly redirect the user to login.
 export const changePassword = async (currentPassword: string, newPassword: string) => {
-  const response = await fetch(`${BASE_URL}/user/password`, {
+  const response = await safeFetch(`${BASE_URL}/user/password`, {
     method: 'PATCH',
     body: JSON.stringify({
       current_password: currentPassword,
@@ -1609,14 +1657,13 @@ export const changePassword = async (currentPassword: string, newPassword: strin
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Response status: ${response.status}`);
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to change password'))
   }
 
   return await response.json();
 }
 export const joinRosterCourse = async (courseId: number) => {
-  const resp = await fetch(`${BASE_URL}/class/join_course`, {
+  const resp = await safeFetch(`${BASE_URL}/class/join_course`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1628,14 +1675,14 @@ export const joinRosterCourse = async (courseId: number) => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json();
 };
 
 export const getAvailableCourses = async () => {
-  const resp = await fetch(`${BASE_URL}/class/available_courses`, {
+  const resp = await safeFetch(`${BASE_URL}/class/available_courses`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -1646,7 +1693,7 @@ export const getAvailableCourses = async () => {
   maybeHandleExpire(resp);
 
   if (!resp.ok) {
-    throw new Error(`Response status: ${resp.status}`);
+    throw new Error(await getErrorMessageFromResponse(resp))
   }
 
   return await resp.json();

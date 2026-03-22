@@ -68,6 +68,12 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+
           <Route path="/profile/:id" element={
             <ProtectedRoute>
               <Profile />

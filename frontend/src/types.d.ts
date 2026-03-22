@@ -37,7 +37,6 @@ interface Criterion {
   rubricID: number;
   question: string;
   scoreMax: number;
-  hasScore: boolean;
 }
 
 interface Assignment {

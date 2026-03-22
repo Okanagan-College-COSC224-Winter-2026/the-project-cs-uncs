@@ -5,7 +5,6 @@ import { useState } from 'react';
 interface props {
     question: string;
     scoreMax: number;
-    hasScore: boolean;
     onCriterionSelect: (row: number, column: number) => void;
     questionIndex: number;
     grade: number;
@@ -35,23 +34,19 @@ export default function Criterion(props: props) {
     return (
         <tr className='criterionRow'>
             <th className='criterionHead'>{props.question}</th>
-            {props.hasScore ? (
-                Array.from({ length: props.scoreMax }, (_, i) => {
-                    const cellValue = i + 1; 
-                    const isReviewed = cellValue === props.grade; 
-                    return (
-                        <td 
-                            key={i} 
-                            onClick={isReadOnly ? undefined : () => handleCellClick(i)}
-                            className={isReviewed ? 'reviewedCell' : (clickedCell === cellValue ? 'clickedCell' : '')}
-                        >
-                            {cellValue}
-                        </td>
-                    );
-                })
-            ) : (
-                <td className='criterionData'>—</td>
-            )}
+            {Array.from({ length: props.scoreMax }, (_, i) => {
+                const cellValue = i + 1;
+                const isReviewed = cellValue === props.grade;
+                return (
+                    <td
+                        key={i}
+                        onClick={isReadOnly ? undefined : () => handleCellClick(i)}
+                        className={isReviewed ? 'reviewedCell' : (clickedCell === cellValue ? 'clickedCell' : '')}
+                    >
+                        {cellValue}
+                    </td>
+                );
+            })}
         </tr>
     )
 }

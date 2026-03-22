@@ -19,7 +19,8 @@ def app(tmp_path_factory):
             "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
             "SQLALCHEMY_TRACK_MODIFICATIONS": False,
             "SECRET_KEY": "test-secret",
-            "JWT_SECRET_KEY": "test-jwt-secret",
+            # HS256 secrets should be at least 32 bytes.
+            "JWT_SECRET_KEY": "test-jwt-secret-change-me-please-32-bytes-min",
         }
     )
 

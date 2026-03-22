@@ -33,7 +33,7 @@ export default function Assignment() {
   const MAX_CRITERION_POINTS = 10;
 
   const [editMode, setEditMode] = useState(false);
-  const [criteria, setCriteria] = useState<Array<{ id: number; rubricID: number; question: string; scoreMax: number; hasScore: boolean }>>([]);
+  const [criteria, setCriteria] = useState<Array<{ id: number; rubricID: number; question: string; scoreMax: number }>>([]);
   const [rubricId, setRubricId] = useState<number | null>(null);
   const [draftCriteria, setDraftCriteria] = useState<RubricCriterionDraft[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -105,11 +105,10 @@ export default function Assignment() {
     setDraftCriteria(
       (criteria.length > 0
         ? criteria
-        : [{ id: undefined, question: "", hasScore: true, scoreMax: 5 }]
+        : [{ id: undefined, question: "", scoreMax: 5 }]
       ).map((c) => ({
         id: c.id,
         question: c.question,
-        hasScore: true,
         scoreMax: c.scoreMax,
       }))
     );
@@ -159,20 +158,19 @@ export default function Assignment() {
           const nextScoreMax = Math.min(MAX_CRITERION_POINTS, Math.max(0, c.scoreMax || 0));
           const changed =
             prev.question !== c.question ||
-            prev.scoreMax !== nextScoreMax ||
-            prev.hasScore !== true;
+            prev.scoreMax !== nextScoreMax;
           if (!changed) return null;
           return {
             id: c.id as number,
-            payload: { question: c.question, hasScore: true, scoreMax: nextScoreMax },
+            payload: { question: c.question, scoreMax: nextScoreMax },
           };
         })
-        .filter((x): x is { id: number; payload: { question: string; scoreMax: number; hasScore: boolean } } => Boolean(x));
+        .filter((x): x is { id: number; payload: { question: string; scoreMax: number } } => Boolean(x));
 
       await Promise.all(deletions.map((cid) => deleteCriteriaDescription(cid)));
       await Promise.all(updates.map((u) => updateCriteriaDescription(u.id, u.payload)));
       await Promise.all(
-        creations.map((c) => createCriteria(effectiveRubricId as number, c.question, c.scoreMax, true, true))
+        creations.map((c) => createCriteria(effectiveRubricId as number, c.question, c.scoreMax, true))
       );
 
       const critResp = await getRubricCriteria(Number(id));

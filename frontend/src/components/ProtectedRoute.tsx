@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-
-const BASE_URL = "http://localhost:5000";
+import { getCurrentUser } from "../util/api";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -15,16 +14,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     useEffect(() => {
         ;(async () => {
             try {
-                const response = await fetch(`${BASE_URL}/user`, {
-                    method: "GET",
-                    credentials: "include",
-                });
-                if (!response.ok) {
-                    navigate("/");
-                    return;
-                }
-
-                const user = await response.json();
+                const user = await getCurrentUser();
 
                 // If user must change password, redirect to /change-password
                 // (unless they're already on that page)

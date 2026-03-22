@@ -22,6 +22,7 @@ export default function ClassHome() {
   const [showAddStudents, setShowAddStudents] = useState(false);
   const [emailsText, setEmailsText] = useState("");
   const [adding, setAdding] = useState(false);
+  const [confirmDeleteAssignmentId, setConfirmDeleteAssignmentId] = useState<number | null>(null);
 
   const isTeacherOrAdmin = isTeacher() || isAdmin();
 
@@ -83,17 +84,24 @@ export default function ClassHome() {
     : [];
 
   const handleDeleteAssignment = async (assignmentId: number | string) => {
-    if (window.confirm('Are you sure you want to delete this assignment?')) {
-      try {
-        await deleteAssignment(Number(assignmentId));
-        setAssignments(assignments.filter(a => a.id !== assignmentId));
-        setStatusType('success');
-        setStatusMessage('Assignment deleted successfully!');
-      } catch (error) {
-        console.error('Error deleting assignment:', error);
-        setStatusType('error');
-        setStatusMessage('Error deleting assignment.');
-      }
+    const idNum = Number(assignmentId);
+    if (confirmDeleteAssignmentId !== idNum) {
+      setConfirmDeleteAssignmentId(idNum);
+      setStatusType('error');
+      setStatusMessage('Click delete again to confirm.');
+      return;
+    }
+
+    try {
+      await deleteAssignment(idNum);
+      setAssignments(assignments.filter((a) => a.id !== assignmentId));
+      setConfirmDeleteAssignmentId(null);
+      setStatusType('success');
+      setStatusMessage('Assignment deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      setStatusType('error');
+      setStatusMessage('Error deleting assignment.');
     }
   };
 
@@ -133,7 +141,20 @@ export default function ClassHome() {
         <div className="ClassHeaderRight">
           {isTeacher() ? (
             <>
-              <Button onClick={() => importCSV(id as string)}>
+              <Button
+                onClick={() =>
+                  importCSV(id as string, {
+                    onSuccess: (msg) => {
+                      setStatusType('success');
+                      setStatusMessage(msg);
+                    },
+                    onError: (msg) => {
+                      setStatusType('error');
+                      setStatusMessage(msg);
+                    },
+                  })
+                }
+              >
                 Add Students via CSV
               </Button>
               <Button
@@ -256,11 +277,12 @@ export default function ClassHome() {
         </div>
 
         {isTeacher() ? (
-          <div className="AssInputChunk">
-            <Button onClick={() => navigate(`/classes/${id}/create-assignment`)}>
-              Create Assignment
-            </Button>
-          </div>
+          <Button
+            className="ClassHomeCreateAssignmentButton"
+            onClick={() => navigate(`/classes/${id}/create-assignment`)}
+          >
+            Create Assignment
+          </Button>
         ) : null}
 
       </div>

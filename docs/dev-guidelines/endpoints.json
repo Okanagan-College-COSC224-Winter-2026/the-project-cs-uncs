@@ -57,7 +57,7 @@
       "path": "/create_criteria",
       "params": null,
       "query": null,
-      "body": { "id": "number", "rubricID": "number", "question": "string", "scoreMax": "number", "hasScore": "boolean" },
+      "body": { "id": "number", "rubricID": "number", "question": "string", "scoreMax": "number" },
       "response": { "message": "string", "id": "number" },
       "authRequired": true,
       "notes": "Creates a Criteria_Description row. Field `id` is taken from body."

@@ -22,6 +22,7 @@ class UserUpdateSchema(Schema):
     """Schema for updating user information"""
 
     name = fields.Str(validate=validate.Length(min=1, max=255))
+    email = fields.Email(validate=validate.Length(max=255))
 
 
 user_update_schema = UserUpdateSchema()
@@ -139,9 +140,26 @@ def update_current_user():
     if "name" in data:
         user.name = data["name"]
 
+    email_changed = False
+    if "email" in data:
+        new_email = data["email"].strip()
+        if new_email and new_email != user.email:
+            existing = User.get_by_email(new_email)
+            if existing and existing.id != user.id:
+                return jsonify({"msg": "Email already in use"}), 400
+            user.email = new_email
+            email_changed = True
+
     user.update()
 
-    return jsonify(user_schema.dump(user)), 200
+    response = jsonify(user_schema.dump(user))
+
+    # JWT identity is the email; if email changed we must reissue cookies.
+    if email_changed:
+        access_token = create_access_token(identity=user.email)
+        set_access_cookies(response, access_token)
+
+    return response, 200
 
 
 @bp.route("/<int:user_id>", methods=["DELETE"])

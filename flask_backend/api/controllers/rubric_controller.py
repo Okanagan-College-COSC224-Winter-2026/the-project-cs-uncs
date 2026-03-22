@@ -16,7 +16,7 @@ def get_rubric_for_assignment(assignment_id):
     Used by the frontend rubric editor to determine the rubric_id even when
     there are zero criteria.
     """
-    assignment = Assignment.query.get(assignment_id)
+    assignment = db.session.get(Assignment, assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
@@ -39,15 +39,15 @@ def create_rubric():
     email = get_jwt_identity()
     user = User.get_by_email(email)
     
-    assignment = Assignment.query.get(assignment_id)
+    assignment = db.session.get(Assignment, assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
         
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Class not found"}), 404
 
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
     # Check existing rubric and delete
@@ -68,7 +68,7 @@ def create_rubric():
 @jwt_required()
 def get_criteria(assignment_id):
     """Get criteria for a specific assignment (for students/teachers)"""
-    assignment = Assignment.query.get(assignment_id)
+    assignment = db.session.get(Assignment, assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
@@ -87,7 +87,6 @@ def get_criteria(assignment_id):
             "rubricID": desc.rubricID,
             "question": desc.question,
             "scoreMax": desc.scoreMax,
-            "hasScore": desc.hasScore
         })
     
     return jsonify(result), 200
@@ -100,43 +99,36 @@ def create_criteria():
     rubric_id = data.get("rubricID")
     question = data.get("question")
     score_max = data.get("scoreMax", 5)
-    has_score = data.get("hasScore", True)
     
     if not rubric_id:
         return jsonify({"msg": "Rubric ID is required"}), 400
 
-    rubric = Rubric.query.get(rubric_id)
+    rubric = db.session.get(Rubric, rubric_id)
     if not rubric:
         return jsonify({"msg": "Rubric not found"}), 404
         
     # Verify ownership via assignment -> course -> teacher
-    assignment = Assignment.query.get(rubric.assignmentID)
+    assignment = db.session.get(Assignment, rubric.assignmentID)
     if not assignment:
         return jsonify({"msg": "Assignment associated with rubric not found"}), 404
         
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Course associated with assignment not found"}), 404
         
     email = get_jwt_identity()
     user = User.get_by_email(email)
     
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
     if not question or not str(question).strip():
         return jsonify({"msg": "Question is required"}), 400
 
     try:
-        has_score = bool(has_score)
         score_max = int(score_max) if score_max is not None else 0
     except (TypeError, ValueError):
         return jsonify({"msg": "Invalid scoreMax"}), 400
-
-    if not has_score:
-        return jsonify({
-            "msg": "Rubric criteria must use numeric scores (hasScore=true). Use the Additional comments box instead."
-        }), 400
 
     if score_max < 1:
         return jsonify({"msg": "scoreMax must be 1 or greater"}), 400
@@ -148,7 +140,6 @@ def create_criteria():
         rubricID=rubric_id, 
         question=str(question).strip(),
         scoreMax=score_max, 
-        hasScore=has_score,
     )
     
     try:
@@ -164,47 +155,39 @@ def create_criteria():
 @bp.route("/update_criteria/<int:criteria_id>", methods=["PATCH"])
 @jwt_teacher_required
 def update_criteria(criteria_id):
-    """Update a single criteria description (question/scoreMax/hasScore)."""
-    criterion = CriteriaDescription.query.get(criteria_id)
+    """Update a single criteria description (question/scoreMax)."""
+    criterion = db.session.get(CriteriaDescription, criteria_id)
     if not criterion:
         return jsonify({"msg": "Criteria not found"}), 404
 
-    rubric = Rubric.query.get(criterion.rubricID)
+    rubric = db.session.get(Rubric, criterion.rubricID)
     if not rubric:
         return jsonify({"msg": "Rubric not found"}), 404
 
-    assignment = Assignment.query.get(rubric.assignmentID)
+    assignment = db.session.get(Assignment, rubric.assignmentID)
     if not assignment:
         return jsonify({"msg": "Assignment associated with rubric not found"}), 404
 
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Course associated with assignment not found"}), 404
 
     email = get_jwt_identity()
     user = User.get_by_email(email)
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
     data = request.get_json() or {}
     next_question = data.get("question", None)
     next_score_max = data.get("scoreMax", None)
-    next_has_score = data.get("hasScore", None)
 
-    if next_question is None and next_score_max is None and next_has_score is None:
+    if next_question is None and next_score_max is None:
         return jsonify({"msg": "No fields to update"}), 400
 
     if next_question is not None:
         if not str(next_question).strip():
             return jsonify({"msg": "Question is required"}), 400
         criterion.question = str(next_question).strip()
-
-    if next_has_score is not None:
-        if not bool(next_has_score):
-            return jsonify({
-                "msg": "Rubric criteria must use numeric scores (hasScore=true). Use the Additional comments box instead."
-            }), 400
-        criterion.hasScore = True
 
     if next_score_max is not None:
         try:
@@ -228,7 +211,6 @@ def update_criteria(criteria_id):
                         "rubricID": criterion.rubricID,
                         "question": criterion.question,
                         "scoreMax": criterion.scoreMax,
-                        "hasScore": criterion.hasScore,
                     },
                 }
             ),
@@ -242,25 +224,25 @@ def update_criteria(criteria_id):
 @jwt_teacher_required
 def delete_criteria(criteria_id):
     """Delete a single criteria description from a rubric."""
-    criterion = CriteriaDescription.query.get(criteria_id)
+    criterion = db.session.get(CriteriaDescription, criteria_id)
     if not criterion:
         return jsonify({"msg": "Criteria not found"}), 404
 
-    rubric = Rubric.query.get(criterion.rubricID)
+    rubric = db.session.get(Rubric, criterion.rubricID)
     if not rubric:
         return jsonify({"msg": "Rubric not found"}), 404
 
-    assignment = Assignment.query.get(rubric.assignmentID)
+    assignment = db.session.get(Assignment, rubric.assignmentID)
     if not assignment:
         return jsonify({"msg": "Assignment associated with rubric not found"}), 404
 
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Course associated with assignment not found"}), 404
 
     email = get_jwt_identity()
     user = User.get_by_email(email)
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
     try:

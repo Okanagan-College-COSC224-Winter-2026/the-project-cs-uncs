@@ -146,16 +146,35 @@ export default function Profile() {
       <StatusMessage message={statusMessage} type={statusType} />
 
       <div className="profile-hero">
-        <div className="profile-image">
-          {!photoError ? (
-            <img
-              src={photoUrl}
-              alt="profile"
-              onError={() => setPhotoError(true)}
+        <div className="profile-imageColumn">
+          <div className="profile-image">
+            {!photoError ? (
+              <img
+                src={photoUrl}
+                alt="profile"
+                onError={() => setPhotoError(true)}
+              />
+            ) : (
+              <div className="ProfilePhotoFallback" aria-label="No profile photo" />
+            )}
+          </div>
+
+          <div className="ProfilePhotoActions">
+            <input
+              ref={fileInputRef}
+              className="ProfilePhotoInput"
+              type="file"
+              accept="image/*"
+              onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
             />
-          ) : (
-            <div className="ProfilePhotoFallback" aria-label="No profile photo" />
-          )}
+            <button
+              type="button"
+              className="ProfilePhotoButton"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {photoError ? 'Add photo' : 'Change photo'}
+            </button>
+          </div>
         </div>
 
         <div className="profile-info">
@@ -256,22 +275,6 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="ProfilePhotoActions">
-            <input
-              ref={fileInputRef}
-              className="ProfilePhotoInput"
-              type="file"
-              accept="image/*"
-              onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
-            />
-            <button
-              type="button"
-              className="ProfilePhotoButton"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {photoError ? 'Add photo' : 'Change photo'}
-            </button>
-          </div>
         </div>
       </div>
     </div>

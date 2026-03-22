@@ -1,7 +1,228 @@
-.AdminUsers { padding: 16px; }
-.AdminUsers h1 { margin-bottom: 12px; }
-.NewUser form { display:flex; gap:8px; margin-bottom:12px; }
-.NewUser input, .NewUser select { padding:6px; }
-.UsersList table { width:100%; border-collapse:collapse; }
-.UsersList th, .UsersList td { border:1px solid #ddd; padding:8px; }
-.Error { color: red; margin-bottom:8px; }
+.AdminUsers {
+  padding: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.AdminUsers h1 {
+  margin-bottom: 2rem;
+  color: var(--text-primary);
+  font-size: 1.8rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.Error {
+  padding: 1rem;
+  background-color: color-mix(in srgb, var(--error) 20%, transparent);
+  border-left: 4px solid var(--error);
+  border-radius: 4px;
+  color: var(--error);
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.admin-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 2rem;
+  background-color: var(--card-background);
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.admin-controls input,
+.admin-controls select {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-background);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.admin-controls input:focus,
+.admin-controls select:focus {
+  outline: none;
+  border-color: var(--field-border-focus);
+}
+
+.admin-controls label {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-total-count {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.NewUser {
+  background-color: var(--card-background);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.NewUser h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+}
+
+.NewUser form {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.NewUser input,
+.NewUser select {
+  padding: 0.75rem;
+  border: 1px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-background);
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 150px;
+}
+
+.NewUser button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--button-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.NewUser button:hover {
+  background-color: var(--button-primary-hover);
+}
+
+.UsersList {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.UsersList h2 {
+  padding: 1.5rem;
+  margin: 0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+}
+
+.UsersList h2 p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: normal;
+  margin-top: 0.5rem;
+}
+
+.UsersList table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.UsersList th {
+  text-align: left;
+  padding: 1rem 1.5rem;
+  background-color: var(--background-secondary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.UsersList td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.UsersList tr:last-child td {
+  border-bottom: none;
+}
+
+.UsersList tr:hover td {
+  background-color: var(--background-secondary);
+}
+
+.UsersList td button {
+  padding: 0.4rem 0.8rem;
+  margin-right: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--card-background);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.UsersList td button:hover {
+  background-color: var(--background-tertiary);
+}
+
+.UsersList td button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.UsersList td input,
+.UsersList td select {
+  padding: 0.4rem;
+  border: 1px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-background);
+  color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-pagination {
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: var(--background-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.admin-pagination button {
+  padding: 0.5rem 1rem;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.admin-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-pagination button:not(:disabled):hover {
+  background-color: var(--background-tertiary);
+}
+
+.admin-pagination span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}

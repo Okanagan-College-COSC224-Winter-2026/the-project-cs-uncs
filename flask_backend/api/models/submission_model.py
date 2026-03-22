@@ -1,6 +1,6 @@
-"""
-Submission model for the peer evaluation app.
-"""
+"""Submission model for the peer evaluation app."""
+
+from datetime import datetime
 
 from .db import db
 
@@ -14,15 +14,18 @@ class Submission(db.Model):
     path = db.Column(db.String(255), nullable=True)
     studentID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
     assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
+    submitted_at = db.Column(db.DateTime, nullable=False, default=datetime.now, index=True)
 
     # relationships
     student = db.relationship("User", back_populates="submissions")
     assignment = db.relationship("Assignment", back_populates="submissions")
 
-    def __init__(self, path, studentID, assignmentID):
+    def __init__(self, path, studentID, assignmentID, submitted_at=None):
         self.path = path
         self.studentID = studentID
         self.assignmentID = assignmentID
+        if submitted_at is not None:
+            self.submitted_at = submitted_at
 
     def __repr__(self):
         return f"<Submission id={self.id} student={self.studentID} assignment={self.assignmentID}>"

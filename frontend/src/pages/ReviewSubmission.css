@@ -130,7 +130,14 @@
 .criteria-list {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+.review-action-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--spacing-md);
 }
 
 .criterion-item {
@@ -238,7 +245,7 @@
 
 .submit-section {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin-top: 2rem;
   padding-top: 2rem;
   border-top: 2px solid var(--border-color);

@@ -14,7 +14,8 @@
 
   border-radius: var(--border-radius);
   border: 2px solid var(--border-color);
-  background-color: var(--background-primary);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
 
   font-weight: 600;
   font-size: 1rem;
@@ -81,7 +82,7 @@
 }
 
 .A_Card_Status_due-soon {
-  background-color: #ffcc00;
+  background-color: var(--warning);
   color: #333;
 }
 
@@ -104,4 +105,8 @@
 
 .A_Card:active {
   transform: translateX(2px);
+}
+
+.delete-assignment-btn {
+  margin-left: auto;
 }

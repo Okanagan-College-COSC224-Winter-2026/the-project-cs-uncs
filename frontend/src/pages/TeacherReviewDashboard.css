@@ -2,10 +2,21 @@
   padding: 0;
 }
 
+.teacher-dashboard-drillBackRow {
+  margin-bottom: 0;
+}
+
 .teacher-dashboard-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem 2rem 2rem;
+  padding: 0;
+}
+
+.teacher-dashboard-panel {
+  width: 100%;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
 }
 
 .dashboard-header {
@@ -137,6 +148,94 @@
   margin-top: 2rem;
 }
 
+.teacher-groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.teacher-group-card {
+  text-align: left;
+  background-color: var(--card-background);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+  color: var(--text-primary);
+}
+
+.teacher-group-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.teacher-group-cardTitle {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.teacher-group-cardMeta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.teacher-breadcrumbRow {
+  margin-bottom: 0.75rem;
+}
+
+.teacher-groupScoreRow {
+  width: 100%;
+  text-align: left;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.teacher-groupScoreRow:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--background-secondary);
+}
+
+.teacher-memberTotals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.teacher-memberRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  background-color: var(--card-background);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.teacher-memberRow:hover {
+  border-color: var(--accent-primary);
+}
+
+.teacher-memberName {
+  font-weight: 700;
+}
+
+.teacher-memberScore {
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .reviews-section h3 {
   margin-bottom: 1rem;
   color: var(--text-primary);
@@ -161,19 +260,20 @@
   border: 2px solid var(--border-color);
   border-radius: var(--border-radius);
   overflow: hidden;
-  transition: border-color 0.2s;
+  transition: var(--transition-base);
 }
 
 .dashboard-review-item:hover {
   border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .dashboard-review-item.completed {
-  border-left: 4px solid var(--success);
+  border-color: var(--success);
 }
 
 .dashboard-review-item.incomplete {
-  border-left: 4px solid var(--warning);
+  border-color: var(--warning);
 }
 
 .review-summary {
@@ -185,8 +285,12 @@
   user-select: none;
 }
 
-.review-summary:hover {
+.dashboard-review-item:hover .review-summary {
   background-color: var(--background-secondary);
+}
+
+.dashboard-review-item--static:hover .review-summary {
+  background-color: transparent;
 }
 
 .review-participants {
@@ -264,7 +368,7 @@
 
 .review-details {
   padding: 1.5rem;
-  background-color: var(--background-secondary);
+  background-color: var(--card-background);
   border-top: 1px solid var(--border-color);
 }
 
@@ -351,7 +455,11 @@
 
 @media (max-width: 768px) {
   .teacher-dashboard-content {
-    padding: 0 1rem 1rem 1rem;
+    padding: 0;
+  }
+
+  .teacher-dashboard-panel {
+    padding: var(--spacing-md);
   }
 
   .dashboard-header {

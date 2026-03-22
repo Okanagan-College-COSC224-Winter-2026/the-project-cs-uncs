@@ -1,0 +1,73 @@
+.MyGroupPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+}
+
+.MyGroupPanel {
+  width: 100%;
+  max-width: 800px;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.MyGroupError {
+  width: 100%;
+  max-width: 800px;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.MyGroupMuted {
+  color: var(--text-secondary);
+}
+
+.MyGroupName {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.MyGroupSectionTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.MyGroupList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.MyGroupRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
+}
+
+.MyGroupRowName {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.MyGroupRowEmail {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}

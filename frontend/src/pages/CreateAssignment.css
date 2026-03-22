@@ -1,0 +1,46 @@
+.CreateAssignment {
+  padding: 0;
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.CreateAssignment h1 {
+  color: var(--text-primary);
+  border-bottom: 3px solid var(--border-color);
+  padding-bottom: var(--spacing-md);
+}
+
+.CreateAssignment h2 {
+  color: var(--text-primary);
+}
+
+.CreateAssignment textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.CreateAssignmentFile {
+  width: 100%;
+}
+
+.CreateAssignmentFileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.CreateAssignmentFileName {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.CreateAssignmentActions {
+  display: flex;
+  gap: var(--spacing-md);
+}

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import get_jwt_identity
 from werkzeug.security import generate_password_hash
 
-from ..models import User, UserSchema, db, Review, Submission, Group_Members, User_Course, Course
+from ..models import User, UserSchema, db, Review, Submission, GroupMember, User_Course, Course
 from .auth_controller import jwt_admin_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -144,7 +144,7 @@ def delete_user(user_id):
         # Delete dependent records that reference User.id (reviews, submissions, group memberships, course links)
         db.session.query(Review).filter((Review.reviewerID == user.id) | (Review.revieweeID == user.id)).delete(synchronize_session=False)
         db.session.query(Submission).filter(Submission.studentID == user.id).delete(synchronize_session=False)
-        db.session.query(Group_Members).filter(Group_Members.userID == user.id).delete(synchronize_session=False)
+        db.session.query(GroupMember).filter(GroupMember.user_id == user.id).delete(synchronize_session=False)
         db.session.query(User_Course).filter(User_Course.userID == user.id).delete(synchronize_session=False)
 
         # Finally delete the user record

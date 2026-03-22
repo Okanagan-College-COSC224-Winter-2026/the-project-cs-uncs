@@ -2,10 +2,12 @@
   padding: 0;
 }
 
+.peer-reviews-drillBackRow {
+  margin-bottom: var(--spacing-lg);
+}
+
 .peer-reviews-content {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 2rem 2rem 2rem;
+  padding-bottom: var(--spacing-xl);
 }
 
 .reviews-header {
@@ -25,45 +27,6 @@
 .deadline-passed {
   color: var(--error);
   font-weight: bold;
-}
-
-.review-status {
-  background-color: var(--background-secondary);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 2rem;
-}
-
-.review-status h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-}
-
-.status-details {
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.status-item {
-  font-size: 1rem;
-  color: var(--text-secondary);
-}
-
-.status-item strong {
-  font-size: 1.2rem;
-  margin-left: 0.25rem;
-  color: var(--text-primary);
-}
-
-.status-item .completed {
-  color: var(--success);
-}
-
-.status-item .remaining {
-  color: var(--warning);
 }
 
 .no-reviews {
@@ -95,6 +58,38 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
+}
+
+/* Group peer-eval cards contain the rubric + comments.
+   Make the inner content use the full available width and keep the rubric
+   constrained to the card/container. */
+.group-peer-eval-card {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.group-peer-eval-card .review-info {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Ensure the rubric expands on wide screens but never overflows the card. */
+.group-peer-eval-card .Criteria {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.group-peer-eval-card .criteriaTable {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+/* Add breathing room between rubric and the additional comments box. */
+.group-peer-eval-card .criteria-list {
+  margin-top: var(--spacing-lg);
 }
 
 .review-card:hover {
@@ -179,6 +174,51 @@
   border-radius: 4px;
   color: var(--error);
   font-weight: 500;
+}
+
+/* Reused rubric comment blocks (shared with review submission styles) */
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.criterion-item {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.criterion-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.criterion-comments label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.criterion-comments textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  background-color: var(--input-background);
+  color: var(--input-text);
+}
+
+.criterion-comments textarea:disabled {
+  background-color: var(--background-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  border-color: var(--border-color);
 }
 
 @media (max-width: 768px) {

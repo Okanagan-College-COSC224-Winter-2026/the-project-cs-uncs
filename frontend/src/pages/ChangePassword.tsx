@@ -65,7 +65,7 @@ export default function ChangePassword() {
 
   return (
     <div className="InputPage">
-      <div className="InputBlock">
+      <div className="InputBlock Page">
         <h1>Change Password</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {isForced

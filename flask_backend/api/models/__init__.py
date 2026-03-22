@@ -1,20 +1,24 @@
 from .assignment_model import Assignment
-from .course_group_model import CourseGroup
+from .assignment_included_group_model import AssignmentIncludedGroup
 from .course_model import Course
 from .criteria_description_model import CriteriaDescription
 from .criterion_model import Criterion
 from .db import db, ma
-from .group_members_model import Group_Members
+from .group_model import Group
+from .group_evaluation_criterion_model import GroupEvaluationCriterion
+from .group_evaluation_submission_model import GroupEvaluationSubmission
+from .group_evaluation_target_model import GroupEvaluationTarget
+from .group_member_model import GroupMember
 from .review_model import Review
 from .rubric_model import Rubric
 from .schemas import (
     AssignmentSchema,
-    CourseGroupSchema,
     CourseListSchema,
     CourseSchema,
     CriteriaDescriptionSchema,
+    CourseGroupSchema,
     CriterionSchema,
-    GroupMembersSchema,
+    GroupMemberSchema,
     ReviewSchema,
     RubricSchema,
     SubmissionSchema,
@@ -33,13 +37,17 @@ __all__ = [
     "ma",
     "User",
     "Course",
+    "Group",
+    "GroupMember",
     "Assignment",
+    "AssignmentIncludedGroup",
     "Rubric",
     "CriteriaDescription",
     "Criterion",
     "Review",
-    "CourseGroup",
-    "Group_Members",
+    "GroupEvaluationSubmission",
+    "GroupEvaluationTarget",
+    "GroupEvaluationCriterion",
     "User_Course",
     "Submission",
     "UserSchema",
@@ -54,7 +62,7 @@ __all__ = [
     "CriterionSchema",
     "ReviewSchema",
     "CourseGroupSchema",
-    "GroupMembersSchema",
+    "GroupMemberSchema",
     "UserCourseSchema",
     "SubmissionSchema",
 ]

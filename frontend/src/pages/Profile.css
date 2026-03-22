@@ -59,6 +59,36 @@
   margin: 0;
 }
 
+.Profile .ProfilePhotoActions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  margin-top: var(--spacing-md);
+}
+
+.Profile .ProfilePhotoInput {
+  display: none;
+}
+
+.Profile .ProfilePhotoButton {
+  border: 2px solid var(--border-color);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+}
+
+.Profile .ProfilePhotoButton:hover {
+  filter: brightness(0.98);
+}
+
+.Profile .ProfilePhotoFallback {
+  width: 100%;
+  height: 100%;
+  background: var(--background-secondary);
+}
+
 .Profile .profile-section {
   width: 100%;
   padding: var(--spacing-lg);

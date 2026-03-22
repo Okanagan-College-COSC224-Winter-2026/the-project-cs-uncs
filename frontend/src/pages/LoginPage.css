@@ -41,6 +41,13 @@
   transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
+.LoginForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .LoginInner {
   display: flex;
   flex-direction: column;

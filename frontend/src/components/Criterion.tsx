@@ -9,12 +9,15 @@ interface props {
     onCriterionSelect: (row: number, column: number) => void;
     questionIndex: number;
     grade: number;
+    readOnly?: boolean;
 }
 
 export default function Criterion(props: props) {
     const [clickedCell, setClickedCell] = useState<number | null>(null);
+    const isReadOnly = !!props.readOnly;
     
     const handleCellClick = (columnIndex: number) => {
+        if (isReadOnly) return;
         const column = columnIndex + 1; 
         
         // Toggle selection: if same cell is clicked again, deselect it
@@ -39,7 +42,7 @@ export default function Criterion(props: props) {
                     return (
                         <td 
                             key={i} 
-                            onClick={() => handleCellClick(i)}
+                            onClick={isReadOnly ? undefined : () => handleCellClick(i)}
                             className={isReviewed ? 'reviewedCell' : (clickedCell === cellValue ? 'clickedCell' : '')}
                         >
                             {cellValue}
@@ -47,9 +50,7 @@ export default function Criterion(props: props) {
                     );
                 })
             ) : (
-                <td className='criterionData'>
-                    <textarea className='comment' placeholder='Comment here'/>
-                </td>
+                <td className='criterionData'>—</td>
             )}
         </tr>
     )

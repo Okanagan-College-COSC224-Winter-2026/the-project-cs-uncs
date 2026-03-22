@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listAllUsers, createUserAdmin, updateUserAdmin, updateUserRoleAdmin, deleteUserAdmin } from "../util/api";
+import BackArrow from "../components/BackArrow";
 import './AdminUsers.css'
 
 type User = {
@@ -59,13 +60,12 @@ export default function AdminUsers() {
     }
   }
 
-  type UpdateUserPayload = { name?: string; email?: string };
-
   const handleSave = async (userId: number, updated: Partial<User>) => {
     try {
-      if (updated.name || updated.email) {
-        await updateUserAdmin(userId, { name: updated.name, email: updated.email } as UpdateUserPayload);
-      }
+      const payload: { name?: string; email?: string } = {};
+      if (updated.name !== undefined) payload.name = updated.name;
+      if (updated.email !== undefined) payload.email = updated.email;
+      if (Object.keys(payload).length > 0) await updateUserAdmin(userId, payload);
       if (updated.role) {
         await updateUserRoleAdmin(userId, updated.role);
       }
@@ -99,7 +99,8 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="AdminUsers">
+    <div className="AdminUsers Page">
+      <BackArrow />
       <h1>Admin — Manage Users</h1>
 
       {error && <div className="Error" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
@@ -136,7 +137,7 @@ export default function AdminUsers() {
 
       <section className="UsersList">
         <h2>Existing users</h2>
-        {loading ? <p>Loading...</p> : (
+        {loading ? <p className="PageStatusText">Loading…</p> : (
           <table>
             <thead>
               <tr>

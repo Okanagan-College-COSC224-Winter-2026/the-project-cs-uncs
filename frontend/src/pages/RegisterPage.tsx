@@ -25,6 +25,8 @@ export default function RegisterPage() {
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
 
+  const canRegister = !!name.trim() && !!email.trim() && !!password.trim();
+
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
       setStatusType('error');
@@ -153,7 +155,16 @@ export default function RegisterPage() {
         <h1>Register</h1>
 
         <div className="RegisterInner">
-          <div className="RegisterInputs">
+          <form
+            className="RegisterInputs"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!canRegister) {
+                return;
+              }
+              handleRegister();
+            }}
+          >
             <div className="RegisterInputChunk">
               <label htmlFor="register-name">Name</label>
               <Textbox
@@ -201,19 +212,20 @@ export default function RegisterPage() {
 
             <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
               <Button
-                onClick={handleRegister}
-                disabled={!name.trim() || !email.trim() || !password.trim()}
+                htmlType="submit"
+                disabled={!canRegister}
               >
                 Register
               </Button>
               <Button
+                htmlType="button"
                 type="secondary"
                 onClick={() => navigate('/')}
               >
                 Login
               </Button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

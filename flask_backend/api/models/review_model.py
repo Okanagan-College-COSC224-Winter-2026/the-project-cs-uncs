@@ -2,6 +2,8 @@
 Review model for the peer evaluation app.
 """
 
+from datetime import datetime
+
 from sqlalchemy.orm import joinedload
 
 from .db import db
@@ -13,12 +15,15 @@ class Review(db.Model):
     __tablename__ = "Review"
 
     id = db.Column(db.Integer, primary_key=True)
-    assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
+    assignmentID = db.Column(
+        db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True
+    )
     reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
     revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
     completed = db.Column(db.Boolean, default=False, nullable=False)
+    completed_at = db.Column(db.DateTime, nullable=True, index=True)
 
-    # relationships - using lazy='joined' for commonly accessed foreign entities
+    # relationships
     assignment = db.relationship("Assignment", back_populates="reviews", lazy="joined")
     reviewer = db.relationship(
         "User", foreign_keys=[reviewerID], back_populates="reviews_made", lazy="joined"
@@ -30,14 +35,16 @@ class Review(db.Model):
         "Criterion", back_populates="review", cascade="all, delete-orphan", lazy="dynamic"
     )
 
-    def __init__(self, assignmentID, reviewerID, revieweeID, completed=False):
+    def __init__(self, assignmentID, reviewerID, revieweeID, completed=False, completed_at=None):
         self.assignmentID = assignmentID
         self.reviewerID = reviewerID
         self.revieweeID = revieweeID
         self.completed = completed
+        if completed_at is not None:
+            self.completed_at = completed_at
 
     def __repr__(self):
-        return f"<Review id={self.id} assignmentID={self.assignmentID}>"
+        return f"<Review id={self.id}>"
 
     @classmethod
     def get_by_id(cls, review_id):
@@ -84,6 +91,13 @@ class Review(db.Model):
     def mark_complete(self):
         """Mark the review as completed"""
         self.completed = True
+        self.completed_at = datetime.utcnow()
+        db.session.commit()
+
+    def mark_incomplete(self):
+        """Mark the review as not completed (unsubmit)."""
+        self.completed = False
+        self.completed_at = None
         db.session.commit()
 
     def update(self):

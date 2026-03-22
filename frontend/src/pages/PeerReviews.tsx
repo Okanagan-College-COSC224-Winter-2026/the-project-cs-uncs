@@ -1,7 +1,23 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getAssignedReviews, getReviewStatus } from '../util/api';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  getAssignedReviews,
+  getAssignmentDetails,
+  getGroupPeerEvalStatus,
+  hintAssignmentType,
+  submitGroupPeerEval,
+  updateGroupPeerEval,
+  unsubmitGroupPeerEval,
+  syncIndividualPeerEvalReviews,
+  type PeerEvalGroupStatusResponse,
+  type PeerEvalGroupEvaluation,
+} from '../util/api';
 import TabNavigation from '../components/TabNavigation';
+import BackArrow from '../components/BackArrow';
+import Button from '../components/Button';
+import Criteria from '../components/Criteria';
+import HeaderTitle from '../components/HeaderTitle';
+import { ReviewSubmissionPanel } from './ReviewSubmission';
 import './PeerReviews.css';
 import './Assignment.css';
 
@@ -20,14 +36,6 @@ interface Review {
   criteria_count: number;
 }
 
-interface ReviewStatus {
-  total_assigned: number;
-  completed: number;
-  remaining: number;
-  is_open: boolean;
-  due_date: string | null;
-}
-
 interface AssignmentInfo {
   id: number;
   name: string;
@@ -37,12 +45,36 @@ interface AssignmentInfo {
 
 export default function PeerReviews() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [status, setStatus] = useState<ReviewStatus | null>(null);
   const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
+  const [assignmentType, setAssignmentType] = useState<string | null>(null);
+  const [activeReviewId, setActiveReviewId] = useState<number | null>(null);
+  const [groupStatus, setGroupStatus] = useState<PeerEvalGroupStatusResponse | null>(null);
+  const [groupDraft, setGroupDraft] = useState<Record<number, Record<number, number>>>({});
+  const [groupAdditionalComments, setGroupAdditionalComments] = useState<Record<number, string>>({});
+  const [submittingGroup, setSubmittingGroup] = useState(false);
+  const [unsubmittingGroup, setUnsubmittingGroup] = useState(false);
+  const [editingGroupSubmission, setEditingGroupSubmission] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const currentUserId = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      return typeof parsed?.id === 'number' ? parsed.id : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const refreshAssignedReviews = async () => {
+    if (!id) return;
+    const reviewData = await getAssignedReviews(Number(id));
+    setReviews(reviewData.reviews);
+    setAssignment(reviewData.assignment);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,14 +84,28 @@ export default function PeerReviews() {
         setLoading(true);
         setError(null);
 
-        // Fetch assigned reviews
-        const reviewData = await getAssignedReviews(Number(id));
-        setReviews(reviewData.reviews);
-        setAssignment(reviewData.assignment);
+        // Fetch assignment type for tab rendering and branching
+        const details = await getAssignmentDetails(Number(id));
+        const type = details?.assignment_type ?? null;
+        setAssignmentType(type);
 
-        // Fetch status
-        const statusData = await getReviewStatus(Number(id));
-        setStatus(statusData);
+        if (type === 'peer_eval_group') {
+          const gs = await getGroupPeerEvalStatus(Number(id));
+          setGroupStatus(gs);
+          setEditingGroupSubmission(false);
+          setAssignment({ id: gs.assignment.id, name: gs.assignment.name, due_date: details?.due_date ?? null, can_submit: !gs.submitted });
+          setReviews([]);
+          setActiveReviewId(null);
+        } else {
+          // Individual peer eval (or legacy): ensure reviews exist for current group
+          if (type === 'peer_eval_individual') {
+            await syncIndividualPeerEvalReviews(Number(id));
+          }
+
+          await refreshAssignedReviews();
+
+          setGroupStatus(null);
+        }
       } catch (err) {
         console.error('Error fetching peer reviews:', err);
         setError('Failed to load peer reviews. Please try again.');
@@ -71,12 +117,149 @@ export default function PeerReviews() {
     fetchData();
   }, [id]);
 
-  const handleReviewClick = (reviewId: number, completed: boolean) => {
-    if (!assignment?.can_submit && !completed) {
-      alert('The review period has ended. You cannot submit new reviews.');
-      return;
+  useEffect(() => {
+    if (!id) return;
+    if (!assignmentType) return;
+    // Seed a hint so other tabs (especially Details) can render correctly
+    // without waiting for a full assignment details fetch.
+    hintAssignmentType(Number(id), assignmentType);
+  }, [id, assignmentType]);
+
+  const handleReviewClick = (reviewId: number) => {
+    setActiveReviewId(reviewId);
+  };
+
+  const groupCriteriaMeta = useMemo(() => {
+    const criteria = groupStatus?.criteria ?? [];
+    return {
+      questions: criteria.map((c) => c.question),
+      scoreMaxes: criteria.map((c) => c.scoreMax),
+      hasScores: criteria.map((c) => c.hasScore),
+      ids: criteria.map((c) => c.id),
+    };
+  }, [groupStatus]);
+
+  const groupCommentCriterionId = useMemo(() => {
+    const criteria = groupStatus?.criteria ?? [];
+    return criteria[0]?.id ?? null;
+  }, [groupStatus]);
+
+  const setGroupGrade = (targetGroupId: number, rowIndex: number, column: number) => {
+    const criterionRowID = groupCriteriaMeta.ids[rowIndex];
+    if (!criterionRowID) return;
+
+    setGroupDraft((prev) => {
+      const byTarget = prev[targetGroupId] ? { ...prev[targetGroupId] } : {};
+      const existing = byTarget[criterionRowID] ?? 0;
+      const nextGrade = existing === column ? 0 : column;
+      byTarget[criterionRowID] = nextGrade;
+      return { ...prev, [targetGroupId]: byTarget };
+    });
+  };
+
+  const canSubmitGroup = useMemo(() => {
+    if (!groupStatus) return false;
+    if (groupStatus.submitted && !editingGroupSubmission) return false;
+
+    for (const target of groupStatus.targets) {
+      const byTarget = groupDraft[target.id] || {};
+      for (const crit of groupStatus.criteria) {
+        if (!crit.hasScore) continue;
+        const grade = byTarget[crit.id] ?? 0;
+        if (grade <= 0) return false;
+      }
     }
-    navigate(`/assignment/${id}/review/${reviewId}`);
+    return true;
+  }, [groupDraft, groupStatus, editingGroupSubmission]);
+
+  const handleSubmitGroup = async () => {
+    if (!id || !groupStatus) return;
+    try {
+      setSubmittingGroup(true);
+      setError(null);
+
+      const evaluations: PeerEvalGroupEvaluation[] = groupStatus.targets.map((t) => {
+        const byTarget = groupDraft[t.id] || {};
+        const additional = (groupAdditionalComments[t.id] ?? '').trim();
+        return {
+          reviewee_group_id: t.id,
+          criteria: groupStatus.criteria.map((c) => ({
+            criterionRowID: c.id,
+            grade: c.hasScore ? (byTarget[c.id] ?? null) : null,
+            comments: groupCommentCriterionId && c.id === groupCommentCriterionId ? (additional || null) : null,
+          })),
+        };
+      });
+
+      if (groupStatus.submitted) {
+        await updateGroupPeerEval(Number(id), evaluations);
+      } else {
+        await submitGroupPeerEval(Number(id), evaluations);
+      }
+
+      const refreshed = await getGroupPeerEvalStatus(Number(id));
+      setGroupStatus(refreshed);
+      setEditingGroupSubmission(false);
+      setAssignment((prev) => (prev ? { ...prev, can_submit: !refreshed.submitted } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to submit group peer evaluation.');
+    } finally {
+      setSubmittingGroup(false);
+    }
+  };
+
+  const handleEditGroup = () => {
+    if (!groupStatus?.submission) return;
+
+    const nextDraft: Record<number, Record<number, number>> = {};
+    const nextAdditional: Record<number, string> = {};
+
+    for (const ev of groupStatus.submission.evaluations) {
+      const byTarget: Record<number, number> = {};
+      for (const c of ev.criteria) {
+        byTarget[c.criterionRowID] = c.grade ?? 0;
+      }
+      nextDraft[ev.reviewee_group.id] = byTarget;
+
+      const preferred = groupCommentCriterionId
+        ? (ev.criteria.find((c) => c.criterionRowID === groupCommentCriterionId)?.comments ?? '').trim()
+        : '';
+      if (preferred) {
+        nextAdditional[ev.reviewee_group.id] = preferred;
+        continue;
+      }
+
+      const any = ev.criteria
+        .map((c) => (c.comments ?? '').trim())
+        .filter((txt) => txt.length > 0)
+        .join('\n\n');
+      if (any) nextAdditional[ev.reviewee_group.id] = any;
+    }
+
+    setGroupDraft(nextDraft);
+    setGroupAdditionalComments(nextAdditional);
+    setEditingGroupSubmission(true);
+  };
+
+  const handleUnsubmitGroup = async () => {
+    if (!id) return;
+    try {
+      setUnsubmittingGroup(true);
+      setError(null);
+
+      await unsubmitGroupPeerEval(Number(id));
+
+      const refreshed = await getGroupPeerEvalStatus(Number(id));
+      setGroupStatus(refreshed);
+      setEditingGroupSubmission(false);
+      setGroupDraft({});
+      setGroupAdditionalComments({});
+      setAssignment((prev) => (prev ? { ...prev, can_submit: !refreshed.submitted } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unsubmit group peer evaluation.');
+    } finally {
+      setUnsubmittingGroup(false);
+    }
   };
 
   const formatDate = (dateString: string | null) => {
@@ -86,79 +269,252 @@ export default function PeerReviews() {
   };
 
   if (loading) {
+    const loadingTabs = [
+      { label: "Details", path: `/assignment/${id}/details` },
+      { label: "Peer Review", path: `/assignment/${id}/reviews` },
+      { label: "My Feedback", path: `/assignment/${id}/feedback` },
+    ];
+
     return (
-      <div className="peer-reviews-container">
-        <p>Loading peer reviews...</p>
+      <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
+        <BackArrow />
+        <div className="AssignmentHeader">
+          <h2>
+            <HeaderTitle title={assignment?.name} loading={true} fallback="Assignment" />
+          </h2>
+        </div>
+
+        <TabNavigation tabs={loadingTabs} />
+
+        <div className="peer-reviews-content TabPageContent">
+          <div className="PageStatusText">Loading…</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="peer-reviews-container">
+      <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
+        <BackArrow />
         <div className="error-message">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="peer-reviews-container">
+    <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
+      {activeReviewId !== null ? (
+        <div className="peer-reviews-drillBackRow">
+          <Button
+            type="secondary"
+            onClick={() => {
+              setActiveReviewId(null);
+              void refreshAssignedReviews();
+            }}
+          >
+            ← Back
+          </Button>
+        </div>
+      ) : (
+        <BackArrow />
+      )}
       <div className="AssignmentHeader">
-        <h2>Assignment {id}</h2>
+        <h2>
+          <HeaderTitle title={assignment?.name} loading={loading} fallback="Assignment" />
+        </h2>
       </div>
 
       <TabNavigation
         tabs={[
           {
-            label: "Home",
-            path: `/assignment/${id}`,
+            label: "Details",
+            path: `/assignment/${id}/details`,
           },
-          {
-            label: "Group",
-            path: `/assignment/${id}/group`,
-          },
-          {
-            label: "Peer Review",
-            path: `/assignment/${id}/reviews`,
-          },
-          {
-            label: "My Feedback",
-            path: `/assignment/${id}/feedback`,
-          }
+          ...((assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual')
+            ? [
+                {
+                  label: "Peer Review",
+                  path: `/assignment/${id}/reviews`,
+                },
+                {
+                  label: "My Feedback",
+                  path: `/assignment/${id}/feedback`,
+                },
+              ]
+            : [])
         ]}
       />
 
-      <div className="peer-reviews-content">
-        <div className="reviews-header">
-          <h2>Peer Reviews for {assignment?.name}</h2>
-          {assignment?.due_date && (
-            <p className="due-date">
-              Due: {formatDate(assignment.due_date)}
-              {!assignment.can_submit && (
-                <span className="deadline-passed"> (Deadline passed)</span>
-              )}
-            </p>
-          )}
-        </div>
-
-        {status && (
-          <div className="review-status">
-            <h3>Your Progress</h3>
-            <div className="status-details">
-              <span className="status-item">
-                Total Assigned: <strong>{status.total_assigned}</strong>
-              </span>
-              <span className="status-item">
-                Completed: <strong className="completed">{status.completed}</strong>
-              </span>
-              <span className="status-item">
-                Remaining: <strong className="remaining">{status.remaining}</strong>
-              </span>
-            </div>
+      <div className="peer-reviews-content TabPageContent">
+        {activeReviewId === null ? (
+          <div className="reviews-header">
+            <h2>Peer Reviews for {assignment?.name}</h2>
+            {assignment?.due_date && (
+              <p className="due-date">
+                Due: {formatDate(assignment.due_date)}
+              </p>
+            )}
           </div>
-        )}
+        ) : null}
 
-        {reviews.length === 0 ? (
+        {assignmentType === 'peer_eval_group' ? (
+          <div className="reviews-list">
+            {groupStatus?.submitted ? (
+              <>
+                {(() => {
+                  const submittedById = groupStatus.submission?.submitted_by_user_id ?? null;
+                  const submittedByName = groupStatus.submission?.submitted_by_name ?? null;
+                  const isSubmitter = currentUserId !== null && submittedById !== null && currentUserId === submittedById;
+
+                  if (isSubmitter) return null;
+
+                  if (submittedByName) {
+                    return (
+                      <div className="no-reviews">
+                        <p>Your group member {submittedByName} has already submitted the peer evaluation.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="no-reviews">
+                      <p>Your group has already submitted the peer evaluation.</p>
+                    </div>
+                  );
+                })()}
+
+                {groupStatus.submission && currentUserId !== null && groupStatus.submission.submitted_by_user_id === currentUserId ? (
+                  <div className="review-action-row">
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Button onClick={handleUnsubmitGroup} disabled={unsubmittingGroup || submittingGroup}>
+                        {unsubmittingGroup ? 'Unsubmitting...' : 'Unsubmit Peer Evaluation'}
+                      </Button>
+                      <Button type="secondary" onClick={handleEditGroup} disabled={submittingGroup || unsubmittingGroup}>
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {!editingGroupSubmission && groupStatus.submission?.evaluations?.length ? (
+                  <>
+                    <h3>Submitted Evaluation</h3>
+                    <p>This is what your group submitted (read-only).</p>
+
+                    {groupStatus.submission.evaluations.map((ev) => {
+                      const byCriterion: Record<number, { grade: number; comments: string }> = {};
+                      for (const c of ev.criteria) {
+                        byCriterion[c.criterionRowID] = {
+                          grade: c.grade ?? 0,
+                          comments: c.comments ?? '',
+                        };
+                      }
+
+                      const grades = groupCriteriaMeta.ids.map((rowId) => byCriterion[rowId]?.grade ?? 0);
+                      const additionalComments = (() => {
+                        const preferred = groupCommentCriterionId ? (byCriterion[groupCommentCriterionId]?.comments ?? '').trim() : '';
+                        if (preferred) return preferred;
+                        const all = ev.criteria
+                          .map((c) => (c.comments ?? '').trim())
+                          .filter((txt) => txt.length > 0);
+                        return all.join('\n\n');
+                      })();
+
+                      return (
+                        <div key={ev.reviewee_group.id} className="review-card completed group-peer-eval-card" style={{ cursor: 'default' }}>
+                          <div className="review-info">
+                            <h4>Evaluated: {ev.reviewee_group.name}</h4>
+                            <Criteria
+                              questions={groupCriteriaMeta.questions}
+                              scoreMaxes={groupCriteriaMeta.scoreMaxes}
+                              hasScores={groupCriteriaMeta.hasScores}
+                              canComment={false}
+                              onCriterionSelect={() => { /* read-only */ }}
+                              grades={grades}
+                              readOnly
+                            />
+
+                            {additionalComments.trim() ? (
+                              <div className="criteria-list">
+                                <div className="criterion-item">
+                                  <div className="criterion-comments">
+                                    <label>Additional comments</label>
+                                    <textarea value={additionalComments} disabled rows={3} />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </>
+            ) : null}
+
+            {!groupStatus?.submitted || editingGroupSubmission ? (
+              <>
+                <h3>Group Peer Evaluation</h3>
+                <p>Complete the rubric for each group below, then submit once.</p>
+
+                {(groupStatus?.targets ?? []).map((t) => {
+                  const byTarget = groupDraft[t.id] || {};
+                  const grades = groupCriteriaMeta.ids.map((rowId) => byTarget[rowId] ?? 0);
+
+                  return (
+                    <div key={t.id} className="review-card pending group-peer-eval-card" style={{ cursor: 'default' }}>
+                      <div className="review-info">
+                        <h4>Evaluate: {t.name}</h4>
+                        <Criteria
+                          questions={groupCriteriaMeta.questions}
+                          scoreMaxes={groupCriteriaMeta.scoreMaxes}
+                          hasScores={groupCriteriaMeta.hasScores}
+                          canComment={false}
+                          onCriterionSelect={(row, col) => setGroupGrade(t.id, row, col)}
+                          grades={grades}
+                          readOnly={submittingGroup}
+                        />
+
+                        <div className="criteria-list">
+                          <div className="criterion-item">
+                            <div className="criterion-comments">
+                              <label>Additional comments (optional)</label>
+                              <textarea
+                                value={groupAdditionalComments[t.id] ?? ''}
+                                onChange={(e) => setGroupAdditionalComments((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                                disabled={submittingGroup}
+                                placeholder="Optional comments..."
+                                rows={3}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
+                  <Button onClick={handleSubmitGroup} disabled={!canSubmitGroup || submittingGroup}>
+                    {submittingGroup ? 'Submitting...' : 'Submit Peer Evaluation'}
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : activeReviewId !== null ? (
+          <ReviewSubmissionPanel
+            assignmentId={id ? Number(id) : null}
+            reviewId={activeReviewId}
+            embedded
+            onExit={() => {
+              setActiveReviewId(null);
+              void refreshAssignedReviews();
+            }}
+          />
+        ) : reviews.length === 0 ? (
           <div className="no-reviews">
             <p>You have no peer reviews assigned for this assignment.</p>
           </div>
@@ -169,23 +525,21 @@ export default function PeerReviews() {
               <div
                 key={review.id}
                 className={`review-card ${review.completed ? 'completed' : 'pending'}`}
-                onClick={() => handleReviewClick(review.id, review.completed)}
+                onClick={() => handleReviewClick(review.id)}
               >
                 <div className="review-info">
-                  <h4>Review #{review.id}</h4>
-                  <p className="reviewee-info">
-                    <span className="label">Reviewee ID:</span> {review.reviewee.id}
-                    {/* Note: Keeping anonymous per US3 - not showing full name */}
-                  </p>
-                  {review.submission ? (
-                    <p className="submission-status">
-                      Submission available
-                    </p>
-                  ) : (
-                    <p className="submission-status no-submission">
-                      No submission yet
-                    </p>
-                  )}
+                  <h4>{review.reviewee.name}</h4>
+                  {assignmentType !== 'peer_eval_individual' ? (
+                    review.submission ? (
+                      <p className="submission-status">
+                        Submission available
+                      </p>
+                    ) : (
+                      <p className="submission-status no-submission">
+                        No submission yet
+                      </p>
+                    )
+                  ) : null}
                 </div>
                 <div className="review-status-badge">
                   {review.completed ? (
@@ -200,12 +554,6 @@ export default function PeerReviews() {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {!assignment?.can_submit && reviews.some(r => !r.completed) && (
-          <div className="deadline-warning">
-            <p>⚠ The review period has ended. You can view your completed reviews but cannot submit new ones.</p>
           </div>
         )}
       </div>

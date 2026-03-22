@@ -200,4 +200,11 @@ def create_app(test_config=None):
     app.register_blueprint(group_controller.bp)
     app.register_blueprint(peer_eval_controller.bp)
 
+    # Dev convenience: ensure any newly-added tables exist for local SQLite DBs.
+    # This prevents runtime 500s when the code adds a model but the developer
+    # hasn't re-run `flask init_db` yet.
+    if (not is_production) and (not app.config.get("TESTING", False)):
+        with app.app_context():
+            db.create_all()
+
     return app

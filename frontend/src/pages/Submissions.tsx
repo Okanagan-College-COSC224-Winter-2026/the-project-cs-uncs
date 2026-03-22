@@ -13,6 +13,7 @@ import {
   listCourseMembers,
   listSubmissions,
   getAssignmentDetails,
+  getSubmissionAttachmentDownloadUrl,
   getSubmissionDownloadUrl,
   type TeacherGroupPeerEvalOverviewResponse,
   peekAssignmentDetails,
@@ -30,6 +31,7 @@ type Submission = {
   id: number;
   student: { id: number; name?: string | null; email?: string | null };
   file_name?: string | null;
+  attachments?: Array<{ id: number; file_name?: string | null }>;
   submitted_at?: string | null;
   on_time?: boolean | null;
 };
@@ -285,11 +287,40 @@ export default function Submissions() {
                           <div className="GroupsMuted" style={{ marginTop: 6 }}>
                             {sub ? (
                               <>
-                                Submitted{sub.file_name ? `: ${sub.file_name}` : ""}
-                                {typeof sub.on_time === "boolean" ? (sub.on_time ? " (On time)" : " (Late)") : ""} —{" "}
-                                <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
-                                  Download
-                                </a>
+                                <div>
+                                  Submitted
+                                  {typeof sub.on_time === "boolean" ? (sub.on_time ? " (On time)" : " (Late)") : ""}
+                                  {Array.isArray(sub.attachments) && sub.attachments.length > 0
+                                    ? ` (${sub.attachments.length} file${sub.attachments.length === 1 ? "" : "s"})`
+                                    : sub.file_name
+                                      ? `: ${sub.file_name}`
+                                      : ""}
+                                </div>
+
+                                {Array.isArray(sub.attachments) && sub.attachments.length > 0 ? (
+                                  <div style={{ marginTop: 6 }}>
+                                    {sub.attachments.map((a, idx) => {
+                                      const label = (a.file_name ?? "").trim() || `File ${idx + 1}`;
+                                      return (
+                                        <div key={a.id}>
+                                          <a
+                                            href={getSubmissionAttachmentDownloadUrl(a.id)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            Download: {label}
+                                          </a>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div style={{ marginTop: 6 }}>
+                                    <a href={getSubmissionDownloadUrl(sub.id)} target="_blank" rel="noreferrer">
+                                      Download
+                                    </a>
+                                  </div>
+                                )}
                               </>
                             ) : (
                               "No submission"

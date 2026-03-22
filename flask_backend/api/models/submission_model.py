@@ -19,6 +19,12 @@ class Submission(db.Model):
     # relationships
     student = db.relationship("User", back_populates="submissions")
     assignment = db.relationship("Assignment", back_populates="submissions")
+    attachments = db.relationship(
+        "SubmissionAttachment",
+        back_populates="submission",
+        cascade="all, delete-orphan",
+        lazy=True,
+    )
 
     def __init__(self, path, studentID, assignmentID, submitted_at=None):
         self.path = path

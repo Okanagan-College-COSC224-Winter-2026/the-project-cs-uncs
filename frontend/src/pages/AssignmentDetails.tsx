@@ -10,6 +10,7 @@ import {
   getAssignmentDetails,
   deleteMySubmission,
   getMySubmission,
+  getSubmissionAttachmentDownloadUrl,
   getSubmissionDownloadUrl,
   peekAssignmentDetails,
   updateAssignmentDetails,
@@ -35,6 +36,7 @@ interface AssignmentDetailsData {
 interface MySubmissionData {
   id: number;
   file_name?: string | null;
+  attachments?: Array<{ id: number | null; file_name?: string | null }>;
 }
 
 interface MySubmissionResponse {
@@ -61,7 +63,7 @@ export default function AssignmentDetails() {
   const [removeAttachment, setRemoveAttachment] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
   const [uploadingSubmission, setUploadingSubmission] = useState(false);
   const [removingSubmission, setRemovingSubmission] = useState(false);
   const [mySubmission, setMySubmission] = useState<MySubmissionData | null>(null);
@@ -175,7 +177,7 @@ export default function AssignmentDetails() {
         setRemoveAttachment(false);
         setIsEditing(false);
 
-        setSubmissionFile(null);
+        setSubmissionFiles([]);
         setMySubmission(null);
         setSubmissionForbidden(false);
         setSubmissionForbiddenMessage(null);
@@ -357,8 +359,8 @@ export default function AssignmentDetails() {
       setError(submissionForbiddenMessage || "You are not allowed to submit for this assignment.");
       return;
     }
-    if (!submissionFile) {
-      setError("Please choose a file to upload.");
+    if (!submissionFiles.length) {
+      setError("Please choose at least one file to upload.");
       return;
     }
 
@@ -368,7 +370,7 @@ export default function AssignmentDetails() {
       setSuccessMessage(null);
 
       const formData = new FormData();
-      formData.append("file", submissionFile);
+      submissionFiles.forEach((f) => formData.append("files", f));
 
       await uploadMySubmission(Number(id), formData);
 
@@ -385,7 +387,7 @@ export default function AssignmentDetails() {
           : prev
       );
       setSuccessMessage("Submission uploaded.");
-      setSubmissionFile(null);
+      setSubmissionFiles([]);
 
       const resp = await getMySubmission(Number(id));
         const typed = resp as MySubmissionResponse;
@@ -440,7 +442,7 @@ export default function AssignmentDetails() {
           : prev
       );
       setSuccessMessage("Submission removed.");
-      setSubmissionFile(null);
+      setSubmissionFiles([]);
 
       const resp = await getMySubmission(Number(id));
       const typed = resp as MySubmissionResponse;
@@ -516,12 +518,38 @@ export default function AssignmentDetails() {
                 <p>{submissionForbiddenMessage || "You are not allowed to submit for this assignment."}</p>
               ) : null}
               {mySubmission ? (
-                <p>
-                  Current submission: {mySubmission.file_name || "(file)"} —{" "}
-                  <a href={getSubmissionDownloadUrl(mySubmission.id)} target="_blank" rel="noreferrer">
-                    Download
-                  </a>
-                </p>
+                <div>
+                  <div>
+                    Current submission
+                    {Array.isArray(mySubmission.attachments) && mySubmission.attachments.length > 0
+                      ? ` (${mySubmission.attachments.length} file${mySubmission.attachments.length === 1 ? "" : "s"})`
+                      : mySubmission.file_name
+                        ? `: ${mySubmission.file_name}`
+                        : ""}
+                  </div>
+
+                  {Array.isArray(mySubmission.attachments) && mySubmission.attachments.length > 0 ? (
+                    <div style={{ marginTop: 6 }}>
+                      {mySubmission.attachments.map((a, idx) => {
+                        const label = (a.file_name ?? "").trim() || `File ${idx + 1}`;
+                        const href = a.id != null ? getSubmissionAttachmentDownloadUrl(a.id) : getSubmissionDownloadUrl(mySubmission.id);
+                        return (
+                          <div key={a.id ?? idx}>
+                            <a href={href} target="_blank" rel="noreferrer">
+                              Download: {label}
+                            </a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : mySubmission.file_name ? (
+                    <div style={{ marginTop: 6 }}>
+                      <a href={getSubmissionDownloadUrl(mySubmission.id)} target="_blank" rel="noreferrer">
+                        Download
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <p>No submission uploaded yet.</p>
               )}
@@ -533,7 +561,8 @@ export default function AssignmentDetails() {
                     <input
                       className="assignment-details-file"
                       type="file"
-                      onChange={(e) => setSubmissionFile(e.target.files?.[0] ?? null)}
+                      multiple
+                      onChange={(e) => setSubmissionFiles(Array.from(e.target.files ?? []))}
                     />
                   </label>
 

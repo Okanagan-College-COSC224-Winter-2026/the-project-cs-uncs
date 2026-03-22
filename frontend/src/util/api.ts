@@ -13,7 +13,15 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
-const normalizeErrorText = (text: string) => text.replace(/\s+/g, ' ').trim()
+const normalizeErrorText = (text: string) => {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+
+  // If the backend returns an HTML error page (e.g. Flask 500), don't show it verbatim.
+  if (/<!doctype\s+html|<html\b/i.test(cleaned)) return ''
+
+  return cleaned
+}
 
 const prettifyValidationMessage = (message: string) => {
   const trimmed = message.trim()
@@ -1063,6 +1071,10 @@ export const getAssignmentAttachmentUrl = (assignmentId: number) => {
 
 export const getSubmissionDownloadUrl = (submissionId: number) => {
   return `${BASE_URL}/assignment/submission/download/${submissionId}`
+}
+
+export const getSubmissionAttachmentDownloadUrl = (attachmentId: number) => {
+  return `${BASE_URL}/assignment/submission/attachment/download/${attachmentId}`
 }
 
 export const getMySubmission = async (assignmentId: number) => {

@@ -62,20 +62,39 @@ def test_student_can_upload_and_download_own_submission(test_client, make_user, 
 
     upload_resp = test_client.post(
         f"/assignment/submit/{assignment_id}",
-        data={"file": (io.BytesIO(b"hello"), "hello.txt")},
+        data={
+            "files": [
+                (io.BytesIO(b"hello"), "hello.txt"),
+                (io.BytesIO(b"world"), "world.txt"),
+            ]
+        },
         content_type="multipart/form-data",
     )
     assert upload_resp.status_code == 200
     submission_id = upload_resp.json["submission"]["id"]
+    attachments = upload_resp.json["submission"].get("attachments")
+    assert attachments is not None
+    assert len(attachments) == 2
 
     my_resp = test_client.get(f"/assignment/my_submission/{assignment_id}")
     assert my_resp.status_code == 200
     assert my_resp.json["submission"]["id"] == submission_id
     assert my_resp.json["submission"]["file_name"] == "hello.txt"
+    assert len(my_resp.json["submission"].get("attachments") or []) == 2
 
+    # Back-compat: submission download returns the first attachment.
     download_resp = test_client.get(f"/assignment/submission/download/{submission_id}")
     assert download_resp.status_code == 200
     assert download_resp.data == b"hello"
+
+    # Download each attachment.
+    download1 = test_client.get(f"/assignment/submission/attachment/download/{attachments[0]['id']}")
+    assert download1.status_code == 200
+    assert download1.data == b"hello"
+
+    download2 = test_client.get(f"/assignment/submission/attachment/download/{attachments[1]['id']}")
+    assert download2.status_code == 200
+    assert download2.data == b"world"
 
 
 def test_teacher_can_list_and_download_submissions(test_client, make_user, make_course, enroll_user_in_course):
@@ -97,7 +116,12 @@ def test_teacher_can_list_and_download_submissions(test_client, make_user, make_
     login_as(test_client, "s@example.com", "spass")
     upload_resp = test_client.post(
         f"/assignment/submit/{assignment_id}",
-        data={"file": (io.BytesIO(b"abc"), "work.pdf")},
+        data={
+            "files": [
+                (io.BytesIO(b"abc"), "work.pdf"),
+                (io.BytesIO(b"def"), "notes.txt"),
+            ]
+        },
         content_type="multipart/form-data",
     )
     submission_id = upload_resp.json["submission"]["id"]
@@ -109,6 +133,7 @@ def test_teacher_can_list_and_download_submissions(test_client, make_user, make_
     assert list_resp.status_code == 200
     assert len(list_resp.json["submissions"]) == 1
     assert list_resp.json["submissions"][0]["id"] == submission_id
+    assert len(list_resp.json["submissions"][0].get("attachments") or []) == 2
 
     download_resp = test_client.get(f"/assignment/submission/download/{submission_id}")
     assert download_resp.status_code == 200
@@ -142,7 +167,7 @@ def test_assignment_list_student_done_updates_after_submission(
     assignment_id = row_before["id"]
     upload_resp = test_client.post(
         f"/assignment/submit/{assignment_id}",
-        data={"file": (io.BytesIO(b"hello"), "hello.txt")},
+        data={"files": [(io.BytesIO(b"hello"), "hello.txt")]},
         content_type="multipart/form-data",
     )
     assert upload_resp.status_code == 200
@@ -176,7 +201,12 @@ def test_student_can_delete_own_submission_and_done_flips_back(
 
     upload_resp = test_client.post(
         f"/assignment/submit/{assignment_id}",
-        data={"file": (io.BytesIO(b"hello"), "hello.txt")},
+        data={
+            "files": [
+                (io.BytesIO(b"hello"), "hello.txt"),
+                (io.BytesIO(b"world"), "world.txt"),
+            ]
+        },
         content_type="multipart/form-data",
     )
     assert upload_resp.status_code == 200
@@ -221,14 +251,18 @@ def test_other_student_cannot_download_someone_elses_submission(test_client, mak
     login_as(test_client, "s1@example.com", "spass")
     upload_resp = test_client.post(
         f"/assignment/submit/{assignment_id}",
-        data={"file": (io.BytesIO(b"secret"), "secret.txt")},
+        data={"files": [(io.BytesIO(b"secret"), "secret.txt")]},
         content_type="multipart/form-data",
     )
     submission_id = upload_resp.json["submission"]["id"]
+    attachment_id = upload_resp.json["submission"]["attachments"][0]["id"]
 
     login_as(test_client, "s2@example.com", "spass")
     download_resp = test_client.get(f"/assignment/submission/download/{submission_id}")
     assert download_resp.status_code == 403
+
+    download_resp2 = test_client.get(f"/assignment/submission/attachment/download/{attachment_id}")
+    assert download_resp2.status_code == 403
 
 
 def test_groupmate_cannot_view_or_download_other_students_submission(
@@ -258,11 +292,12 @@ def test_groupmate_cannot_view_or_download_other_students_submission(
     login_as(test_client, "s1@example.com", "spass")
     upload_resp = test_client.post(
         f"/assignment/submit/{assignment_id}",
-        data={"file": (io.BytesIO(b"groupwork"), "group.txt")},
+        data={"files": [(io.BytesIO(b"groupwork"), "group.txt")]},
         content_type="multipart/form-data",
     )
     assert upload_resp.status_code == 200
     submission_id = upload_resp.json["submission"]["id"]
+    attachment_id = upload_resp.json["submission"]["attachments"][0]["id"]
 
     # Student2 should NOT see student1's submission via my_submission
     login_as(test_client, "s2@example.com", "spass")
@@ -282,3 +317,6 @@ def test_groupmate_cannot_view_or_download_other_students_submission(
     # Student2 cannot download student1's submission
     download_resp = test_client.get(f"/assignment/submission/download/{submission_id}")
     assert download_resp.status_code == 403
+
+    download_resp2 = test_client.get(f"/assignment/submission/attachment/download/{attachment_id}")
+    assert download_resp2.status_code == 403

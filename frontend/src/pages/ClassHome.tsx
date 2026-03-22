@@ -277,11 +277,12 @@ export default function ClassHome() {
         </div>
 
         {isTeacher() ? (
-          <div className="AssInputChunk">
-            <Button onClick={() => navigate(`/classes/${id}/create-assignment`)}>
-              Create Assignment
-            </Button>
-          </div>
+          <Button
+            className="ClassHomeCreateAssignmentButton"
+            onClick={() => navigate(`/classes/${id}/create-assignment`)}
+          >
+            Create Assignment
+          </Button>
         ) : null}
 
       </div>

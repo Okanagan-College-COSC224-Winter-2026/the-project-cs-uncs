@@ -4,6 +4,7 @@ import BackArrow from "../components/BackArrow";
 import Button from "../components/Button";
 import TabNavigation from "../components/TabNavigation";
 import HeaderTitle from "../components/HeaderTitle";
+import StatusMessage from "../components/StatusMessage";
 import { isAdmin, isTeacher } from "../util/login";
 import {
     addCourseGroupMember,
@@ -285,11 +286,11 @@ export default function Groups() {
                 </div>
             </div>
 
+            {error ? <StatusMessage message={error} type="error" /> : null}
+
             <TabNavigation tabs={isAssignmentRoute ? assignmentTabs : classTabs} />
 
             <div className="GroupsPage">
-                {error ? <div className="GroupsError">{error}</div> : null}
-
                 {loading ? <div className="PageStatusText">Loading…</div> : null}
 
                 {showCreateGroup && isTeacher() ? (
@@ -409,7 +410,7 @@ export default function Groups() {
                                                 onClick={() => handleDeleteGroup(group.id)}
                                                 disabled={deletingGroupId === group.id}
                                             >
-                                                Delete
+                                                {confirmDeleteGroupId === group.id ? "Confirm Delete" : "Delete"}
                                             </Button>
                                         </div>
                                     ))}

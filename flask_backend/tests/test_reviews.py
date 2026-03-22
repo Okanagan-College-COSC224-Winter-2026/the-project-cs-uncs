@@ -487,6 +487,61 @@ class TestSubmitReviewFeedback:
         assert 'At least one criterion is required' in data['msg']
 
 
+class TestUnsubmitReviewFeedback:
+    """Test POST /review/unsubmit/<review_id>"""
+
+    def test_unsubmit_review_success(self, test_client, students, reviews_assigned):
+        """Reviewer can unsubmit a completed review"""
+        review = reviews_assigned[0]
+        review.mark_complete()
+        assert Review.get_by_id(review.id).completed is True
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        response = test_client.post(f'/review/unsubmit/{review.id}')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['review']['completed'] is False
+
+        updated = Review.get_by_id(review.id)
+        assert updated.completed is False
+        assert updated.completed_at is None
+
+    def test_unsubmit_review_not_completed(self, test_client, students, reviews_assigned):
+        """Cannot unsubmit a review that is not completed"""
+        review = reviews_assigned[0]
+        assert review.completed is False
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        response = test_client.post(f'/review/unsubmit/{review.id}')
+        assert response.status_code == 400
+        data = response.get_json()
+        assert 'not been submitted' in data['msg']
+
+    def test_unsubmit_review_unauthorized(self, test_client, students, reviews_assigned):
+        """Student cannot unsubmit a review they are not assigned to"""
+        review = reviews_assigned[0]
+        review.mark_complete()
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student3@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        response = test_client.post(f'/review/unsubmit/{review.id}')
+        assert response.status_code == 403
+
+
 class TestCreateReview:
     """Test POST /review/create (teacher/admin only)"""
 

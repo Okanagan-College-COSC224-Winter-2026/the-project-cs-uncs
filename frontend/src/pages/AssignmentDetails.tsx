@@ -113,8 +113,31 @@ export default function AssignmentDetails() {
     return parts.join(", ");
   };
 
+  const formatAssignmentType = (type: string | null) => {
+    switch (type) {
+      case "standard":
+        return "Standard";
+      case "peer_eval_group":
+        return "Peer evaluation (group)";
+      case "peer_eval_individual":
+        return "Peer evaluation (individual)";
+      default:
+        return type || "Unknown";
+    }
+  };
+
   const renderStudentTimingMessage = () => {
     if (!isStudent()) return null;
+
+    // For individual peer evals, only show the timing message after all assigned
+    // reviews are completed.
+    const assignmentType = assignment?.assignment_type ?? null;
+    if (assignmentType === "peer_eval_individual") {
+      const total = assignment?.student_reviews_total ?? null;
+      const completed = assignment?.student_reviews_completed ?? null;
+      if (!total || completed == null || completed < total) return null;
+    }
+
     const dueRaw = assignment?.due_date ?? null;
     const latestRaw = assignment?.student_latest_submission_at ?? null;
     if (!dueRaw || !latestRaw) return null;
@@ -447,13 +470,20 @@ export default function AssignmentDetails() {
           <div className="assignment-details-content">
             {successMessage ? <div className="success-message">{successMessage}</div> : null}
 
+            <div className="assignment-details-metaRow">
+              <div className="assignment-details-metaHeader">
+                <span className="assignment-details-metaLabel">Assignment Type</span>
+                {canEdit && !isEditing ? (
+                  <Button className="outline-success" onClick={() => setIsEditing(true)}>
+                    Edit
+                  </Button>
+                ) : null}
+              </div>
+              <span className="assignment-details-metaValue">{formatAssignmentType(assignmentType)}</span>
+            </div>
+
           <div className="assignment-details-sectionHeader">
             <h3>Description</h3>
-            {canEdit && !isEditing ? (
-              <Button className="outline-success" onClick={() => setIsEditing(true)}>
-                Edit
-              </Button>
-            ) : null}
           </div>
           {description ? <p className="assignment-description">{description}</p> : <p>No description provided.</p>}
 

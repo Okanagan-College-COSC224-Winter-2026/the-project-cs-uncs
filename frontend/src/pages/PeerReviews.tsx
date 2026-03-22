@@ -234,7 +234,13 @@ export default function PeerReviews() {
     <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
       {activeReviewId !== null ? (
         <div className="peer-reviews-drillBackRow">
-          <Button type="secondary" onClick={() => setActiveReviewId(null)}>
+          <Button
+            type="secondary"
+            onClick={() => {
+              setActiveReviewId(null);
+              void refreshAssignedReviews();
+            }}
+          >
             ← Back
           </Button>
         </div>

@@ -215,9 +215,6 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
     if (!reviewId) return;
     if (!review?.completed) return;
 
-    const ok = window.confirm('Unsubmit this review? You will be able to edit and resubmit it.');
-    if (!ok) return;
-
     try {
       setUnsubmitting(true);
       setError(null);
@@ -365,18 +362,18 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
                     />
                   </div>
                 </div>
+              </div>
+            ) : null}
 
-                {isCompleted ? (
-                  <div className="review-action-row">
-                    <button
-                      className="submit-button"
-                      onClick={handleUnsubmit}
-                      disabled={unsubmitting || submitting}
-                    >
-                      {unsubmitting ? 'Unsubmitting...' : 'Unsubmit Review'}
-                    </button>
-                  </div>
-                ) : null}
+            {isCompleted ? (
+              <div className="review-action-row">
+                <button
+                  className="submit-button"
+                  onClick={handleUnsubmit}
+                  disabled={unsubmitting || submitting}
+                >
+                  {unsubmitting ? 'Unsubmitting...' : 'Unsubmit Review'}
+                </button>
               </div>
             ) : null}
           </>

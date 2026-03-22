@@ -20,6 +20,26 @@
   margin-top: var(--spacing-lg);
 }
 
+.assignment-details-metaRow {
+  margin: 0 0 var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  color: var(--text-primary);
+}
+
+.assignment-details-metaHeader {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.assignment-details-metaLabel {
+  font-weight: 600;
+}
+
 .assignment-details-sectionHeader {
   display: flex;
   flex-direction: row;

@@ -697,8 +697,15 @@ export const unsubmitReviewFeedback = async (reviewId: number) => {
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.msg || `Response status: ${response.status}`);
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const errorData = await response.json().catch(() => ({} as any));
+      throw new Error(errorData.msg || `Response status: ${response.status}`);
+    }
+
+    // If the backend returns HTML (e.g., 404/500 default page), avoid JSON parse errors.
+    await response.text().catch(() => '');
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
   }
 
   return await response.json();

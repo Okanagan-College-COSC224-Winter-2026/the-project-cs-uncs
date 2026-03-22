@@ -121,7 +121,7 @@ export default function CreateAssignment() {
   const attemptCreateAssignment = async () => {
     if (!id) {
       setStatusType('error')
-      setStatusMessage('Missing class id')
+        setStatusMessage("We couldn't tell which class this assignment belongs to. Please go back and try again.")
       return
     }
 

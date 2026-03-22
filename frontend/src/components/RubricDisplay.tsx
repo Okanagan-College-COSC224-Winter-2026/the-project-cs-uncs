@@ -56,7 +56,7 @@ export default function RubricDisplay({
                     }
                 } catch (err) {
                     console.error('Error loading criteria:', err);
-                    setError('Failed to load rubric criteria');
+                    setError(err instanceof Error ? err.message : 'Failed to load rubric criteria');
                 } finally {
                     setLoading(false);
                 }

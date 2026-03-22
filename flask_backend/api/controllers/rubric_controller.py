@@ -47,7 +47,7 @@ def create_rubric():
     if not course:
         return jsonify({"msg": "Class not found"}), 404
 
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
     # Check existing rubric and delete
@@ -119,7 +119,7 @@ def create_criteria():
     email = get_jwt_identity()
     user = User.get_by_email(email)
     
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
     if not question or not str(question).strip():
@@ -174,7 +174,7 @@ def update_criteria(criteria_id):
 
     email = get_jwt_identity()
     user = User.get_by_email(email)
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
     data = request.get_json() or {}
@@ -242,7 +242,7 @@ def delete_criteria(criteria_id):
 
     email = get_jwt_identity()
     user = User.get_by_email(email)
-    if course.teacherID != user.id:
+    if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized"}), 403
 
     try:

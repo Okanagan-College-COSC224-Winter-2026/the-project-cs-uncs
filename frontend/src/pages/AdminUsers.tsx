@@ -56,7 +56,7 @@ export default function AdminUsers() {
       await fetchUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message || 'Create failed');
+      setError(message || 'Unable to create the user. Please try again.');
     }
   }
 
@@ -72,7 +72,7 @@ export default function AdminUsers() {
       await fetchUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message || 'Update failed');
+      setError(message || 'Unable to save your changes. Please try again.');
     }
   }
 
@@ -93,7 +93,7 @@ export default function AdminUsers() {
       } else if (/cannot delete your own account/i.test(msg)) {
           setError('Cannot delete the account you are currently signed in with. Log in as a different admin to remove this account.');
       } else {
-        setError(msg || 'Delete failed');
+        setError(msg || 'Unable to delete the user. Please try again.');
       }
     }
   }

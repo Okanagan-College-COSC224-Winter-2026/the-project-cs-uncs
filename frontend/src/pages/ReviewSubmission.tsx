@@ -476,7 +476,7 @@ export default function ReviewSubmission() {
     return (
       <div className="review-submission-container Page">
         {safeAssignmentId != null ? <BackArrow to={`/assignment/${safeAssignmentId}/reviews`} /> : <BackArrow forceBrowserBack />}
-        <div className="error-message">Invalid review.</div>
+        <div className="error-message">This review is not available.</div>
       </div>
     );
   }

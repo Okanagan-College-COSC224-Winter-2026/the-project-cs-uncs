@@ -1038,3 +1038,45 @@ class TestPeerEvalIndividualEligibility:
         received = test_client.get(f"/review/received/{assignment_id}")
         assert received.status_code == 200
         assert received.get_json()["total_reviews"] == 1
+
+
+class TestRubricAdminPermissions:
+    def test_admin_can_manage_rubric_criteria_for_other_teachers_assignment(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "rubric_admin_teacher@test.com", "teacher")
+        admin = _create_user("Admin", "rubric_admin@test.com", "admin")
+
+        course = _create_course(teacher.id)
+
+        login_as(test_client, "rubric_admin_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Peer Eval",
+                "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+        assert rubric is not None
+
+        login_as(test_client, "rubric_admin@test.com")
+
+        created = test_client.post(
+            "/create_criteria",
+            json={"rubricID": rubric.id, "question": "Admin Q1", "scoreMax": 5},
+        )
+        assert created.status_code == 201
+        criteria_id = created.get_json()["id"]
+
+        updated = test_client.patch(
+            f"/update_criteria/{criteria_id}",
+            json={"question": "Admin Q1 (updated)", "scoreMax": 6},
+        )
+        assert updated.status_code == 200
+
+        deleted = test_client.delete(f"/delete_criteria/{criteria_id}")
+        assert deleted.status_code == 200

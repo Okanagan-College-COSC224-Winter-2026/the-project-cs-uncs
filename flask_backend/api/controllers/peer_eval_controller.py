@@ -4,6 +4,8 @@ Implements group peer evaluation (group -> other groups) where a group submits e
 for an assignment, and individual peer evaluation (member -> member) sync helpers.
 """
 
+from datetime import datetime
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
@@ -110,6 +112,7 @@ def group_status(assignment_id: int):
             "id": submission.id,
             "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
             "submitted_by_user_id": submission.submitted_by_user_id,
+            "submitted_by_name": submission.submitted_by.name if submission.submitted_by else None,
             "evaluations": evaluations,
         }
 
@@ -267,6 +270,184 @@ def submit_group_peer_eval(assignment_id: int):
     db.session.commit()
 
     return jsonify({"msg": "Group peer evaluation submitted"}), 200
+
+
+@bp.route("/group/update/<int:assignment_id>", methods=["POST"])
+@jwt_role_required("student")
+def update_group_peer_eval(assignment_id: int):
+    assignment, err = _assignment_or_404(assignment_id)
+    if err:
+        return err
+
+    if assignment.assignment_type != "peer_eval_group":
+        return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
+
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    data = request.get_json(silent=True) or {}
+    evaluations = data.get("evaluations")
+    if not isinstance(evaluations, list):
+        return jsonify({"msg": "evaluations is required"}), 400
+
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    my_group = _get_user_and_course_group(user.id, course.id)
+    if not my_group:
+        return jsonify({"msg": "You are not in a group for this course"}), 400
+
+    included = AssignmentIncludedGroup.query.filter_by(assignment_id=assignment.id).all()
+    included_ids = {row.group_id for row in included}
+    if my_group.id not in included_ids:
+        return jsonify({"msg": "Your group is not included in this assignment"}), 403
+
+    submission = GroupEvaluationSubmission.get_by_assignment_and_group(assignment.id, my_group.id)
+    if submission is None:
+        return jsonify({"msg": "Your group has not submitted"}), 400
+
+    if int(submission.submitted_by_user_id) != int(user.id):
+        return jsonify({"msg": "Only the submitting student can edit"}), 403
+
+    rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
+    if not rubric:
+        return jsonify({"msg": "No rubric found for this assignment"}), 400
+
+    criteria_rows = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
+    criteria_by_id = {c.id: c for c in criteria_rows}
+    if not criteria_by_id:
+        return jsonify({"msg": "Rubric has no criteria"}), 400
+
+    required_target_ids = set(included_ids) - {my_group.id}
+    provided_target_ids = set()
+
+    for ev in evaluations:
+        if not isinstance(ev, dict):
+            return jsonify({"msg": "Invalid evaluations format"}), 400
+        reviewee_group_id = ev.get("reviewee_group_id")
+        if reviewee_group_id is None:
+            return jsonify({"msg": "reviewee_group_id is required"}), 400
+        reviewee_group_id = int(reviewee_group_id)
+        if reviewee_group_id not in required_target_ids:
+            return jsonify({"msg": "Invalid reviewee_group_id"}), 400
+        provided_target_ids.add(reviewee_group_id)
+
+        criteria = ev.get("criteria")
+        if not isinstance(criteria, list):
+            return jsonify({"msg": "criteria is required for each evaluation"}), 400
+
+        for c in criteria:
+            if not isinstance(c, dict):
+                return jsonify({"msg": "Invalid criteria format"}), 400
+            row_id = c.get("criterionRowID")
+            if row_id is None:
+                return jsonify({"msg": "criterionRowID is required"}), 400
+            row_id = int(row_id)
+            row = criteria_by_id.get(row_id)
+            if not row:
+                return jsonify({"msg": "Invalid criterionRowID"}), 400
+
+            grade = c.get("grade")
+            comments = c.get("comments")
+
+            if row.hasScore:
+                if grade is None:
+                    return jsonify({"msg": "grade is required for scored criteria"}), 400
+                try:
+                    grade_int = int(grade)
+                except (ValueError, TypeError):
+                    return jsonify({"msg": "Invalid grade"}), 400
+                if grade_int < 0 or (row.scoreMax is not None and grade_int > int(row.scoreMax)):
+                    return jsonify({"msg": "Grade out of range"}), 400
+            else:
+                grade_int = None
+
+            if comments is not None and not isinstance(comments, str):
+                return jsonify({"msg": "Invalid comments"}), 400
+
+    if provided_target_ids != required_target_ids:
+        return jsonify({"msg": "You must evaluate all included groups"}), 400
+
+    # Replace existing targets/criteria in-place.
+    for target in submission.targets.all():
+        db.session.delete(target)
+    db.session.flush()
+
+    for ev in evaluations:
+        reviewee_group_id = int(ev["reviewee_group_id"])
+        target = GroupEvaluationTarget(submission_id=submission.id, reviewee_group_id=reviewee_group_id)
+        db.session.add(target)
+        db.session.flush()
+
+        for c in ev["criteria"]:
+            row_id = int(c["criterionRowID"])
+            row = criteria_by_id[row_id]
+            grade = c.get("grade")
+            comments = c.get("comments")
+
+            grade_int = int(grade) if row.hasScore and grade is not None else None
+            comments_text = comments.strip() if isinstance(comments, str) and comments.strip() else None
+
+            db.session.add(
+                GroupEvaluationCriterion(
+                    target_id=target.id,
+                    criterionRowID=row_id,
+                    grade=grade_int,
+                    comments=comments_text,
+                )
+            )
+
+    submission.submitted_at = datetime.now()
+    db.session.commit()
+
+    return jsonify({"msg": "Group peer evaluation updated"}), 200
+
+
+@bp.route("/group/unsubmit/<int:assignment_id>", methods=["POST"])
+@jwt_role_required("student")
+def unsubmit_group_peer_eval(assignment_id: int):
+    assignment, err = _assignment_or_404(assignment_id)
+    if err:
+        return err
+
+    if assignment.assignment_type != "peer_eval_group":
+        return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
+
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    my_group = _get_user_and_course_group(user.id, course.id)
+    if not my_group:
+        return jsonify({"msg": "You are not in a group for this course"}), 400
+
+    included = AssignmentIncludedGroup.query.filter_by(assignment_id=assignment.id).all()
+    included_ids = {row.group_id for row in included}
+    if my_group.id not in included_ids:
+        return jsonify({"msg": "Your group is not included in this assignment"}), 403
+
+    submission = GroupEvaluationSubmission.get_by_assignment_and_group(assignment.id, my_group.id)
+    if submission is None:
+        return jsonify({"msg": "Your group has not submitted"}), 400
+
+    if int(submission.submitted_by_user_id) != int(user.id):
+        return jsonify({"msg": "Only the submitting student can unsubmit"}), 403
+
+    db.session.delete(submission)
+    db.session.commit()
+
+    return jsonify({"msg": "Group peer evaluation unsubmitted"}), 200
 
 
 @bp.route("/group/received/<int:assignment_id>", methods=["GET"])

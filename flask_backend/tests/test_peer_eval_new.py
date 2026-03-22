@@ -389,6 +389,188 @@ class TestRubricScoreMaxCap:
         assert isinstance(first_eval.get("criteria"), list)
         assert len(first_eval["criteria"]) == len(status_data["criteria"])
 
+    def test_group_peer_eval_unsubmit_unlocks_for_resubmission(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "unsubmit_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "unsubmit_s1@test.com", "student")
+        s2 = _create_user("Student 2", "unsubmit_s2@test.com", "student")
+        s3 = _create_user("Student 3", "unsubmit_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+
+        g1 = _create_group(course.id, "UG1")
+        g2 = _create_group(course.id, "UG2")
+
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "unsubmit_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval Unsubmit",
+                "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
+                "included_group_ids": [g1.id, g2.id],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        login_as(test_client, "unsubmit_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        status_data = status.get_json()
+        assert status_data["submitted"] is False
+
+        criteria_payload = []
+        for c in status_data["criteria"]:
+            item = {"criterionRowID": c["id"], "comments": "ok"}
+            if c["hasScore"]:
+                item["grade"] = 0
+            criteria_payload.append(item)
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert submit.status_code == 200
+
+        # A different group member cannot unsubmit if they weren't the submitter.
+        login_as(test_client, "unsubmit_s2@test.com")
+        unsubmit_forbidden = test_client.post(f"/peer_eval/group/unsubmit/{assignment_id}")
+        assert unsubmit_forbidden.status_code == 403
+
+        # Submitter can unsubmit.
+        login_as(test_client, "unsubmit_s1@test.com")
+        unsubmit = test_client.post(f"/peer_eval/group/unsubmit/{assignment_id}")
+        assert unsubmit.status_code == 200
+
+        status2 = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status2.status_code == 200
+        assert status2.get_json()["submitted"] is False
+
+        # After unsubmit, another member of the group can submit again.
+        login_as(test_client, "unsubmit_s2@test.com")
+        submit2 = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert submit2.status_code == 200
+
+    def test_group_peer_eval_update_allows_submitter_to_edit_in_place(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "update_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "update_s1@test.com", "student")
+        s2 = _create_user("Student 2", "update_s2@test.com", "student")
+        s3 = _create_user("Student 3", "update_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "EG1")
+        g2 = _create_group(course.id, "EG2")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "update_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval Update",
+                "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
+                "included_group_ids": [g1.id, g2.id],
+                "rubric_criteria": [
+                    {"question": "Q1", "scoreMax": 5, "hasScore": True},
+                    {"question": "Q2", "scoreMax": 5, "hasScore": True},
+                ],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        login_as(test_client, "update_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        crit_rows = status.get_json()["criteria"]
+        assert len(crit_rows) == 2
+        row1 = crit_rows[0]["id"]
+        row2 = crit_rows[1]["id"]
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {
+                        "reviewee_group_id": g2.id,
+                        "criteria": [
+                            {"criterionRowID": row1, "grade": 1, "comments": "a"},
+                            {"criterionRowID": row2, "grade": 2, "comments": "b"},
+                        ],
+                    }
+                ]
+            },
+        )
+        assert submit.status_code == 200
+
+        # Non-submitter cannot update.
+        login_as(test_client, "update_s2@test.com")
+        update_forbidden = test_client.post(
+            f"/peer_eval/group/update/{assignment_id}",
+            json={
+                "evaluations": [
+                    {
+                        "reviewee_group_id": g2.id,
+                        "criteria": [
+                            {"criterionRowID": row1, "grade": 5, "comments": "x"},
+                            {"criterionRowID": row2, "grade": 5, "comments": "y"},
+                        ],
+                    }
+                ]
+            },
+        )
+        assert update_forbidden.status_code == 403
+
+        # Submitter can update in place.
+        login_as(test_client, "update_s1@test.com")
+        update = test_client.post(
+            f"/peer_eval/group/update/{assignment_id}",
+            json={
+                "evaluations": [
+                    {
+                        "reviewee_group_id": g2.id,
+                        "criteria": [
+                            {"criterionRowID": row1, "grade": 4, "comments": "x"},
+                            {"criterionRowID": row2, "grade": 3, "comments": "y"},
+                        ],
+                    }
+                ]
+            },
+        )
+        assert update.status_code == 200
+
+        status2 = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status2.status_code == 200
+        data2 = status2.get_json()
+        assert data2["submitted"] is True
+        sub = data2.get("submission")
+        assert sub is not None
+        evals = sub.get("evaluations")
+        assert isinstance(evals, list)
+        assert len(evals) == 1
+        crit_by_row = {c["criterionRowID"]: c for c in evals[0]["criteria"]}
+        assert crit_by_row[row1]["grade"] == 4
+        assert crit_by_row[row2]["grade"] == 3
+
     def test_group_peer_eval_submit_allowed_after_deadline(self, test_client, dbsession):
         teacher = _create_user("Teacher", "deadline_teacher@test.com", "teacher")
         s1 = _create_user("Student 1", "deadline_s1@test.com", "student")

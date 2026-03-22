@@ -994,6 +994,7 @@ export type PeerEvalGroupStatusResponse = {
     id: number;
     submitted_at: string | null;
     submitted_by_user_id: number;
+    submitted_by_name?: string | null;
     evaluations: Array<{
       reviewee_group: { id: number; name: string };
       criteria: Array<{ criterionRowID: number; grade: number | null; comments: string | null }>;
@@ -1054,6 +1055,54 @@ export const submitGroupPeerEval = async (assignmentId: number, evaluations: Pee
   if (!resp.ok) {
     const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const unsubmitGroupPeerEval = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/unsubmit/${assignmentId}`, {
+    method: 'POST',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const contentType = resp.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const errorData = await resp.json().catch(() => ({} as any))
+      throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    }
+
+    await resp.text().catch(() => '')
+    throw new Error(`Request failed: ${resp.status} ${resp.statusText}`)
+  }
+
+  return await resp.json()
+}
+
+export const updateGroupPeerEval = async (assignmentId: number, evaluations: PeerEvalGroupEvaluation[]) => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/update/${assignmentId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ evaluations }),
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const contentType = resp.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const errorData = await resp.json().catch(() => ({} as any))
+      throw new Error(errorData.msg || `Response status: ${resp.status}`)
+    }
+
+    await resp.text().catch(() => '')
+    throw new Error(`Request failed: ${resp.status} ${resp.statusText}`)
   }
 
   return await resp.json()

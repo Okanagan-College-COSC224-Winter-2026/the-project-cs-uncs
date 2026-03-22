@@ -6,6 +6,8 @@ import {
   getGroupPeerEvalStatus,
   hintAssignmentType,
   submitGroupPeerEval,
+  updateGroupPeerEval,
+  unsubmitGroupPeerEval,
   syncIndividualPeerEvalReviews,
   type PeerEvalGroupStatusResponse,
   type PeerEvalGroupEvaluation,
@@ -51,9 +53,21 @@ export default function PeerReviews() {
   const [groupDraft, setGroupDraft] = useState<Record<number, Record<number, number>>>({});
   const [groupAdditionalComments, setGroupAdditionalComments] = useState<Record<number, string>>({});
   const [submittingGroup, setSubmittingGroup] = useState(false);
-  const [showSubmittedGroupSubmission, setShowSubmittedGroupSubmission] = useState(false);
+  const [unsubmittingGroup, setUnsubmittingGroup] = useState(false);
+  const [editingGroupSubmission, setEditingGroupSubmission] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const currentUserId = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      return typeof parsed?.id === 'number' ? parsed.id : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const refreshAssignedReviews = async () => {
     if (!id) return;
@@ -78,7 +92,7 @@ export default function PeerReviews() {
         if (type === 'peer_eval_group') {
           const gs = await getGroupPeerEvalStatus(Number(id));
           setGroupStatus(gs);
-          setShowSubmittedGroupSubmission(false);
+          setEditingGroupSubmission(false);
           setAssignment({ id: gs.assignment.id, name: gs.assignment.name, due_date: details?.due_date ?? null, can_submit: !gs.submitted });
           setReviews([]);
           setActiveReviewId(null);
@@ -145,7 +159,7 @@ export default function PeerReviews() {
 
   const canSubmitGroup = useMemo(() => {
     if (!groupStatus) return false;
-    if (groupStatus.submitted) return false;
+    if (groupStatus.submitted && !editingGroupSubmission) return false;
 
     for (const target of groupStatus.targets) {
       const byTarget = groupDraft[target.id] || {};
@@ -156,7 +170,7 @@ export default function PeerReviews() {
       }
     }
     return true;
-  }, [groupDraft, groupStatus]);
+  }, [groupDraft, groupStatus, editingGroupSubmission]);
 
   const handleSubmitGroup = async () => {
     if (!id || !groupStatus) return;
@@ -177,16 +191,74 @@ export default function PeerReviews() {
         };
       });
 
-      await submitGroupPeerEval(Number(id), evaluations);
+      if (groupStatus.submitted) {
+        await updateGroupPeerEval(Number(id), evaluations);
+      } else {
+        await submitGroupPeerEval(Number(id), evaluations);
+      }
 
       const refreshed = await getGroupPeerEvalStatus(Number(id));
       setGroupStatus(refreshed);
-      setShowSubmittedGroupSubmission(false);
+      setEditingGroupSubmission(false);
       setAssignment((prev) => (prev ? { ...prev, can_submit: !refreshed.submitted } : prev));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to submit group peer evaluation.');
     } finally {
       setSubmittingGroup(false);
+    }
+  };
+
+  const handleEditGroup = () => {
+    if (!groupStatus?.submission) return;
+
+    const nextDraft: Record<number, Record<number, number>> = {};
+    const nextAdditional: Record<number, string> = {};
+
+    for (const ev of groupStatus.submission.evaluations) {
+      const byTarget: Record<number, number> = {};
+      for (const c of ev.criteria) {
+        byTarget[c.criterionRowID] = c.grade ?? 0;
+      }
+      nextDraft[ev.reviewee_group.id] = byTarget;
+
+      const preferred = groupCommentCriterionId
+        ? (ev.criteria.find((c) => c.criterionRowID === groupCommentCriterionId)?.comments ?? '').trim()
+        : '';
+      if (preferred) {
+        nextAdditional[ev.reviewee_group.id] = preferred;
+        continue;
+      }
+
+      const any = ev.criteria
+        .map((c) => (c.comments ?? '').trim())
+        .filter((txt) => txt.length > 0)
+        .join('\n\n');
+      if (any) nextAdditional[ev.reviewee_group.id] = any;
+    }
+
+    setGroupDraft(nextDraft);
+    setGroupAdditionalComments(nextAdditional);
+    setEditingGroupSubmission(true);
+  };
+
+  const handleUnsubmitGroup = async () => {
+    if (!id) return;
+    try {
+      setUnsubmittingGroup(true);
+      setError(null);
+
+      await unsubmitGroupPeerEval(Number(id));
+
+      const refreshed = await getGroupPeerEvalStatus(Number(id));
+      setGroupStatus(refreshed);
+      setEditingGroupSubmission(false);
+      setGroupDraft({});
+      setGroupAdditionalComments({});
+      setAssignment((prev) => (prev ? { ...prev, can_submit: !refreshed.submitted } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unsubmit group peer evaluation.');
+    } finally {
+      setUnsubmittingGroup(false);
     }
   };
 
@@ -290,19 +362,42 @@ export default function PeerReviews() {
           <div className="reviews-list">
             {groupStatus?.submitted ? (
               <>
-                <div className="no-reviews">
-                  <p>Your group has already submitted the peer evaluation.</p>
-                </div>
+                {(() => {
+                  const submittedById = groupStatus.submission?.submitted_by_user_id ?? null;
+                  const submittedByName = groupStatus.submission?.submitted_by_name ?? null;
+                  const isSubmitter = currentUserId !== null && submittedById !== null && currentUserId === submittedById;
 
-                {groupStatus.submission?.evaluations?.length && !showSubmittedGroupSubmission ? (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-                    <Button onClick={() => setShowSubmittedGroupSubmission(true)}>
-                      View submission
-                    </Button>
+                  if (isSubmitter) return null;
+
+                  if (submittedByName) {
+                    return (
+                      <div className="no-reviews">
+                        <p>Your group member {submittedByName} has already submitted the peer evaluation.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="no-reviews">
+                      <p>Your group has already submitted the peer evaluation.</p>
+                    </div>
+                  );
+                })()}
+
+                {groupStatus.submission && currentUserId !== null && groupStatus.submission.submitted_by_user_id === currentUserId ? (
+                  <div className="review-action-row">
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Button onClick={handleUnsubmitGroup} disabled={unsubmittingGroup || submittingGroup}>
+                        {unsubmittingGroup ? 'Unsubmitting...' : 'Unsubmit Peer Evaluation'}
+                      </Button>
+                      <Button type="secondary" onClick={handleEditGroup} disabled={submittingGroup || unsubmittingGroup}>
+                        Edit
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
 
-                {groupStatus.submission?.evaluations?.length && showSubmittedGroupSubmission ? (
+                {!editingGroupSubmission && groupStatus.submission?.evaluations?.length ? (
                   <>
                     <h3>Submitted Evaluation</h3>
                     <p>This is what your group submitted (read-only).</p>
@@ -345,11 +440,7 @@ export default function PeerReviews() {
                                 <div className="criterion-item">
                                   <div className="criterion-comments">
                                     <label>Additional comments</label>
-                                    <textarea
-                                      value={additionalComments}
-                                      disabled
-                                      rows={3}
-                                    />
+                                    <textarea value={additionalComments} disabled rows={3} />
                                   </div>
                                 </div>
                               </div>
@@ -363,7 +454,7 @@ export default function PeerReviews() {
               </>
             ) : null}
 
-            {!groupStatus?.submitted ? (
+            {!groupStatus?.submitted || editingGroupSubmission ? (
               <>
                 <h3>Group Peer Evaluation</h3>
                 <p>Complete the rubric for each group below, then submit once.</p>
@@ -405,7 +496,7 @@ export default function PeerReviews() {
                   );
                 })}
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                   <Button onClick={handleSubmitGroup} disabled={!canSubmitGroup || submittingGroup}>
                     {submittingGroup ? 'Submitting...' : 'Submit Peer Evaluation'}
                   </Button>

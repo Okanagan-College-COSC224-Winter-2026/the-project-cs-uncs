@@ -4,6 +4,11 @@ Tests for classes endpoints
 
 import json
 
+from werkzeug.security import generate_password_hash
+
+from api.models import Course, User
+from api.models.db import db as _db
+
 
 def test_create_classes(test_client, make_admin):
     """
@@ -399,6 +404,43 @@ def test_enroll_in_class_emails_only_single_row_commas(test_client, make_admin):
     assert response.status_code == 200
     assert response.json["msg"] == "4 students added to course Science 101"
 
+
+def test_admin_can_enroll_students_via_csv_for_other_teachers_course(test_client, make_admin):
+    """
+    GIVEN a course owned by a teacher
+    WHEN an admin calls POST /class/enroll_students with a CSV
+    THEN enrollment should succeed (admin override)
+    """
+    teacher = User(
+        name="Teacher",
+        email="t@example.com",
+        hash_pass=generate_password_hash("tpass"),
+        role="teacher",
+    )
+    _db.session.add(teacher)
+    _db.session.commit()
+
+    course = Course(teacherID=teacher.id, name="Science 101")
+    _db.session.add(course)
+    _db.session.commit()
+
+    make_admin(email="admin@example.com", password="admin", name="adminuser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    csv_text = "email\nstudent1@example.com\nstudent2@example.com\n"
+    response = test_client.post(
+        "/class/enroll_students",
+        data=json.dumps({"class_id": course.id, "students": csv_text}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["msg"] == "2 students added to course Science 101"
+
 def test_enroll_in_class_not_teacher(test_client):
     """
     GIVEN a logged-in non-teacher user
@@ -482,21 +524,28 @@ def test_enroll_in_class_not_found(test_client, make_admin):
     assert response.status_code == 404
     assert response.json["msg"] == "Class not found"
 
-def test_enroll_in_class_unauthorized(test_client, make_admin):
+def test_enroll_in_class_unauthorized(test_client):
     """
     GIVEN a logged-in teacher user who is not the teacher of the class
     WHEN POST /class/enroll_students is called
     THEN the request should return a 403 error
     """
-    # Set the admin user by default into the database
-    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
-    make_admin(email="otherteacher@example.com", password="teacher", name="otherteacheruser")
-    # Login as teacher/admin
-    test_client.post(
-        "/auth/login",
-        data=json.dumps({"email": "otherteacher@example.com", "password": "teacher"}),
-        headers={"Content-Type": "application/json"},
+    teacher = User(
+        name="teacheruser",
+        email="teacher@example.com",
+        hash_pass=generate_password_hash("teacher"),
+        role="teacher",
     )
+    other_teacher = User(
+        name="otherteacheruser",
+        email="otherteacher@example.com",
+        hash_pass=generate_password_hash("teacher"),
+        role="teacher",
+    )
+    _db.session.add(teacher)
+    _db.session.add(other_teacher)
+    _db.session.commit()
+
     # Create a class as the first teacher
     test_client.post(
         "/auth/login",

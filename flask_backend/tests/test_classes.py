@@ -3,6 +3,9 @@ Tests for classes endpoints
 """
 
 import json
+from werkzeug.security import check_password_hash
+
+from api.models import User
 
 
 def test_create_classes(test_client, make_admin):
@@ -148,6 +151,89 @@ def test_teacher_can_enroll_students_by_email(test_client, make_admin):
     assert "students added" in enroll_resp.json["msg"]
     assert "a@example.com" in enroll_resp.json["enrolled"]
     assert "b@example.com" in enroll_resp.json["enrolled"]
+
+
+def test_enroll_students_emails_creates_new_user_with_temp_password_and_email(
+    test_client, make_admin, monkeypatch
+):
+    make_admin(email="admin@example.com", password="admin", name="adminuser")
+
+    monkeypatch.setattr(
+        "api.controllers.class_controller.generate_temp_password",
+        lambda: "TempPass123!",
+    )
+    monkeypatch.setattr(
+        "api.controllers.class_controller.send_new_account_email",
+        lambda **kwargs: (True, ""),
+    )
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Physics 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    new_email = "freshstudent@example.com"
+    enroll_resp = test_client.post(
+        "/class/enroll_students_emails",
+        data=json.dumps({"class_id": class_id, "emails": new_email}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert enroll_resp.status_code == 200
+    assert new_email in enroll_resp.json["enrolled"]
+
+    created = User.get_by_email(new_email)
+    assert created is not None
+    assert created.must_change_password is True
+    assert check_password_hash(created.hash_pass, "TempPass123!")
+
+
+def test_enroll_students_emails_returns_error_when_email_send_fails(
+    test_client, make_admin, monkeypatch
+):
+    make_admin(email="admin@example.com", password="admin", name="adminuser")
+
+    monkeypatch.setattr(
+        "api.controllers.class_controller.generate_temp_password",
+        lambda: "TempPass123!",
+    )
+    monkeypatch.setattr(
+        "api.controllers.class_controller.send_new_account_email",
+        lambda **kwargs: (False, "smtp failed"),
+    )
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Chemistry 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    new_email = "cannot-send@example.com"
+    enroll_resp = test_client.post(
+        "/class/enroll_students_emails",
+        data=json.dumps({"class_id": class_id, "emails": new_email}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert enroll_resp.status_code == 200
+    assert new_email not in enroll_resp.json["enrolled"]
+    assert any("smtp failed" in err for err in enroll_resp.json["errors"])
+    assert User.get_by_email(new_email) is None
 
 
 def test_student_cannot_enroll_students_by_email(test_client, make_admin):

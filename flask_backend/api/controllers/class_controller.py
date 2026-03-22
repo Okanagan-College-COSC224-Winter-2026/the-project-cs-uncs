@@ -1,19 +1,17 @@
-from flask import Blueprint, current_app, jsonify, request
+"""Class controller - handles class and enrollment operations."""
+
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.security import generate_password_hash
-from email.message import EmailMessage
 
-from ..models import Course, User, User_Course
-from .auth_controller import jwt_teacher_required
-import re
 import csv
 import io
-import os
-import secrets
-import smtplib
-import ssl
-import string
-from typing import List, Dict, Tuple
+import re
+from typing import List, Dict
+
+from ..models import Course, User, User_Course
+from ..services import generate_temp_password, send_new_account_email
+from .auth_controller import jwt_teacher_required
 
 bp = Blueprint("class", __name__, url_prefix="/class")
 
@@ -192,8 +190,11 @@ def remove_course_member():
     enrollment.delete()
     return jsonify({"msg": f"Removed {student.email} from course {course.name}"}), 200
 
-REQUIRED_HEADERS = {"id", "name", "email"}
-def csv_to_list(csv_text):
+
+CSV_REQUIRED_HEADERS = {"id", "name", "email"}
+
+
+def _csv_to_roster_rows(csv_text):
     """Convert CSV text to a list of emails"""
     rows: List[Dict[str, str]] = []
     errors: List[str] = []
@@ -207,7 +208,7 @@ def csv_to_list(csv_text):
         return rows, [f"Failed to read CSV: {e}"]
     
     headers = {h.strip() for h in reader.fieldnames or []}
-    missing = REQUIRED_HEADERS - headers
+    missing = CSV_REQUIRED_HEADERS - headers
     if missing:
         errors.append(f"Missing required headers: {', '.join(sorted(missing))}")
         return rows, errors
@@ -219,7 +220,7 @@ def csv_to_list(csv_text):
         if not any(normalized.values()):
             continue
 
-        if any(not normalized[field] for field in REQUIRED_HEADERS):
+        if any(not normalized[field] for field in CSV_REQUIRED_HEADERS):
             errors.append(f"Line {line_num}: Missing required fields")
             continue
 
@@ -230,14 +231,23 @@ def csv_to_list(csv_text):
         })
     return rows, errors
 
+
+def _parse_emails(value: str) -> List[str]:
+    if not value:
+        return []
+    parts = re.split(r"[\s,;]+", value.strip())
+    return [p.strip() for p in parts if p and p.strip()]
+
+
 @bp.route("/enroll_students", methods=["POST"])
 @jwt_teacher_required
 def enroll_students():
     """
     Enroll students into a class by class ID and list of student emails from a csv file.
-    -    If a student is already enrolled, skip them.
-    -    If a student email does not exist, create it with a default password and enroll them.
-    -    The list of student emails is passed in the request body as a CSV file.
+    - If a student is already enrolled, skip them.
+    - If a student email does not exist, create the account with a generated temporary password.
+    - Send a welcome email with temporary credentials for newly created accounts.
+    - The list of student emails is passed in the request body as CSV text.
     """
 
     data = request.get_json()
@@ -257,7 +267,7 @@ def enroll_students():
     if course.teacherID != user.id:
         return jsonify({"msg": "You are not authorized to enroll students in this class"}), 403
 
-    students, parse_errors = csv_to_list(student_emails_csv)
+    students, parse_errors = _csv_to_roster_rows(student_emails_csv)
     if parse_errors:
         return jsonify({"msg": "Errors in CSV", "errors": parse_errors}), 400
 
@@ -271,8 +281,8 @@ def enroll_students():
         name = student_info["name"]
         student = User.get_by_email(email)
         if not student:
-            temp_password = _generate_temp_password()
-            sent, reason = _send_new_account_email(
+            temp_password = generate_temp_password()
+            sent, reason = send_new_account_email(
                 recipient=email,
                 student_name=name,
                 temp_password=temp_password,
@@ -308,100 +318,6 @@ def enroll_students():
             enrolled_students.append(email)
 
     return jsonify({"msg": f"{len(enrolled_students)} students added to course {course.name}"}), 200
-
-
-def _parse_emails(value: str) -> List[str]:
-    if not value:
-        return []
-    parts = re.split(r"[\s,;]+", value.strip())
-    return [p.strip() for p in parts if p and p.strip()]
-
-
-def _generate_temp_password(length: int = 16) -> str:
-    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-    return "".join(secrets.choice(alphabet) for _ in range(length))
-
-
-def _send_new_account_email(*, recipient: str, student_name: str, temp_password: str) -> Tuple[bool, str]:
-    smtp_host = (
-        current_app.config.get("SMTP_HOST")
-        or current_app.config.get("MAIL_SERVER")
-        or os.environ.get("SMTP_HOST")
-        or os.environ.get("MAIL_SERVER")
-    )
-    smtp_port = int(
-        current_app.config.get("SMTP_PORT")
-        or current_app.config.get("MAIL_PORT")
-        or os.environ.get("SMTP_PORT")
-        or os.environ.get("MAIL_PORT")
-        or 587
-    )
-    smtp_user = (
-        current_app.config.get("SMTP_USER")
-        or current_app.config.get("MAIL_USERNAME")
-        or os.environ.get("SMTP_USER")
-        or os.environ.get("MAIL_USERNAME")
-    )
-    smtp_pass = (
-        current_app.config.get("SMTP_PASS")
-        or current_app.config.get("MAIL_PASSWORD")
-        or os.environ.get("SMTP_PASS")
-        or os.environ.get("MAIL_PASSWORD")
-    )
-    from_email = (
-        current_app.config.get("SMTP_FROM_EMAIL")
-        or current_app.config.get("MAIL_DEFAULT_SENDER")
-        or os.environ.get("SMTP_FROM_EMAIL")
-        or os.environ.get("MAIL_DEFAULT_SENDER")
-        or smtp_user
-    )
-    from_name = (
-        current_app.config.get("SMTP_FROM_NAME")
-        or os.environ.get("SMTP_FROM_NAME")
-        or "Peer Evaluation App"
-    )
-
-    if not smtp_host or not from_email:
-        return False, "SMTP is not configured (missing SMTP_HOST/MAIL_SERVER or sender)."
-
-    use_ssl = str(
-        current_app.config.get("SMTP_USE_SSL")
-        or os.environ.get("SMTP_USE_SSL")
-        or "false"
-    ).lower() in {"1", "true", "yes", "on"}
-
-    message = EmailMessage()
-    message["Subject"] = "Your new Peer Evaluation account"
-    message["From"] = f"{from_name} <{from_email}>"
-    message["To"] = recipient
-    message.set_content(
-        (
-            f"Hello {student_name},\n\n"
-            "An account has been created for you in the Peer Evaluation App.\n\n"
-            f"Email: {recipient}\n"
-            f"Temporary password: {temp_password}\n\n"
-            "Please sign in and change your password immediately.\n"
-        )
-    )
-
-    try:
-        context = ssl.create_default_context()
-        if use_ssl or smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15, context=context)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
-
-        with server:
-            server.ehlo()
-            if not (use_ssl or smtp_port == 465):
-                server.starttls(context=context)
-                server.ehlo()
-            if smtp_user and smtp_pass:
-                server.login(smtp_user, smtp_pass)
-            server.send_message(message)
-        return True, ""
-    except Exception as e:
-        return False, str(e)
 
 
 @bp.route("/enroll_students_emails", methods=["POST"])
@@ -451,8 +367,8 @@ def enroll_students_emails():
         if not student:
             # Default name: use local-part of email
             default_name = email.split("@", 1)[0]
-            temp_password = _generate_temp_password()
-            sent, reason = _send_new_account_email(
+            temp_password = generate_temp_password()
+            sent, reason = send_new_account_email(
                 recipient=email,
                 student_name=default_name,
                 temp_password=temp_password,
@@ -502,8 +418,6 @@ def enroll_students_emails():
         200,
     )
 
-
-# Add this endpoint to flask_backend/api/controllers/class_controller.py
 
 @bp.route("/available_courses", methods=["GET"])
 @jwt_required()

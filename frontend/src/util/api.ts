@@ -686,6 +686,25 @@ export const submitReviewFeedback = async (
 }
 
 /**
+ * Unsubmit a completed peer review so it can be edited and re-submitted
+ */
+export const unsubmitReviewFeedback = async (reviewId: number) => {
+  const response = await fetch(`${BASE_URL}/review/unsubmit/${reviewId}`, {
+    method: 'POST',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.msg || `Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Get details of a specific review including all criteria
  */
 export const getReviewDetails = async (reviewId: number) => {

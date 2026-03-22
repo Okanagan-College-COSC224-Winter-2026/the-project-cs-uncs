@@ -130,8 +130,13 @@
 .criteria-list {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--spacing-lg);
   margin-top: var(--spacing-lg);
+}
+
+.review-action-row {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .criterion-item {

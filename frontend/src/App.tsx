@@ -48,6 +48,12 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
+          <Route path="/home/teachers" element={
+            <ProtectedRoute>
+              <Navigate to="/admin/users" replace />
+            </ProtectedRoute>
+          } />
+
           {/* /admin/create-teacher removed; use /admin/users */}
 
           <Route path="/admin/users" element={

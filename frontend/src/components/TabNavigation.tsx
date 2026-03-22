@@ -6,6 +6,7 @@ interface Props {
   tabs: {
     label: string,
     path: string,
+    activePrefixes?: string[],
   }[]
 }
 
@@ -17,7 +18,9 @@ export default function TabNavigation(props: Props) {
     <div className="TabNav" role="tablist">
       {
         props.tabs.map(tab => {
-          const isActive = tab.path === location.pathname
+          const isActive =
+            tab.path === location.pathname ||
+            (tab.activePrefixes || []).some((prefix) => location.pathname.startsWith(prefix))
           return (
             <button
               key={tab.path}

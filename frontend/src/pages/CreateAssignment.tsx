@@ -30,7 +30,6 @@ const defaultRubricFor = (assignmentType: AssignmentType): RubricCriterionDraft[
       { question: 'Work was complete and met requirements', scoreMax: 5, hasScore: true },
       { question: 'Evidence of strong teamwork/coordination', scoreMax: 5, hasScore: true },
       { question: 'Overall effectiveness/quality', scoreMax: 5, hasScore: true },
-      { question: 'Actionable suggestions for improvement', scoreMax: 0, hasScore: false },
     ]
   }
 
@@ -132,13 +131,17 @@ export default function CreateAssignment() {
       return
     }
 
-    if (dueDate) {
-      // Date-only input (YYYY-MM-DD). Lexicographic comparison works for ISO date strings.
-      if (dueDate < todayMinDate) {
-        setStatusType('error')
-        setStatusMessage('Due date cannot be in the past')
-        return
-      }
+    if (!dueDate) {
+      setStatusType('error')
+      setStatusMessage('Due date is required')
+      return
+    }
+
+    // Date-only input (YYYY-MM-DD). Lexicographic comparison works for ISO date strings.
+    if (dueDate < todayMinDate) {
+      setStatusType('error')
+      setStatusMessage('Due date cannot be in the past')
+      return
     }
 
     if (showGroupSelector) {
@@ -157,7 +160,7 @@ export default function CreateAssignment() {
       }
       if (hasInvalidRubricScore(rubricCriteria)) {
         setStatusType('error')
-        setStatusMessage('Rubric scores must be 0 or greater')
+        setStatusMessage('Rubric scores must be whole numbers between 1 and 10')
         return
       }
     }
@@ -170,10 +173,8 @@ export default function CreateAssignment() {
         formData.append('courseID', id)
         formData.append('name', title)
         formData.append('description', description)
-        if (dueDate) {
-          // Send as YYYY-MM-DD to avoid timezone shifting on the frontend.
-          formData.append('due_date', dueDate)
-        }
+        // Send as YYYY-MM-DD to avoid timezone shifting on the frontend.
+        formData.append('due_date', dueDate)
         if (attachedFile) {
           formData.append('file', attachedFile)
         }
@@ -184,14 +185,14 @@ export default function CreateAssignment() {
           courseID: Number(id),
           name: title,
           description,
-          due_date: dueDate || undefined,
+          due_date: dueDate,
           assignment_type: assignmentType,
           included_group_ids: showGroupSelector ? includedGroupIds : undefined,
           rubric_criteria: showRubricEditor
             ? rubricCriteria.map((c) => ({
                 question: c.question,
-                hasScore: c.hasScore,
-                scoreMax: c.hasScore ? c.scoreMax : 0,
+                hasScore: true,
+                scoreMax: c.scoreMax,
               }))
             : undefined,
         })
@@ -200,7 +201,7 @@ export default function CreateAssignment() {
     } catch (error) {
       console.error('Error creating assignment:', error)
       setStatusType('error')
-      setStatusMessage('Error creating assignment.')
+      setStatusMessage((error as Error)?.message || 'Error creating assignment.')
     }
   }
 

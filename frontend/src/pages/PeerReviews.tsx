@@ -33,7 +33,6 @@ interface Review {
   criteria_count: number;
 }
 
-
 interface AssignmentInfo {
   id: number;
   name: string;
@@ -45,7 +44,7 @@ export default function PeerReviews() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
-const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
+  const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
   const [assignmentType, setAssignmentType] = useState<string | null>(null);
   const [groupStatus, setGroupStatus] = useState<PeerEvalGroupStatusResponse | null>(null);
   const [groupDraft, setGroupDraft] = useState<Record<number, Record<number, number>>>({});
@@ -54,13 +53,6 @@ const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
   const [showSubmittedGroupSubmission, setShowSubmittedGroupSubmission] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const deadlinePassed = useMemo(() => {
-    if (!assignment?.due_date) return false;
-    const dueMs = new Date(assignment.due_date).getTime();
-    if (Number.isNaN(dueMs)) return false;
-    return Date.now() > dueMs;
-  }, [assignment?.due_date]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,7 +73,7 @@ const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
           setShowSubmittedGroupSubmission(false);
           setAssignment({ id: gs.assignment.id, name: gs.assignment.name, due_date: details?.due_date ?? null, can_submit: !gs.submitted });
           setReviews([]);
-} else {
+        } else {
           // Individual peer eval (or legacy): ensure reviews exist for current group
           if (type === 'peer_eval_individual') {
             await syncIndividualPeerEvalReviews(Number(id));
@@ -90,7 +82,8 @@ const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
           const reviewData = await getAssignedReviews(Number(id));
           setReviews(reviewData.reviews);
           setAssignment(reviewData.assignment);
-setGroupStatus(null);
+
+          setGroupStatus(null);
         }
       } catch (err) {
         console.error('Error fetching peer reviews:', err);
@@ -105,16 +98,13 @@ setGroupStatus(null);
 
   useEffect(() => {
     if (!id) return;
-    // This route only exists for peer-eval flows. Seed a hint so other tabs
-    // (especially Details) can render the full student tab set immediately.
-    hintAssignmentType(Number(id), 'peer_eval_group');
-  }, [id]);
+    if (!assignmentType) return;
+    // Seed a hint so other tabs (especially Details) can render correctly
+    // without waiting for a full assignment details fetch.
+    hintAssignmentType(Number(id), assignmentType);
+  }, [id, assignmentType]);
 
-  const handleReviewClick = (reviewId: number, completed: boolean) => {
-    if (!assignment?.can_submit && !completed) {
-      alert('The review period has ended. You cannot submit new reviews.');
-      return;
-    }
+  const handleReviewClick = (reviewId: number) => {
     navigate(`/assignment/${id}/review/${reviewId}`);
   };
 
@@ -130,7 +120,7 @@ setGroupStatus(null);
 
   const groupCommentCriterionId = useMemo(() => {
     const criteria = groupStatus?.criteria ?? [];
-    return criteria.find((c) => !c.hasScore)?.id ?? criteria[0]?.id ?? null;
+    return criteria[0]?.id ?? null;
   }, [groupStatus]);
 
   const setGroupGrade = (targetGroupId: number, rowIndex: number, column: number) => {
@@ -163,10 +153,6 @@ setGroupStatus(null);
 
   const handleSubmitGroup = async () => {
     if (!id || !groupStatus) return;
-    if (deadlinePassed) {
-      alert('The review period has ended. You cannot submit new evaluations.');
-      return;
-    }
     try {
       setSubmittingGroup(true);
       setError(null);
@@ -211,7 +197,7 @@ setGroupStatus(null);
     ];
 
     return (
-      <div className="peer-reviews-container Page">
+      <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
         <BackArrow />
         <div className="AssignmentHeader">
           <h2>
@@ -230,7 +216,7 @@ setGroupStatus(null);
 
   if (error) {
     return (
-      <div className="peer-reviews-container Page">
+      <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
         <BackArrow />
         <div className="error-message">{error}</div>
       </div>
@@ -238,7 +224,7 @@ setGroupStatus(null);
   }
 
   return (
-    <div className="peer-reviews-container Page">
+    <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
       <BackArrow />
       <div className="AssignmentHeader">
         <h2>
@@ -273,13 +259,9 @@ setGroupStatus(null);
           {assignment?.due_date && (
             <p className="due-date">
               Due: {formatDate(assignment.due_date)}
-              {deadlinePassed && (
-                <span className="deadline-passed"> (Deadline passed)</span>
-              )}
             </p>
           )}
         </div>
-
 
         {assignmentType === 'peer_eval_group' ? (
           <div className="reviews-list">
@@ -335,19 +317,20 @@ setGroupStatus(null);
                               readOnly
                             />
 
-                            <div className="criteria-list">
-                              <div className="criterion-item">
-                                <div className="criterion-comments">
-                                  <label>Additional comments (optional)</label>
-                                  <textarea
-                                    value={additionalComments}
-                                    disabled
-                                    placeholder="No comments"
-                                    rows={3}
-                                  />
+                            {additionalComments.trim() ? (
+                              <div className="criteria-list">
+                                <div className="criterion-item">
+                                  <div className="criterion-comments">
+                                    <label>Additional comments</label>
+                                    <textarea
+                                      value={additionalComments}
+                                      disabled
+                                      rows={3}
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -400,7 +383,7 @@ setGroupStatus(null);
                 })}
 
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-                  <Button onClick={handleSubmitGroup} disabled={!canSubmitGroup || submittingGroup || deadlinePassed}>
+                  <Button onClick={handleSubmitGroup} disabled={!canSubmitGroup || submittingGroup}>
                     {submittingGroup ? 'Submitting...' : 'Submit Peer Evaluation'}
                   </Button>
                 </div>
@@ -418,7 +401,7 @@ setGroupStatus(null);
               <div
                 key={review.id}
                 className={`review-card ${review.completed ? 'completed' : 'pending'}`}
-                onClick={() => handleReviewClick(review.id, review.completed)}
+                onClick={() => handleReviewClick(review.id)}
               >
                 <div className="review-info">
                   <h4>{review.reviewee.name}</h4>
@@ -447,12 +430,6 @@ setGroupStatus(null);
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {!assignment?.can_submit && reviews.some(r => !r.completed) && (
-          <div className="deadline-warning">
-            <p>⚠ The review period has ended. You can view your completed reviews but cannot submit new ones.</p>
           </div>
         )}
       </div>

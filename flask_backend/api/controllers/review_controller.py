@@ -580,6 +580,14 @@ def get_all_reviews_for_assignment(assignment_id):
                     crit_data['scoreMax'] = None
                 criteria_with_max.append(crit_data)
 
+            on_time = None
+            completed_at = getattr(review, "completed_at", None)
+            if review.completed and assignment.due_date and completed_at:
+                try:
+                    on_time = completed_at <= assignment.due_date
+                except TypeError:
+                    on_time = None
+
             review_data = {
                 "id": review.id,
                 "reviewer": {
@@ -593,6 +601,7 @@ def get_all_reviews_for_assignment(assignment_id):
                     "email": review.reviewee.email
                 },
                 "completed": review.completed,
+                "on_time": on_time,
                 "criteria_count": len(criteria_list),
                 "criteria": criteria_with_max
             }

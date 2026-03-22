@@ -41,6 +41,7 @@ interface ReviewDetail {
     email: string;
   };
   completed: boolean;
+  on_time?: boolean | null;
   criteria_count: number;
   criteria: Criterion[];
 }
@@ -322,7 +323,7 @@ export default function TeacherReviewDashboard() {
         <div className="reviews-section">
           <div className="teacher-breadcrumbRow">
             <Button type="secondary" onClick={() => setSelectedGroupId(null)}>
-              ← Back to Group Scores
+              ← Back
             </Button>
           </div>
 
@@ -506,7 +507,7 @@ export default function TeacherReviewDashboard() {
                 setSelectedStudentId(null)
               }}
             >
-              ← Back to Groups
+              ← Back
             </Button>
           </div>
 
@@ -540,7 +541,7 @@ export default function TeacherReviewDashboard() {
       <div className="reviews-section">
         <div className="teacher-breadcrumbRow">
           <Button type="secondary" onClick={() => setSelectedStudentId(null)}>
-            ← Back to {selectedGroup.name}
+              ← Back
           </Button>
         </div>
 
@@ -563,6 +564,9 @@ export default function TeacherReviewDashboard() {
                   </div>
                   <div className="dashboard-review-status">
                     <span className="criteria-count">Total: {total}</span>
+                    {typeof review.on_time === 'boolean' ? (
+                      <span className="criteria-count">{review.on_time ? 'On time' : 'Late'}</span>
+                    ) : null}
                   </div>
                 </div>
 

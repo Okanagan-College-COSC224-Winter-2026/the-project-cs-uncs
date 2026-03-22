@@ -4,6 +4,7 @@ import {
   getReviewDetails,
   getReviewSubmission,
   submitReviewFeedback,
+  unsubmitReviewFeedback,
   getCriteria,
   getAssignmentDetails,
   hintAssignmentType
@@ -61,11 +62,12 @@ export default function ReviewSubmission() {
   const [additionalComments, setAdditionalComments] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [unsubmitting, setUnsubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const commentCriterionId = useMemo(() => {
-    return criteriaDescriptions.find((d) => !d.hasScore)?.id ?? criteriaDescriptions[0]?.id ?? null;
+    return criteriaDescriptions[0]?.id ?? null;
   }, [criteriaDescriptions]);
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export default function ReviewSubmission() {
         const descs = Array.isArray(criteriaData) ? criteriaData : [];
         setCriteriaDescriptions(descs);
 
-        const localCommentCriterionId = descs.find((d) => !d.hasScore)?.id ?? descs[0]?.id ?? null;
+        const localCommentCriterionId = descs[0]?.id ?? null;
         if (localCommentCriterionId && Array.isArray(reviewData.criteria) && reviewData.criteria.length > 0) {
           const preferred = reviewData.criteria.find((c: { criterionRowID: number; comments?: string | null }) => c.criterionRowID === localCommentCriterionId);
           const preferredText = (preferred?.comments ?? '').trim();
@@ -194,6 +196,32 @@ export default function ReviewSubmission() {
     }
   };
 
+  const handleUnsubmit = async () => {
+    if (!reviewId) return;
+    if (!review?.completed) return;
+
+    const ok = window.confirm('Unsubmit this review? You will be able to edit and resubmit it.');
+    if (!ok) return;
+
+    try {
+      setUnsubmitting(true);
+      setError(null);
+
+      const resp = await unsubmitReviewFeedback(Number(reviewId));
+      if (resp?.review) {
+        setReview(resp.review);
+      } else {
+        setReview((prev) => (prev ? { ...prev, completed: false } : prev));
+      }
+      setSuccessMessage('Review unsubmitted. You can now edit and resubmit.');
+    } catch (err) {
+      console.error('Error un-submitting review:', err);
+      setError((err as Error).message || 'Failed to unsubmit review. Please try again.');
+    } finally {
+      setUnsubmitting(false);
+    }
+  };
+
   const getCriterionGrade = (criterionRowID: number) => {
     const criterion = criteria.find(c => c.criterionRowID === criterionRowID);
     return criterion ? criterion.grade : 0;
@@ -208,7 +236,11 @@ export default function ReviewSubmission() {
 
     return (
       <div className="review-submission-container Page">
-        <BackArrow />
+        {assignmentId ? (
+          <BackArrow to={`/assignment/${assignmentId}/reviews`} />
+        ) : (
+          <BackArrow forceBrowserBack />
+        )}
 
         <div className="AssignmentHeader">
           <h2>
@@ -228,20 +260,25 @@ export default function ReviewSubmission() {
   if (error && !review) {
     return (
       <div className="review-submission-container Page">
-        <BackArrow />
+        {assignmentId ? (
+          <BackArrow to={`/assignment/${assignmentId}/reviews`} />
+        ) : (
+          <BackArrow forceBrowserBack />
+        )}
         <div className="error-message">{error}</div>
       </div>
     );
   }
 
   const isCompleted = review?.completed || false;
-  const canSubmit = review?.assignment.due_date
-    ? new Date(review.assignment.due_date) > new Date()
-    : true;
 
   return (
     <div className="review-submission-container Page">
-      <BackArrow />
+      {assignmentId ? (
+        <BackArrow to={`/assignment/${assignmentId}/reviews`} />
+      ) : (
+        <BackArrow forceBrowserBack />
+      )}
       <div className="AssignmentHeader">
         <h2>
           <HeaderTitle title={review?.assignment?.name} loading={false} fallback="Assignment" />
@@ -259,6 +296,7 @@ export default function ReviewSubmission() {
                 {
                   label: "Peer Review",
                   path: `/assignment/${assignmentId}/reviews`,
+                  activePrefixes: assignmentId ? [`/assignment/${assignmentId}/review/`] : undefined,
                 },
                 {
                   label: "My Feedback",
@@ -281,18 +319,6 @@ export default function ReviewSubmission() {
         {error && (
           <div className="error-message">{error}</div>
         )}
-
-      {!canSubmit && !isCompleted && (
-        <div className="deadline-warning">
-          The review period has ended. You cannot submit this review.
-        </div>
-      )}
-
-      {isCompleted && (
-        <div className="completed-notice">
-          This review has been completed and submitted. You can view your feedback below, but cannot edit it.
-        </div>
-      )}
 
       {submission && (
         <div className="submission-section">
@@ -323,30 +349,44 @@ export default function ReviewSubmission() {
               canComment={false}
               onCriterionSelect={handleCriterionSelect}
               grades={criteriaDescriptions.map((d) => Number(getCriterionGrade(d.id)) || 0)}
-              readOnly={isCompleted || !canSubmit}
+              readOnly={isCompleted}
             />
 
-            <div className="criteria-list">
-              <div className="criterion-item">
-                <div className="criterion-comments">
-                  <label htmlFor="additional-comments">Additional comments (optional)</label>
-                  <textarea
-                    id="additional-comments"
-                    value={additionalComments}
-                    onChange={(e) => setAdditionalComments(e.target.value)}
-                    disabled={isCompleted || !canSubmit}
-                    className={isCompleted ? 'read-only' : ''}
-                    placeholder="Optional comments..."
-                    rows={3}
-                  />
+            {!isCompleted || additionalComments.trim() ? (
+              <div className="criteria-list">
+                <div className="criterion-item">
+                  <div className="criterion-comments">
+                    <label htmlFor="additional-comments">Additional comments (optional)</label>
+                    <textarea
+                      id="additional-comments"
+                      value={additionalComments}
+                      onChange={(e) => setAdditionalComments(e.target.value)}
+                      disabled={isCompleted}
+                      className={isCompleted ? 'read-only' : ''}
+                      placeholder="Optional comments..."
+                      rows={3}
+                    />
+                  </div>
                 </div>
+
+                {isCompleted ? (
+                  <div className="review-action-row">
+                    <button
+                      className="submit-button"
+                      onClick={handleUnsubmit}
+                      disabled={unsubmitting || submitting}
+                    >
+                      {unsubmitting ? 'Unsubmitting...' : 'Unsubmit Review'}
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            </div>
+            ) : null}
           </>
         )}
       </div>
 
-      {!isCompleted && canSubmit && (
+      {!isCompleted && (
         <div className="submit-section">
           <button
             className="submit-button"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   getAssignedReviews,
   getAssignmentDetails,
@@ -15,6 +15,7 @@ import BackArrow from '../components/BackArrow';
 import Button from '../components/Button';
 import Criteria from '../components/Criteria';
 import HeaderTitle from '../components/HeaderTitle';
+import { ReviewSubmissionPanel } from './ReviewSubmission';
 import './PeerReviews.css';
 import './Assignment.css';
 
@@ -42,10 +43,10 @@ interface AssignmentInfo {
 
 export default function PeerReviews() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
   const [assignmentType, setAssignmentType] = useState<string | null>(null);
+  const [activeReviewId, setActiveReviewId] = useState<number | null>(null);
   const [groupStatus, setGroupStatus] = useState<PeerEvalGroupStatusResponse | null>(null);
   const [groupDraft, setGroupDraft] = useState<Record<number, Record<number, number>>>({});
   const [groupAdditionalComments, setGroupAdditionalComments] = useState<Record<number, string>>({});
@@ -53,6 +54,13 @@ export default function PeerReviews() {
   const [showSubmittedGroupSubmission, setShowSubmittedGroupSubmission] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const refreshAssignedReviews = async () => {
+    if (!id) return;
+    const reviewData = await getAssignedReviews(Number(id));
+    setReviews(reviewData.reviews);
+    setAssignment(reviewData.assignment);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,15 +81,14 @@ export default function PeerReviews() {
           setShowSubmittedGroupSubmission(false);
           setAssignment({ id: gs.assignment.id, name: gs.assignment.name, due_date: details?.due_date ?? null, can_submit: !gs.submitted });
           setReviews([]);
+          setActiveReviewId(null);
         } else {
           // Individual peer eval (or legacy): ensure reviews exist for current group
           if (type === 'peer_eval_individual') {
             await syncIndividualPeerEvalReviews(Number(id));
           }
 
-          const reviewData = await getAssignedReviews(Number(id));
-          setReviews(reviewData.reviews);
-          setAssignment(reviewData.assignment);
+          await refreshAssignedReviews();
 
           setGroupStatus(null);
         }
@@ -105,7 +112,7 @@ export default function PeerReviews() {
   }, [id, assignmentType]);
 
   const handleReviewClick = (reviewId: number) => {
-    navigate(`/assignment/${id}/review/${reviewId}`);
+    setActiveReviewId(reviewId);
   };
 
   const groupCriteriaMeta = useMemo(() => {
@@ -225,7 +232,15 @@ export default function PeerReviews() {
 
   return (
     <div className="peer-reviews-container Page" data-build="peerreviews-no-progress">
-      <BackArrow />
+      {activeReviewId !== null ? (
+        <div className="peer-reviews-drillBackRow">
+          <Button type="secondary" onClick={() => setActiveReviewId(null)}>
+            ← Back
+          </Button>
+        </div>
+      ) : (
+        <BackArrow />
+      )}
       <div className="AssignmentHeader">
         <h2>
           <HeaderTitle title={assignment?.name} loading={loading} fallback="Assignment" />
@@ -254,14 +269,16 @@ export default function PeerReviews() {
       />
 
       <div className="peer-reviews-content TabPageContent">
-        <div className="reviews-header">
-          <h2>Peer Reviews for {assignment?.name}</h2>
-          {assignment?.due_date && (
-            <p className="due-date">
-              Due: {formatDate(assignment.due_date)}
-            </p>
-          )}
-        </div>
+        {activeReviewId === null ? (
+          <div className="reviews-header">
+            <h2>Peer Reviews for {assignment?.name}</h2>
+            {assignment?.due_date && (
+              <p className="due-date">
+                Due: {formatDate(assignment.due_date)}
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {assignmentType === 'peer_eval_group' ? (
           <div className="reviews-list">
@@ -390,6 +407,16 @@ export default function PeerReviews() {
               </>
             ) : null}
           </div>
+        ) : activeReviewId !== null ? (
+          <ReviewSubmissionPanel
+            assignmentId={id ? Number(id) : null}
+            reviewId={activeReviewId}
+            embedded
+            onExit={() => {
+              setActiveReviewId(null);
+              void refreshAssignedReviews();
+            }}
+          />
         ) : reviews.length === 0 ? (
           <div className="no-reviews">
             <p>You have no peer reviews assigned for this assignment.</p>

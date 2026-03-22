@@ -50,9 +50,17 @@ interface Submission {
   path: string;
 }
 
-export default function ReviewSubmission() {
-  const { assignmentId, reviewId } = useParams<{ assignmentId: string; reviewId: string }>();
+export type ReviewSubmissionPanelProps = {
+  assignmentId: number | null;
+  reviewId: number;
+  embedded?: boolean;
+  onExit?: () => void;
+};
+
+export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   const navigate = useNavigate();
+  const assignmentId = props.assignmentId;
+  const reviewId = props.reviewId;
 
   const [review, setReview] = useState<Review | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -184,9 +192,16 @@ export default function ReviewSubmission() {
 
       setSuccessMessage('Review submitted successfully!');
 
-      // Navigate back to the peer reviews list after a short delay
+      // Exit (drill-in) or navigate back to the peer reviews list after a short delay
       setTimeout(() => {
-        navigate(`/assignment/${assignmentId}/reviews`, { replace: true });
+        if (props.onExit) {
+          props.onExit();
+          return;
+        }
+
+        if (assignmentId != null) {
+          navigate(`/assignment/${assignmentId}/reviews`, { replace: true });
+        }
       }, 1000);
     } catch (err) {
       console.error('Error submitting review:', err);
@@ -228,6 +243,14 @@ export default function ReviewSubmission() {
   };
 
   if (loading) {
+    if (props.embedded) {
+      return (
+        <div className="review-submission-content">
+          <div className="PageStatusText">Loading…</div>
+        </div>
+      );
+    }
+
     const loadingTabs = [
       { label: "Details", path: `/assignment/${assignmentId}/details` },
       { label: "Peer Review", path: `/assignment/${assignmentId}/reviews` },
@@ -258,6 +281,14 @@ export default function ReviewSubmission() {
   }
 
   if (error && !review) {
+    if (props.embedded) {
+      return (
+        <div className="review-submission-content">
+          <div className="error-message">{error}</div>
+        </div>
+      );
+    }
+
     return (
       <div className="review-submission-container Page">
         {assignmentId ? (
@@ -272,42 +303,8 @@ export default function ReviewSubmission() {
 
   const isCompleted = review?.completed || false;
 
-  return (
-    <div className="review-submission-container Page">
-      {assignmentId ? (
-        <BackArrow to={`/assignment/${assignmentId}/reviews`} />
-      ) : (
-        <BackArrow forceBrowserBack />
-      )}
-      <div className="AssignmentHeader">
-        <h2>
-          <HeaderTitle title={review?.assignment?.name} loading={false} fallback="Assignment" />
-        </h2>
-      </div>
-
-      <TabNavigation
-        tabs={[
-          {
-            label: "Details",
-            path: `/assignment/${assignmentId}/details`,
-          },
-          ...((assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual')
-            ? [
-                {
-                  label: "Peer Review",
-                  path: `/assignment/${assignmentId}/reviews`,
-                  activePrefixes: assignmentId ? [`/assignment/${assignmentId}/review/`] : undefined,
-                },
-                {
-                  label: "My Feedback",
-                  path: `/assignment/${assignmentId}/feedback`,
-                },
-              ]
-            : [])
-        ]}
-      />
-
-      <div className="review-submission-content">
+  const content = (
+    <div className="review-submission-content">
         <div className="review-header">
           <h2>{review?.reviewee?.name ? `Review: ${review.reviewee.name}` : 'Submit Peer Review'}</h2>
         </div>
@@ -397,7 +394,67 @@ export default function ReviewSubmission() {
           </button>
         </div>
       )}
-      </div>
     </div>
   );
+
+  if (props.embedded) {
+    return content;
+  }
+
+  return (
+    <div className="review-submission-container Page">
+      {assignmentId ? (
+        <BackArrow to={`/assignment/${assignmentId}/reviews`} />
+      ) : (
+        <BackArrow forceBrowserBack />
+      )}
+      <div className="AssignmentHeader">
+        <h2>
+          <HeaderTitle title={review?.assignment?.name} loading={false} fallback="Assignment" />
+        </h2>
+      </div>
+
+      <TabNavigation
+        tabs={[
+          {
+            label: "Details",
+            path: `/assignment/${assignmentId}/details`,
+          },
+          ...((assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual')
+            ? [
+                {
+                  label: "Peer Review",
+                  path: `/assignment/${assignmentId}/reviews`,
+                  activePrefixes: assignmentId ? [`/assignment/${assignmentId}/review/`] : undefined,
+                },
+                {
+                  label: "My Feedback",
+                  path: `/assignment/${assignmentId}/feedback`,
+                },
+              ]
+            : [])
+        ]}
+      />
+
+      {content}
+    </div>
+  );
+}
+
+export default function ReviewSubmission() {
+  const { assignmentId, reviewId } = useParams<{ assignmentId: string; reviewId: string }>();
+  const assignmentIdNum = assignmentId ? Number(assignmentId) : null;
+  const reviewIdNum = reviewId ? Number(reviewId) : null;
+  const safeAssignmentId = assignmentIdNum != null && Number.isFinite(assignmentIdNum) ? assignmentIdNum : null;
+
+  if (!reviewIdNum || !Number.isFinite(reviewIdNum)) {
+    return (
+      <div className="review-submission-container Page">
+        {safeAssignmentId != null ? <BackArrow to={`/assignment/${safeAssignmentId}/reviews`} /> : <BackArrow forceBrowserBack />}
+        <div className="error-message">Invalid review.</div>
+      </div>
+    );
+  }
+
+  return <ReviewSubmissionPanel assignmentId={safeAssignmentId} reviewId={reviewIdNum} />;
 }

@@ -1,13 +1,17 @@
+"""Class controller - handles class and enrollment operations."""
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.security import generate_password_hash
 
-from ..models import Course, User, User_Course
-from .auth_controller import jwt_teacher_required
-import re
 import csv
 import io
-from typing import List, Dict, Tuple
+import re
+from typing import List, Dict
+
+from ..models import Course, User, User_Course
+from ..services import generate_temp_password, send_new_account_email
+from .auth_controller import jwt_teacher_required
 
 bp = Blueprint("class", __name__, url_prefix="/class")
 
@@ -300,14 +304,22 @@ def csv_to_list(csv_text):
 
     return rows, errors
 
+
+def _parse_emails(value: str) -> List[str]:
+    if not value:
+        return []
+    parts = re.split(r"[\s,;]+", value.strip())
+    return [p.strip() for p in parts if p and p.strip()]
+
+
 @bp.route("/enroll_students", methods=["POST"])
 @jwt_teacher_required
 def enroll_students():
     """
     Enroll students into a class by class ID and list of student emails from a csv file.
-    -    If a student is already enrolled, skip them.
-    -    If a student email does not exist, create it with a default password and enroll them.
-    -    The list of student emails is passed in the request body as a CSV file.
+    - If a student is already enrolled, skip them.
+    - If a student email does not exist, create the account with a temporary password and email it.
+    - The list of student emails is passed in the request body as CSV text.
     """
 
     data = request.get_json()
@@ -343,10 +355,30 @@ def enroll_students():
         name = student_info["name"]
         student = User.get_by_email(email)
         if not student:
-            # Create new student with default password
-            # TODO: Create random password and email it to the student
-            # Current implementation sets the password to "password123"
-            student = User(name=name, email=email, hash_pass=generate_password_hash("password123"), role="student")
+            temp_password = generate_temp_password()
+            sent, reason = send_new_account_email(
+                recipient=email,
+                student_name=name,
+                temp_password=temp_password,
+            )
+            if not sent:
+                return (
+                    jsonify(
+                        {
+                            "msg": f"Could not create user {email} because welcome email could not be sent",
+                            "error": reason,
+                        }
+                    ),
+                    500,
+                )
+
+            student = User(
+                name=name,
+                email=email,
+                hash_pass=generate_password_hash(temp_password),
+                role="student",
+                must_change_password=True,
+            )
             try:
                 User.create_user(student)
             except Exception as e:
@@ -362,13 +394,6 @@ def enroll_students():
     enrolled_count = len(enrolled_students)
     noun = "student" if enrolled_count == 1 else "students"
     return jsonify({"msg": f"{enrolled_count} {noun} added to course {course.name}"}), 200
-
-
-def _parse_emails(value: str) -> List[str]:
-    if not value:
-        return []
-    parts = re.split(r"[\s,;]+", value.strip())
-    return [p.strip() for p in parts if p and p.strip()]
 
 
 @bp.route("/enroll_students_emails", methods=["POST"])
@@ -418,11 +443,24 @@ def enroll_students_emails():
         if not student:
             # Default name: use local-part of email
             default_name = email.split("@", 1)[0]
+            temp_password = generate_temp_password()
+            sent, reason = send_new_account_email(
+                recipient=email,
+                student_name=default_name,
+                temp_password=temp_password,
+            )
+            if not sent:
+                errors.append(
+                    f"Could not create user {email} because welcome email could not be sent: {reason}"
+                )
+                continue
+
             student = User(
                 name=default_name,
                 email=email,
-                hash_pass=generate_password_hash("password123"),
+                hash_pass=generate_password_hash(temp_password),
                 role="student",
+                must_change_password=True,
             )
             try:
                 User.create_user(student)
@@ -458,8 +496,6 @@ def enroll_students_emails():
         200,
     )
 
-
-# Add this endpoint to flask_backend/api/controllers/class_controller.py
 
 @bp.route("/available_courses", methods=["GET"])
 @jwt_required()

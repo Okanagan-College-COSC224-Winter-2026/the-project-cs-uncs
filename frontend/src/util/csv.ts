@@ -14,6 +14,7 @@ export const importCSV = (id: string | number, handlers: ImportCsvHandlers = {})
   // Prompt the user to select a file
   const input = document.createElement("input");
   input.setAttribute("type", "file");
+  input.setAttribute("accept", ".csv,text/csv");
 
   // Handle the file selection event
   input.addEventListener("change", async () => {
@@ -38,6 +39,12 @@ export const importCSV = (id: string | number, handlers: ImportCsvHandlers = {})
 
     if (!file) {
       handlers.onError?.("Please select a file to upload");
+      return;
+    }
+
+    const fileName = file.name || "";
+    if (!fileName.toLowerCase().endsWith(".csv")) {
+      handlers.onError?.("Please select a .csv file");
       return;
     }
 

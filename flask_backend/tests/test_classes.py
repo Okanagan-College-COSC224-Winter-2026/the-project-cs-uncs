@@ -337,6 +337,68 @@ def test_enroll_in_class_single_student_message(test_client, make_admin):
     assert response.status_code == 200
     assert response.json["msg"] == "1 student added to course Science 101"
 
+
+def test_enroll_in_class_emails_only_csv(test_client, make_admin):
+    """
+    GIVEN a logged-in teacher user
+    WHEN POST /class/enroll_students is called with an emails-only CSV
+    THEN the students should be enrolled successfully
+    """
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Science 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = response.json["class"]["id"]
+
+    csv_text = "email\nstudent1@example.com\nstudent2@example.com\n"
+    response = test_client.post(
+        "/class/enroll_students",
+        data=json.dumps({"class_id": class_id, "students": csv_text}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["msg"] == "2 students added to course Science 101"
+
+
+def test_enroll_in_class_emails_only_single_row_commas(test_client, make_admin):
+    """
+    GIVEN a logged-in teacher user
+    WHEN POST /class/enroll_students is called with a single-row, comma-separated list of emails
+    THEN all emails should be enrolled (trailing comma ignored)
+    """
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Science 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = response.json["class"]["id"]
+
+    csv_text = "annie@test.com, ben@test.com, kai@test.com, drew@test.com,"
+    response = test_client.post(
+        "/class/enroll_students",
+        data=json.dumps({"class_id": class_id, "students": csv_text}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["msg"] == "4 students added to course Science 101"
+
 def test_enroll_in_class_not_teacher(test_client):
     """
     GIVEN a logged-in non-teacher user

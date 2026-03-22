@@ -197,9 +197,14 @@ export const importStudentsForCourse = async (courseID: number, students: string
   maybeHandleExpire(response);
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    const errorData: unknown = await response.json().catch(() => ({}))
+    const errorObj = (errorData && typeof errorData === 'object') ? (errorData as Record<string, unknown>) : {}
+    const msg = typeof errorObj.msg === 'string' ? errorObj.msg : undefined
+    const details = Array.isArray(errorObj.errors) ? errorObj.errors.filter((e) => typeof e === 'string').join('; ') : undefined
+    throw new Error([msg, details].filter(Boolean).join(': ') || `Response status: ${response.status}`)
   }
-  return await response.json();  // ADD THIS LINE
+
+  return await response.json();
 
 }
 

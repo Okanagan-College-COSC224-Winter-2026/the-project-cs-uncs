@@ -186,42 +186,118 @@ def remove_course_member():
     enrollment.delete()
     return jsonify({"msg": f"Removed {student.email} from course {course.name}"}), 200
 
-REQUIRED_HEADERS = {"id", "name", "email"}
+FULL_HEADERS = {"id", "name", "email"}
+
+
+def _normalize_csv_header(value: str) -> str:
+    if value is None:
+        return ""
+    normalized = str(value).strip()
+    # Handle UTF-8 BOM that Excel commonly adds at the start of the first header
+    normalized = normalized.lstrip("\ufeff")
+    return normalized.strip().lower()
+
+
 def csv_to_list(csv_text):
-    """Convert CSV text to a list of emails"""
+    """Convert CSV text to a list of student dicts.
+
+    Supported formats:
+    - Emails-only CSV (single column), header optional. Examples:
+        email\nstudent@example.com
+        student@example.com\nother@example.com
+    - Full roster CSV with headers containing id,name,email (case-insensitive)
+
+    Returns: (rows, errors)
+      rows: [{"email": str, "name": str, "id": str}]
+    """
     rows: List[Dict[str, str]] = []
     errors: List[str] = []
-    if not csv_text or not csv_text.strip():
+
+    if not csv_text or not str(csv_text).strip():
         return rows, ["CSV text empty"]
-    
-    stream = io.StringIO(csv_text.strip())
+
+    # Strip whitespace and BOM at start of file content (not just header cell)
+    cleaned_text = str(csv_text).strip().lstrip("\ufeff")
+    stream = io.StringIO(cleaned_text)
+
     try:
-        reader = csv.DictReader(stream)
+        reader = csv.reader(stream)
+        all_rows = [r for r in reader if r and any((c or "").strip() for c in r)]
     except Exception as e:
         return rows, [f"Failed to read CSV: {e}"]
-    
-    headers = {h.strip() for h in reader.fieldnames or []}
-    missing = REQUIRED_HEADERS - headers
-    if missing:
-        errors.append(f"Missing required headers: {', '.join(sorted(missing))}")
-        return rows, errors
-    
-    for line_num, row in enumerate(reader, start=2):
-        if row is None:
-            continue
-        normalized = {k.strip(): (v.strip() if isinstance(v, str) else "") for k, v in row.items()}
-        if not any(normalized.values()):
+
+    if not all_rows:
+        return rows, ["CSV text empty"]
+
+    first = [(_normalize_csv_header(c)) for c in all_rows[0]]
+    is_header = any(c in {"email", "name", "id"} for c in first)
+
+    email_idx: int | None = None
+    name_idx: int | None = None
+    id_idx: int | None = None
+
+    start_row = 0
+    if is_header:
+        start_row = 1
+        if "email" in first:
+            email_idx = first.index("email")
+        if "name" in first:
+            name_idx = first.index("name")
+        if "id" in first:
+            id_idx = first.index("id")
+
+        if email_idx is None:
+            return rows, ["Missing required header: email"]
+    else:
+        # No header: treat each non-empty cell as an email.
+        email_idx = None
+        name_idx = None
+
+    for row_num, row in enumerate(all_rows[start_row:], start=(start_row + 1)):
+        def _get_cell(idx: int | None) -> str:
+            if idx is None:
+                return ""
+            if idx >= len(row):
+                return ""
+            value = row[idx]
+            return value.strip() if isinstance(value, str) else ""
+
+        if is_header:
+            email = _get_cell(email_idx)
+            if not email:
+                errors.append(f"Line {row_num}: Missing email")
+                continue
+
+            name = _get_cell(name_idx)
+            if not name:
+                name = email.split("@", 1)[0]
+
+            student_id = _get_cell(id_idx)
+            rows.append({"id": student_id, "name": name, "email": email})
             continue
 
-        if any(not normalized[field] for field in REQUIRED_HEADERS):
-            errors.append(f"Line {line_num}: Missing required fields")
+        # Emails-only, headerless: allow comma-separated cells on a single line,
+        # multiple lines, and ignore trailing commas/empty cells.
+        candidates: List[str] = []
+        for cell in row:
+            if not isinstance(cell, str):
+                continue
+            cell_value = cell.strip()
+            if not cell_value:
+                continue
+            # If someone put multiple emails into one cell separated by whitespace/semicolon,
+            # split those as well.
+            candidates.extend([p for p in re.split(r"[\s;]+", cell_value) if p and p.strip()])
+
+        if not candidates:
             continue
 
-        rows.append({
-            "id": normalized["id"],
-            "name": normalized["name"],
-            "email": normalized["email"]
-        })
+        for email in candidates:
+            if not email:
+                continue
+            name = email.split("@", 1)[0]
+            rows.append({"id": "", "name": name, "email": email})
+
     return rows, errors
 
 @bp.route("/enroll_students", methods=["POST"])

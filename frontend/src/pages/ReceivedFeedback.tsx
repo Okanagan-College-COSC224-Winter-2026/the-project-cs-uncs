@@ -194,15 +194,12 @@ export default function ReceivedFeedback() {
                 </div>
               )}
 
-              <div className="review-additional-comments">
-                <label>Additional comments (optional)</label>
-                <textarea
-                  value={additionalComments}
-                  disabled={true}
-                  placeholder="No additional comments provided."
-                  rows={3}
-                />
-              </div>
+              {additionalComments.trim() ? (
+                <div className="review-additional-comments">
+                  <label>Additional comments (optional)</label>
+                  <textarea value={additionalComments} disabled={true} rows={3} />
+                </div>
+              ) : null}
             </div>
           );
         })}

@@ -14,6 +14,7 @@ import {
 } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
+import Button from '../components/Button';
 import HeaderTitle from '../components/HeaderTitle';
 import './TeacherReviewDashboard.css';
 import './Assignment.css';
@@ -40,6 +41,7 @@ interface ReviewDetail {
     email: string;
   };
   completed: boolean;
+  on_time?: boolean | null;
   criteria_count: number;
   criteria: Criterion[];
 }
@@ -93,6 +95,21 @@ export default function TeacherReviewDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null);
+
+  const isDrilledIn = selectedGroupId != null || selectedStudentId != null
+
+  const handleDrillBack = () => {
+    if (selectedStudentId != null) {
+      setSelectedStudentId(null)
+      setExpandedReviewId(null)
+      return
+    }
+    if (selectedGroupId != null) {
+      setSelectedGroupId(null)
+      setSelectedStudentId(null)
+      setExpandedReviewId(null)
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -319,16 +336,6 @@ export default function TeacherReviewDashboard() {
 
       return (
         <div className="reviews-section">
-          <div className="teacher-breadcrumbRow">
-            <button
-              type="button"
-              className="teacher-breadcrumbLink"
-              onClick={() => setSelectedGroupId(null)}
-            >
-              ← Back to Group Scores
-            </button>
-          </div>
-
           <h3>{selectedGroupName}</h3>
           {!groupOverview ? (
             <div className="dashboard-no-reviews">
@@ -350,7 +357,7 @@ export default function TeacherReviewDashboard() {
                 return (
                   <div
                     key={`${submission.id}-${evaluation.reviewee_group.id}`}
-                    className="dashboard-review-item completed"
+                    className="dashboard-review-item completed dashboard-review-item--static"
                     style={{ cursor: 'default' }}
                   >
                     <div className="review-summary" style={{ cursor: 'default' }}>
@@ -418,7 +425,7 @@ export default function TeacherReviewDashboard() {
           </div>
         ) : (
           <div className="dashboard-reviews-list">
-            <div className="dashboard-review-item completed" style={{ cursor: 'default' }}>
+            <div className="dashboard-review-item completed dashboard-review-item--static" style={{ cursor: 'default' }}>
               <div className="review-summary" style={{ cursor: 'default' }}>
                 <div className="review-participants" style={{ width: '100%' }}>
                   <div className="participant reviewer" style={{ width: '100%' }}>
@@ -501,19 +508,6 @@ export default function TeacherReviewDashboard() {
 
       return (
         <div className="reviews-section">
-          <div className="teacher-breadcrumbRow">
-            <button
-              type="button"
-              className="teacher-breadcrumbLink"
-              onClick={() => {
-                setSelectedGroupId(null)
-                setSelectedStudentId(null)
-              }}
-            >
-              ← Back to Groups
-            </button>
-          </div>
-
           <h3>{selectedGroup.name}</h3>
           <div className="teacher-memberTotals">
             {selectedGroup.members.map((m) => (
@@ -542,16 +536,6 @@ export default function TeacherReviewDashboard() {
 
     return (
       <div className="reviews-section">
-        <div className="teacher-breadcrumbRow">
-          <button
-            type="button"
-            className="teacher-breadcrumbLink"
-            onClick={() => setSelectedStudentId(null)}
-          >
-            ← Back to {selectedGroup.name}
-          </button>
-        </div>
-
         <h3>{selectedStudent.name}</h3>
         {received.length === 0 ? (
           <div className="dashboard-no-reviews">
@@ -560,7 +544,7 @@ export default function TeacherReviewDashboard() {
         ) : (
           <div className="dashboard-reviews-list">
             {received.map(({ review, total }) => (
-              <div key={review.id} className="dashboard-review-item completed" style={{ cursor: 'default' }}>
+              <div key={review.id} className="dashboard-review-item completed dashboard-review-item--static" style={{ cursor: 'default' }}>
                 <div className="review-summary" style={{ cursor: 'default' }}>
                   <div className="review-participants" style={{ width: '100%' }}>
                     <div className="participant reviewer" style={{ width: '100%' }}>
@@ -571,6 +555,9 @@ export default function TeacherReviewDashboard() {
                   </div>
                   <div className="dashboard-review-status">
                     <span className="criteria-count">Total: {total}</span>
+                    {typeof review.on_time === 'boolean' ? (
+                      <span className="criteria-count">{review.on_time ? 'On time' : 'Late'}</span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -622,7 +609,15 @@ export default function TeacherReviewDashboard() {
 
   return (
     <div className="teacher-dashboard-container Page">
-      <BackArrow />
+      {isDrilledIn ? (
+        <div className="teacher-dashboard-drillBackRow">
+          <Button type="secondary" onClick={handleDrillBack}>
+            ← Back
+          </Button>
+        </div>
+      ) : (
+        <BackArrow />
+      )}
       <div className="AssignmentHeader">
         <h2>
           <HeaderTitle title={assignment?.name} loading={false} fallback="Assignment" />
@@ -662,7 +657,8 @@ export default function TeacherReviewDashboard() {
         ]}
       />
 
-      <div className="teacher-dashboard-content">
+      <div className="teacher-dashboard-content TabPageContent">
+        <div className="teacher-dashboard-panel">
         <div className="dashboard-header">
           <div className="header-content">
             <h2>Peer Review Dashboard</h2>
@@ -795,6 +791,7 @@ export default function TeacherReviewDashboard() {
           )}
         </div>
       ) : null}
+        </div>
       </div>
     </div>
   );

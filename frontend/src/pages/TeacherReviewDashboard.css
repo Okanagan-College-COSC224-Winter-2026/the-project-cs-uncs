@@ -2,11 +2,21 @@
   padding: 0;
 }
 
+.teacher-dashboard-drillBackRow {
+  margin-bottom: 0;
+}
+
 .teacher-dashboard-content {
+  padding: 0;
+}
+
+.teacher-dashboard-panel {
   width: 100%;
-  max-width: min(1600px, 100%);
-  margin: 0 auto;
-  padding: 0 2rem 2rem 2rem;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
 }
 
 .dashboard-header {
@@ -174,19 +184,6 @@
   margin-bottom: 0.75rem;
 }
 
-.teacher-breadcrumbLink {
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  color: var(--accent-primary);
-  font-weight: 600;
-}
-
-.teacher-breadcrumbLink:hover {
-  text-decoration: underline;
-}
-
 .teacher-groupScoreRow {
   width: 100%;
   text-align: left;
@@ -201,6 +198,7 @@
 
 .teacher-groupScoreRow:hover {
   border-color: var(--accent-primary);
+  background-color: var(--background-secondary);
 }
 
 .teacher-memberTotals {
@@ -262,19 +260,20 @@
   border: 2px solid var(--border-color);
   border-radius: var(--border-radius);
   overflow: hidden;
-  transition: border-color 0.2s;
+  transition: var(--transition-base);
 }
 
 .dashboard-review-item:hover {
   border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .dashboard-review-item.completed {
-  border-left: 4px solid var(--success);
+  border-color: var(--success);
 }
 
 .dashboard-review-item.incomplete {
-  border-left: 4px solid var(--warning);
+  border-color: var(--warning);
 }
 
 .review-summary {
@@ -286,8 +285,12 @@
   user-select: none;
 }
 
-.review-summary:hover {
+.dashboard-review-item:hover .review-summary {
   background-color: var(--background-secondary);
+}
+
+.dashboard-review-item--static:hover .review-summary {
+  background-color: transparent;
 }
 
 .review-participants {
@@ -365,7 +368,7 @@
 
 .review-details {
   padding: 1.5rem;
-  background-color: var(--background-secondary);
+  background-color: var(--card-background);
   border-top: 1px solid var(--border-color);
 }
 
@@ -452,7 +455,11 @@
 
 @media (max-width: 768px) {
   .teacher-dashboard-content {
-    padding: 0 1rem 1rem 1rem;
+    padding: 0;
+  }
+
+  .teacher-dashboard-panel {
+    padding: var(--spacing-md);
   }
 
   .dashboard-header {

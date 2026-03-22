@@ -251,7 +251,15 @@ export default function Groups() {
 
     return (
         <div className="Page">
-            <BackArrow />
+            {selectedGroup ? (
+                <div className="GroupsDrillBackRow">
+                    <Button type="secondary" onClick={() => setSelectedGroup(null)}>
+                        ← Back
+                    </Button>
+                </div>
+            ) : (
+                <BackArrow />
+            )}
             <div className="ClassHeader">
                 <div className="ClassHeaderLeft">
                     <h2>
@@ -323,12 +331,7 @@ export default function Groups() {
                 <div className="GroupsPanel">
                     {selectedGroup ? (
                         <>
-                            <div className="GroupsDetailHeader">
-                                <Button type="secondary" onClick={() => setSelectedGroup(null)}>
-                                    Back
-                                </Button>
-                                <h3>{selectedGroup.name}</h3>
-                            </div>
+                            <h3 style={{ margin: 0 }}>{selectedGroup.name}</h3>
 
                             <div className="GroupsSectionTitle">Members</div>
                             {selectedGroup.members.length === 0 ? (

@@ -2,6 +2,12 @@ import { didExpire, removeToken } from "./login";
 
 const BASE_URL = 'http://localhost:5000'
 
+const getMsgFromErrorPayload = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') return null
+  const msg = (payload as Record<string, unknown>).msg
+  return typeof msg === 'string' ? msg : null
+}
+
 // export const getProfile = async (id: string) => {
 //   // TODO
 // }
@@ -686,6 +692,66 @@ export const submitReviewFeedback = async (
 }
 
 /**
+ * Update an already-submitted peer review (edit without unsubmit)
+ */
+export const updateReviewFeedback = async (
+  reviewId: number,
+  criteria: { criterionRowID: number; grade: number; comments: string }[]
+) => {
+  const response = await fetch(`${BASE_URL}/review/update/${reviewId}`, {
+    method: 'POST',
+    body: JSON.stringify({ criteria }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const parsed: unknown = await response.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${response.status}`);
+    }
+
+    await response.text().catch(() => '');
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Unsubmit a completed peer review so it can be edited and re-submitted
+ */
+export const unsubmitReviewFeedback = async (reviewId: number) => {
+  const response = await fetch(`${BASE_URL}/review/unsubmit/${reviewId}`, {
+    method: 'POST',
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const parsed: unknown = await response.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${response.status}`);
+    }
+
+    // If the backend returns HTML (e.g., 404/500 default page), avoid JSON parse errors.
+    await response.text().catch(() => '');
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Get details of a specific review including all criteria
  */
 export const getReviewDetails = async (reviewId: number) => {
@@ -968,6 +1034,7 @@ export type PeerEvalGroupStatusResponse = {
     id: number;
     submitted_at: string | null;
     submitted_by_user_id: number;
+    submitted_by_name?: string | null;
     evaluations: Array<{
       reviewee_group: { id: number; name: string };
       criteria: Array<{ criterionRowID: number; grade: number | null; comments: string | null }>;
@@ -1028,6 +1095,56 @@ export const submitGroupPeerEval = async (assignmentId: number, evaluations: Pee
   if (!resp.ok) {
     const errorData = await resp.json().catch(() => ({}))
     throw new Error(errorData.msg || `Response status: ${resp.status}`)
+  }
+
+  return await resp.json()
+}
+
+export const unsubmitGroupPeerEval = async (assignmentId: number) => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/unsubmit/${assignmentId}`, {
+    method: 'POST',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const contentType = resp.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const parsed: unknown = await resp.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${resp.status}`)
+    }
+
+    await resp.text().catch(() => '')
+    throw new Error(`Request failed: ${resp.status} ${resp.statusText}`)
+  }
+
+  return await resp.json()
+}
+
+export const updateGroupPeerEval = async (assignmentId: number, evaluations: PeerEvalGroupEvaluation[]) => {
+  const resp = await fetch(`${BASE_URL}/peer_eval/group/update/${assignmentId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ evaluations }),
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    const contentType = resp.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const parsed: unknown = await resp.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${resp.status}`)
+    }
+
+    await resp.text().catch(() => '')
+    throw new Error(`Request failed: ${resp.status} ${resp.statusText}`)
   }
 
   return await resp.json()

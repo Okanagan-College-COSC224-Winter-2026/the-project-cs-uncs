@@ -2,6 +2,10 @@
   padding: 0;
 }
 
+.peer-reviews-drillBackRow {
+  margin-bottom: var(--spacing-lg);
+}
+
 .peer-reviews-content {
   padding-bottom: var(--spacing-xl);
 }

@@ -8,6 +8,7 @@ interface Props {
   to?: string
   fallbackTo?: string
   className?: string
+  forceBrowserBack?: boolean
 }
 
 const assignmentToCourseHomeCache = new Map<number, string>()
@@ -101,6 +102,11 @@ export default function BackArrow(props: Props) {
   }, [assignmentId, props.to])
 
   const goBack = async () => {
+    if (props.forceBrowserBack) {
+      navigate(-1)
+      return
+    }
+
     if (computedTarget) {
       navigate(computedTarget)
       return

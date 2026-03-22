@@ -91,7 +91,13 @@ class Review(db.Model):
     def mark_complete(self):
         """Mark the review as completed"""
         self.completed = True
-        self.completed_at = datetime.now()
+        self.completed_at = datetime.utcnow()
+        db.session.commit()
+
+    def mark_incomplete(self):
+        """Mark the review as not completed (unsubmit)."""
+        self.completed = False
+        self.completed_at = None
         db.session.commit()
 
     def update(self):

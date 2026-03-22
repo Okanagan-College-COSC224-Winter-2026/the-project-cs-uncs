@@ -187,18 +187,34 @@
 .teacher-groupScoreRow {
   width: 100%;
   text-align: left;
+  appearance: none;
   background-color: var(--card-background);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
   padding: 1rem;
   margin-bottom: 1rem;
   cursor: pointer;
   color: var(--text-primary);
+
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base),
+    transform var(--transition-fast),
+    box-shadow var(--transition-base);
 }
 
 .teacher-groupScoreRow:hover {
   border-color: var(--accent-primary);
   background-color: var(--background-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.teacher-groupScoreRow:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .teacher-memberTotals {

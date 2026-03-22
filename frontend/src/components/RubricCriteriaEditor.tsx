@@ -3,7 +3,6 @@ import Button from './Button'
 export type RubricCriterionDraft = {
   id?: number
   question: string
-  hasScore: boolean
   scoreMax: number
 }
 
@@ -32,7 +31,7 @@ export default function RubricCriteriaEditor({
             value={item.question}
             onChange={(e) => {
               const updated = [...criteria]
-              updated[index] = { ...updated[index], question: e.target.value, hasScore: true }
+              updated[index] = { ...updated[index], question: e.target.value }
               onChange(updated)
             }}
             placeholder="Enter question"
@@ -47,7 +46,6 @@ export default function RubricCriteriaEditor({
               const updated = [...criteria]
               updated[index] = {
                 ...updated[index],
-                hasScore: true,
                 scoreMax: Math.min(MAX_SCORE, Math.max(MIN_SCORE, Number(e.target.value))),
               }
               onChange(updated)
@@ -68,7 +66,7 @@ export default function RubricCriteriaEditor({
       <div className="button-group">
         <Button
           type="secondary"
-          onClick={() => onChange([...criteria, { question: '', scoreMax: 5, hasScore: true }])}
+          onClick={() => onChange([...criteria, { question: '', scoreMax: 5 }])}
           disabled={disabled}
         >
           Add New Criterion

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listAllUsers, createUserAdmin, updateUserAdmin, updateUserRoleAdmin, deleteUserAdmin } from "../util/api";
 import BackArrow from "../components/BackArrow";
+import StatusMessage from "../components/StatusMessage";
 import './AdminUsers.css'
 
 type User = {
@@ -30,12 +31,26 @@ export default function AdminUsers() {
 
   // Determine currently logged-in user (from localStorage) so we can prevent self-delete
   const stored = localStorage.getItem('user');
-  const currentUser = stored ? JSON.parse(stored) : null;
-  const currentUserId: number | null = currentUser ? currentUser.id : null;
+  const currentUser = (() => {
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  })();
+  const currentUserId: number | null = currentUser && typeof currentUser.id === 'number' ? currentUser.id : null;
+
+  const isValidEmail = (value: string) => {
+    const trimmed = value.trim();
+    // Simple "looks like an email" check; backend enforces the true validation.
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      setError(null);
       const data = await listAllUsers();
       setUsers(data || []);
       setPage(1);
@@ -50,34 +65,89 @@ export default function AdminUsers() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const name = newName.trim();
+    const email = newEmail.trim();
+    const password = newPassword;
+
+    if (!name) {
+      setError('Name is required.');
+      return;
+    }
+    if (!email) {
+      setError('Email is required.');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address (example: name@example.com).');
+      return;
+    }
+    if (!password) {
+      setError('Password is required.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
     try {
-      await createUserAdmin(newName, newEmail, newPassword, newRole, true);
+      setError(null);
+      await createUserAdmin(name, email, password, newRole, true);
       setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('student');
       await fetchUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message || 'Create failed');
+      setError(message || 'Unable to create the user. Please try again.');
     }
   }
 
   const handleSave = async (userId: number, updated: Partial<User>) => {
     try {
-      const payload: { name?: string; email?: string } = {};
-      if (updated.name !== undefined) payload.name = updated.name;
-      if (updated.email !== undefined) payload.email = updated.email;
-      if (Object.keys(payload).length > 0) await updateUserAdmin(userId, payload);
-      if (updated.role) {
-        await updateUserRoleAdmin(userId, updated.role);
+      const existing = users.find((u) => u.id === userId);
+      const nextNameRaw = updated.name ?? existing?.name ?? '';
+      const nextEmailRaw = updated.email ?? existing?.email ?? '';
+      const nextRole = updated.role ?? existing?.role;
+
+      const nextName = String(nextNameRaw).trim();
+      const nextEmail = String(nextEmailRaw).trim();
+
+      if (!nextName) {
+        setError('Name is required.');
+        return;
       }
+      if (!nextEmail) {
+        setError('Email is required.');
+        return;
+      }
+      if (!isValidEmail(nextEmail)) {
+        setError('Please enter a valid email address (example: name@example.com).');
+        return;
+      }
+
+      setError(null);
+
+      const payload: { name?: string; email?: string } = {};
+      if (!existing || nextName !== existing.name) payload.name = nextName;
+      if (!existing || nextEmail !== existing.email) payload.email = nextEmail;
+      if (Object.keys(payload).length > 0) {
+        await updateUserAdmin(userId, payload);
+      }
+
+      if (nextRole && (!existing || nextRole !== existing.role)) {
+        await updateUserRoleAdmin(userId, nextRole);
+      }
+
       await fetchUsers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message || 'Update failed');
+      setError(message || 'Unable to save your changes. Please try again.');
     }
   }
 
   const handleDelete = async (userId: number) => {
     try {
+      setError(null);
       await deleteUserAdmin(userId);
       await fetchUsers();
     } catch (err: unknown) {
@@ -93,7 +163,7 @@ export default function AdminUsers() {
       } else if (/cannot delete your own account/i.test(msg)) {
           setError('Cannot delete the account you are currently signed in with. Log in as a different admin to remove this account.');
       } else {
-        setError(msg || 'Delete failed');
+        setError(msg || 'Unable to delete the user. Please try again.');
       }
     }
   }
@@ -103,7 +173,11 @@ export default function AdminUsers() {
       <BackArrow />
       <h1>Admin — Manage Users</h1>
 
-      {error && <div className="Error" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
+      {error ? (
+        <StatusMessage type="error">
+          <span style={{ whiteSpace: 'pre-wrap' }}>{error}</span>
+        </StatusMessage>
+      ) : null}
 
       <div className="admin-controls">
         <input placeholder="Search name, email or role" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
@@ -122,10 +196,16 @@ export default function AdminUsers() {
 
       <section className="NewUser">
         <h2>Create new user</h2>
-        <form onSubmit={handleCreate}>
-          <input placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)} required />
-          <input placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
-          <input placeholder="Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+        <form onSubmit={handleCreate} noValidate>
+          <input placeholder="Name" value={newName} onChange={e => setNewName(e.target.value)} />
+          <input placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+          <input
+            placeholder="Password"
+            type="password"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+          />
           <select value={newRole} onChange={e => setNewRole(e.target.value as User['role'])}>
             <option value="student">student</option>
             <option value="teacher">teacher</option>

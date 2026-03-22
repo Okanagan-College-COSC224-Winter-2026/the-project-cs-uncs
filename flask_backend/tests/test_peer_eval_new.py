@@ -77,8 +77,8 @@ class TestPeerEvalGroup:
                 "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
-                    {"question": "Q1", "scoreMax": 5, "hasScore": True},
-                    {"question": "Q2", "scoreMax": 5, "hasScore": True},
+                    {"question": "Q1", "scoreMax": 5},
+                    {"question": "Q2", "scoreMax": 5},
                 ],
             },
             headers={"X-Timezone-Offset": "0"},
@@ -109,8 +109,8 @@ class TestPeerEvalGroup:
                 "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
-                    {"question": "Custom Q1", "scoreMax": 7, "hasScore": True},
-                    {"question": "Custom Q2", "scoreMax": 5, "hasScore": True},
+                    {"question": "Custom Q1", "scoreMax": 7},
+                    {"question": "Custom Q2", "scoreMax": 5},
                 ],
             },
         )
@@ -122,11 +122,9 @@ class TestPeerEvalGroup:
         criteria = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
         assert [c.question for c in criteria] == ["Custom Q1", "Custom Q2"]
         assert criteria[0].scoreMax == 7
-        assert criteria[0].hasScore is True
         assert criteria[1].scoreMax == 5
-        assert criteria[1].hasScore is True
 
-    def test_group_peer_eval_rejects_freeform_rubric_criteria(self, test_client, dbsession):
+    def test_group_peer_eval_ignores_hasScore_false_rubric_criteria(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher_freeform@test.com", "teacher")
         s1 = _create_user("Student 1", "ff1@test.com", "student")
         s2 = _create_user("Student 2", "ff2@test.com", "student")
@@ -149,11 +147,19 @@ class TestPeerEvalGroup:
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
                     {"question": "Custom Q1", "scoreMax": 7, "hasScore": True},
-                    {"question": "Custom freeform", "hasScore": False},
+                    {"question": "Custom legacy hasScore=false", "hasScore": False},
                 ],
             },
         )
-        assert res.status_code == 400
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+        assert rubric is not None
+        criteria = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
+        assert [c.question for c in criteria] == ["Custom Q1", "Custom legacy hasScore=false"]
+        assert criteria[0].scoreMax == 7
+        assert criteria[1].scoreMax == 5
 
     def test_group_peer_eval_rejects_custom_rubric_scoremax_above_10(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher_custom_max@test.com", "teacher")
@@ -179,7 +185,7 @@ class TestPeerEvalGroup:
                 "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
-                    {"question": "Too high", "scoreMax": 11, "hasScore": True},
+                    {"question": "Too high", "scoreMax": 11},
                 ],
             },
         )
@@ -207,8 +213,8 @@ class TestPeerEvalGroup:
                 "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
-                    {"question": "Custom Q1", "scoreMax": 0, "hasScore": True},
-                    {"question": "Custom Q2", "scoreMax": 5, "hasScore": True},
+                    {"question": "Custom Q1", "scoreMax": 0},
+                    {"question": "Custom Q2", "scoreMax": 5},
                 ],
             },
         )
@@ -238,13 +244,13 @@ class TestRubricScoreMaxCap:
 
         too_high = test_client.post(
             "/create_criteria",
-            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 11, "hasScore": True},
+            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 11},
         )
         assert too_high.status_code == 400
 
         ok = test_client.post(
             "/create_criteria",
-            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 5, "hasScore": True},
+            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 5},
         )
         assert ok.status_code == 201
         criteria_id = ok.get_json()["id"]
@@ -277,7 +283,7 @@ class TestRubricScoreMaxCap:
 
         too_low = test_client.post(
             "/create_criteria",
-            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 0, "hasScore": True},
+            json={"rubricID": rubric.id, "question": "Q1", "scoreMax": 0},
         )
         assert too_low.status_code == 400
 
@@ -345,9 +351,7 @@ class TestRubricScoreMaxCap:
 
         criteria_payload = []
         for c in status_data["criteria"]:
-            item = {"criterionRowID": c["id"], "comments": "ok"}
-            if c["hasScore"]:
-                item["grade"] = 0
+            item = {"criterionRowID": c["id"], "grade": 0, "comments": "ok"}
             criteria_payload.append(item)
 
         submit = test_client.post(
@@ -426,9 +430,7 @@ class TestRubricScoreMaxCap:
 
         criteria_payload = []
         for c in status_data["criteria"]:
-            item = {"criterionRowID": c["id"], "comments": "ok"}
-            if c["hasScore"]:
-                item["grade"] = 0
+            item = {"criterionRowID": c["id"], "grade": 0, "comments": "ok"}
             criteria_payload.append(item)
 
         submit = test_client.post(
@@ -490,8 +492,8 @@ class TestRubricScoreMaxCap:
                 "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id],
                 "rubric_criteria": [
-                    {"question": "Q1", "scoreMax": 5, "hasScore": True},
-                    {"question": "Q2", "scoreMax": 5, "hasScore": True},
+                    {"question": "Q1", "scoreMax": 5},
+                    {"question": "Q2", "scoreMax": 5},
                 ],
             },
         )
@@ -614,9 +616,7 @@ class TestRubricScoreMaxCap:
 
         criteria_payload = []
         for c in status_data["criteria"]:
-            item = {"criterionRowID": c["id"], "comments": "ok"}
-            if c["hasScore"]:
-                item["grade"] = 0
+            item = {"criterionRowID": c["id"], "grade": 0, "comments": "ok"}
             criteria_payload.append(item)
 
         submit = test_client.post(
@@ -667,9 +667,7 @@ class TestRubricScoreMaxCap:
         status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
         criteria_payload = []
         for c in status.get_json()["criteria"]:
-            item = {"criterionRowID": c["id"], "comments": "ok"}
-            if c["hasScore"]:
-                item["grade"] = 0
+            item = {"criterionRowID": c["id"], "grade": 0, "comments": "ok"}
             criteria_payload.append(item)
         submit = test_client.post(
             f"/peer_eval/group/submit/{assignment_id}",
@@ -736,9 +734,7 @@ class TestRubricScoreMaxCap:
         assert status.status_code == 200
         criteria_payload = []
         for c in status.get_json()["criteria"]:
-            item = {"criterionRowID": c["id"], "comments": "ok"}
-            if c["hasScore"]:
-                item["grade"] = 0
+            item = {"criterionRowID": c["id"], "grade": 0, "comments": "ok"}
             criteria_payload.append(item)
 
         submit = test_client.post(
@@ -789,8 +785,8 @@ class TestRubricScoreMaxCap:
                 "due_date": "2099-12-31",
                 "included_group_ids": [g1.id, g2.id, g3.id],
                 "rubric_criteria": [
-                    {"question": "Q1", "scoreMax": 5, "hasScore": True},
-                    {"question": "Q2", "scoreMax": 5, "hasScore": True},
+                    {"question": "Q1", "scoreMax": 5},
+                    {"question": "Q2", "scoreMax": 5},
                 ],
             },
         )
@@ -897,9 +893,7 @@ class TestPeerEvalIndividualEligibility:
         rubric = assignment.rubrics.first()
         assert rubric is not None
         for row in rubric.criteria_descriptions.all():
-            item = {"criterionRowID": row.id, "comments": "ok"}
-            if row.hasScore:
-                item["grade"] = 0
+            item = {"criterionRowID": row.id, "grade": 0, "comments": "ok"}
             criteria.append(item)
 
         submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
@@ -946,9 +940,7 @@ class TestPeerEvalIndividualEligibility:
         rubric = assignment.rubrics.first()
         assert rubric is not None
         for row in rubric.criteria_descriptions.all():
-            item = {"criterionRowID": row.id, "comments": "ok"}
-            if row.hasScore:
-                item["grade"] = 0
+            item = {"criterionRowID": row.id, "grade": 0, "comments": "ok"}
             criteria.append(item)
 
         submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
@@ -1009,9 +1001,7 @@ class TestPeerEvalIndividualEligibility:
         rubric = assignment.rubrics.first()
         assert rubric is not None
         for row in rubric.criteria_descriptions.all():
-            item = {"criterionRowID": row.id, "comments": "ok"}
-            if row.hasScore:
-                item["grade"] = 0
+            item = {"criterionRowID": row.id, "grade": 0, "comments": "ok"}
             criteria.append(item)
 
         submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
@@ -1048,3 +1038,45 @@ class TestPeerEvalIndividualEligibility:
         received = test_client.get(f"/review/received/{assignment_id}")
         assert received.status_code == 200
         assert received.get_json()["total_reviews"] == 1
+
+
+class TestRubricAdminPermissions:
+    def test_admin_can_manage_rubric_criteria_for_other_teachers_assignment(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "rubric_admin_teacher@test.com", "teacher")
+        admin = _create_user("Admin", "rubric_admin@test.com", "admin")
+
+        course = _create_course(teacher.id)
+
+        login_as(test_client, "rubric_admin_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Peer Eval",
+                "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+        assert rubric is not None
+
+        login_as(test_client, "rubric_admin@test.com")
+
+        created = test_client.post(
+            "/create_criteria",
+            json={"rubricID": rubric.id, "question": "Admin Q1", "scoreMax": 5},
+        )
+        assert created.status_code == 201
+        criteria_id = created.get_json()["id"]
+
+        updated = test_client.patch(
+            f"/update_criteria/{criteria_id}",
+            json={"question": "Admin Q1 (updated)", "scoreMax": 6},
+        )
+        assert updated.status_code == 200
+
+        deleted = test_client.delete(f"/delete_criteria/{criteria_id}")
+        assert deleted.status_code == 200

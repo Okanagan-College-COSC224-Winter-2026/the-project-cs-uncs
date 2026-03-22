@@ -20,6 +20,7 @@ from ..models import (
     Review,
     Rubric,
     Submission,
+    SubmissionAttachment,
     User,
     User_Course,
     db,
@@ -71,19 +72,19 @@ def _coerce_int_list(value):
 def _default_rubric_template(assignment_type: str):
     if assignment_type == "peer_eval_individual":
         return [
-            ("Contributed meaningfully to the team's work", 5, True),
-            ("Communicated clearly and respectfully", 5, True),
-            ("Was reliable and met commitments", 5, True),
-            ("Produced high-quality work", 5, True),
-            ("Helped the team succeed (supportive/collaborative)", 5, True),
+            ("Contributed meaningfully to the team's work", 5),
+            ("Communicated clearly and respectfully", 5),
+            ("Was reliable and met commitments", 5),
+            ("Produced high-quality work", 5),
+            ("Helped the team succeed (supportive/collaborative)", 5),
         ]
 
     if assignment_type == "peer_eval_group":
         return [
-            ("Deliverable was clear and easy to follow", 5, True),
-            ("Work was complete and met requirements", 5, True),
-            ("Evidence of strong teamwork/coordination", 5, True),
-            ("Overall effectiveness/quality", 5, True),
+            ("Deliverable was clear and easy to follow", 5),
+            ("Work was complete and met requirements", 5),
+            ("Evidence of strong teamwork/coordination", 5),
+            ("Overall effectiveness/quality", 5),
         ]
 
     return []
@@ -92,7 +93,9 @@ def _default_rubric_template(assignment_type: str):
 def _normalize_rubric_criteria_payload(rubric_criteria):
     """Normalize rubric criteria payload from request.
 
-    Expected format: list of {question: str, scoreMax?: int, hasScore?: bool}
+    Expected format: list of {question: str, scoreMax?: int}
+
+    Note: legacy clients may still send hasScore; it is ignored.
     """
     if rubric_criteria is None:
         return None
@@ -108,21 +111,9 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
         if not isinstance(question, str) or not question.strip():
             raise ValueError("Each criterion must have a question")
 
-        has_score = row.get("hasScore")
-        if has_score is None:
-            has_score = True
-        if not isinstance(has_score, bool):
-            raise ValueError("hasScore must be a boolean")
-
-        if not has_score:
-            raise ValueError(
-                "Rubric criteria must use numeric scores (hasScore=true). "
-                "Use the 'Additional comments (optional)' box during review submission instead."
-            )
-
         score_max = row.get("scoreMax")
         if score_max is None:
-            score_max = 0 if not has_score else 5
+            score_max = 5
         try:
             score_max_int = int(score_max)
         except (TypeError, ValueError):
@@ -132,7 +123,7 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
         if score_max_int > 10:
             raise ValueError("scoreMax must be <= 10")
 
-        normalized.append((question.strip(), score_max_int, has_score))
+        normalized.append((question.strip(), score_max_int))
 
     return normalized
 
@@ -150,13 +141,12 @@ def _ensure_default_rubric_for_assignment(assignment: Assignment, *, template_ov
     Rubric.create_rubric(rubric)
 
     template = template_override if template_override is not None else _default_rubric_template(assignment.assignment_type)
-    for question, score_max, has_score in template:
+    for question, score_max in template:
         CriteriaDescription.create_criteria_description(
             CriteriaDescription(
                 rubricID=rubric.id,
                 question=question,
                 scoreMax=score_max,
-                hasScore=has_score,
             )
         )
 
@@ -391,7 +381,7 @@ def create_assignment():
 @bp.route("/edit_assignment/<int:assignment_id>", methods=["PATCH"])
 @jwt_teacher_required
 def edit_assignment(assignment_id):
-    """Edit an existing assignment if the authenticated user is the teacher of the class and the due date has not passed"""
+    """Edit an existing assignment if the authenticated user is the teacher of the class."""
     data = request.get_json()
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
@@ -417,14 +407,16 @@ def edit_assignment(assignment_id):
         except ValueError:
             tz_offset_minutes = None
 
-    if not assignment.can_modify(tz_offset_minutes=tz_offset_minutes):
-        return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
-
     assignment.name = data.get("name", assignment.name)
     assignment.rubric_text = data.get("rubric", assignment.rubric_text)
     due_date = data.get("due_date")
     if due_date:
-        assignment.due_date = datetime.fromisoformat(due_date)
+        try:
+            assignment.due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
+        except (ValueError, TypeError) as e:
+            if str(e) == "past":
+                return jsonify({"msg": "Due date cannot be in the past"}), 400
+            return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     assignment.update()
     return (
@@ -488,10 +480,6 @@ def edit_assignment_details(assignment_id):
             tz_offset_minutes = None
 
     uploads_dir = Path(current_app.instance_path) / "uploads"
-
-    if (name is not None) or (due_date is not None):
-        if not assignment.can_modify(tz_offset_minutes=tz_offset_minutes):
-            return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
 
     if name is not None:
         if not name or not str(name).strip():
@@ -679,8 +667,24 @@ def get_my_submission(assignment_id):
     if not submission:
         return jsonify({"submission": None, "locked": False}), 200
 
-    storage_name = Path(submission.path).name if submission.path else None
-    file_name = _original_filename_from_storage_name(storage_name)
+    attachments = list(getattr(submission, "attachments", []) or [])
+
+    # Back-compat for legacy single-file submissions.
+    if not attachments and submission.path:
+        storage_name = Path(submission.path).name
+        attachments_payload = [{"id": None, "file_name": _original_filename_from_storage_name(storage_name)}]
+    else:
+        attachments_payload = []
+        for a in attachments:
+            storage_name = Path(a.path).name if a.path else None
+            attachments_payload.append(
+                {
+                    "id": a.id,
+                    "file_name": _original_filename_from_storage_name(storage_name),
+                }
+            )
+
+    first_file_name = attachments_payload[0]["file_name"] if attachments_payload else None
     submitted_by = {"id": user.id, "name": user.name}
 
     return (
@@ -688,8 +692,9 @@ def get_my_submission(assignment_id):
             {
                 "submission": {
                     "id": submission.id,
-                    "file_name": file_name,
+                    "file_name": first_file_name,
                     "submitted_at": submission.submitted_at.isoformat() if getattr(submission, "submitted_at", None) else None,
+                    "attachments": attachments_payload,
                 },
                 "submitted_by": submitted_by,
                 "locked": False,
@@ -724,8 +729,18 @@ def delete_my_submission(assignment_id):
     if not submission:
         return jsonify({"msg": "No submission to delete"}), 200
 
+    uploads_root = Path(current_app.instance_path) / "uploads"
+
+    for att in list(getattr(submission, "attachments", []) or []):
+        if not getattr(att, "path", None):
+            continue
+        try:
+            (uploads_root / att.path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    # Back-compat: delete legacy single-file storage.
     if submission.path:
-        uploads_root = Path(current_app.instance_path) / "uploads"
         try:
             (uploads_root / submission.path).unlink(missing_ok=True)
         except Exception:
@@ -745,6 +760,10 @@ def upload_submission(assignment_id):
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
+    assignment_type = getattr(assignment, "assignment_type", None) or "standard"
+    if assignment_type != "standard":
+        return jsonify({"msg": "This assignment does not accept file submissions"}), 400
+
     email = get_jwt_identity()
     user = User.get_by_email(email)
     if not user:
@@ -754,43 +773,85 @@ def upload_submission(assignment_id):
     if not enrollment:
         return jsonify({"msg": "Unauthorized: You are not enrolled in this course"}), 403
 
-    uploaded_file = request.files.get("file")
-    if not uploaded_file or not uploaded_file.filename:
-        return jsonify({"msg": "File is required"}), 400
+    uploaded_files = request.files.getlist("files")
+
+    # Back-compat: accept a single file under the legacy key.
+    legacy_file = request.files.get("file")
+    if legacy_file and getattr(legacy_file, "filename", None):
+        uploaded_files = uploaded_files + [legacy_file]
+
+    uploaded_files = [f for f in uploaded_files if f and getattr(f, "filename", None)]
+    if not uploaded_files:
+        return jsonify({"msg": "At least one file is required"}), 400
 
     uploads_root = Path(current_app.instance_path) / "uploads"
     rel_dir = Path("submissions") / str(assignment.id) / str(user.id)
     abs_dir = uploads_root / rel_dir
     abs_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_name = secure_filename(uploaded_file.filename)
-    if not safe_name:
-        safe_name = "submission"
-
-    storage_name = f"{uuid4().hex}__{safe_name}"
-    abs_path = abs_dir / storage_name
-
     submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
-    if submission and submission.path:
-        try:
-            (uploads_root / submission.path).unlink(missing_ok=True)
-        except Exception:
-            pass
+    if submission:
+        for att in list(getattr(submission, "attachments", []) or []):
+            if getattr(att, "path", None):
+                try:
+                    (uploads_root / att.path).unlink(missing_ok=True)
+                except Exception:
+                    pass
+            db.session.delete(att)
 
-    uploaded_file.save(str(abs_path))
-    rel_path = (rel_dir / storage_name).as_posix()
+        # Back-compat: delete legacy single-file storage.
+        if submission.path:
+            try:
+                (uploads_root / submission.path).unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    saved_rel_paths = []
+    for idx, f in enumerate(uploaded_files):
+        safe_name = secure_filename(f.filename)
+        if not safe_name:
+            safe_name = f"submission_{idx + 1}"
+
+        storage_name = f"{uuid4().hex}__{safe_name}"
+        abs_path = abs_dir / storage_name
+        f.save(str(abs_path))
+        saved_rel_paths.append((rel_dir / storage_name).as_posix())
 
     now_local = datetime.now()
     if not submission:
-        submission = Submission(path=rel_path, studentID=user.id, assignmentID=assignment.id, submitted_at=now_local)
+        submission = Submission(
+            path=(saved_rel_paths[0] if saved_rel_paths else None),
+            studentID=user.id,
+            assignmentID=assignment.id,
+            submitted_at=now_local,
+        )
         db.session.add(submission)
     else:
-        submission.path = rel_path
+        submission.path = saved_rel_paths[0] if saved_rel_paths else None
         submission.submitted_at = now_local
+
+    db.session.flush()
+
+    attachments_payload = []
+    for rel_path in saved_rel_paths:
+        att = SubmissionAttachment(submissionID=submission.id, path=rel_path)
+        db.session.add(att)
+        db.session.flush()
+
+        storage_name = Path(rel_path).name
+        attachments_payload.append(
+            {
+                "id": att.id,
+                "file_name": _original_filename_from_storage_name(storage_name),
+            }
+        )
 
     db.session.commit()
 
-    return jsonify({"msg": "Submission uploaded", "submission": {"id": submission.id}}), 200
+    return (
+        jsonify({"msg": "Submission uploaded", "submission": {"id": submission.id, "attachments": attachments_payload}}),
+        200,
+    )
 
 
 @bp.route("/submissions/<int:assignment_id>", methods=["GET"])
@@ -826,6 +887,16 @@ def list_submissions(assignment_id):
         storage_name = Path(sub.path).name if sub.path else None
         file_name = _original_filename_from_storage_name(storage_name)
 
+        attachments_payload = []
+        for a in list(getattr(sub, "attachments", []) or []):
+            storage_name = Path(a.path).name if a.path else None
+            attachments_payload.append(
+                {
+                    "id": a.id,
+                    "file_name": _original_filename_from_storage_name(storage_name),
+                }
+            )
+
         submitted_at = getattr(sub, "submitted_at", None)
         on_time = None
         if assignment.due_date and submitted_at:
@@ -840,6 +911,7 @@ def list_submissions(assignment_id):
                     "email": student.email if student else None,
                 },
                 "file_name": file_name,
+                "attachments": attachments_payload,
                 "submitted_at": submitted_at.isoformat() if submitted_at else None,
                 "on_time": on_time,
             }
@@ -891,6 +963,58 @@ def download_submission(submission_id):
     return send_from_directory(
         str(uploads_root),
         submission.path,
+        as_attachment=True,
+        download_name=download_name,
+    )
+
+
+@bp.route("/submission/attachment/download/<int:attachment_id>", methods=["GET"])
+@jwt_required()
+def download_submission_attachment(attachment_id):
+    """Download a single submission attachment.
+
+    Allowed for:
+    - The submitting student
+    - The course teacher
+    - Admins
+    """
+    attachment = SubmissionAttachment.get_by_id(attachment_id)
+    if not attachment:
+        return jsonify({"msg": "Submission attachment not found"}), 404
+
+    submission = Submission.get_by_id(attachment.submissionID)
+    if not submission:
+        return jsonify({"msg": "Submission not found"}), 404
+
+    assignment = Assignment.get_by_id(submission.assignmentID)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    is_owner_student = user.is_student() and submission.studentID == user.id
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+
+    if not (user.is_admin() or is_owner_student or is_course_teacher):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    if not attachment.path:
+        return jsonify({"msg": "No file for this submission attachment"}), 404
+
+    storage_name = Path(attachment.path).name
+    download_name = _original_filename_from_storage_name(storage_name) or storage_name
+
+    uploads_root = Path(current_app.instance_path) / "uploads"
+    return send_from_directory(
+        str(uploads_root),
+        attachment.path,
         as_attachment=True,
         download_name=download_name,
     )

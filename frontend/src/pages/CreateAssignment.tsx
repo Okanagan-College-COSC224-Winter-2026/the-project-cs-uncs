@@ -16,20 +16,20 @@ type AssignmentType = 'standard' | 'peer_eval_group' | 'peer_eval_individual'
 const defaultRubricFor = (assignmentType: AssignmentType): RubricCriterionDraft[] => {
   if (assignmentType === 'peer_eval_individual') {
     return [
-      { question: "Contributed meaningfully to the team's work", scoreMax: 5, hasScore: true },
-      { question: 'Communicated clearly and respectfully', scoreMax: 5, hasScore: true },
-      { question: 'Was reliable and met commitments', scoreMax: 5, hasScore: true },
-      { question: 'Produced high-quality work', scoreMax: 5, hasScore: true },
-      { question: 'Helped the team succeed (supportive/collaborative)', scoreMax: 5, hasScore: true },
+      { question: "Contributed meaningfully to the team's work", scoreMax: 5 },
+      { question: 'Communicated clearly and respectfully', scoreMax: 5 },
+      { question: 'Was reliable and met commitments', scoreMax: 5 },
+      { question: 'Produced high-quality work', scoreMax: 5 },
+      { question: 'Helped the team succeed (supportive/collaborative)', scoreMax: 5 },
     ]
   }
 
   if (assignmentType === 'peer_eval_group') {
     return [
-      { question: 'Deliverable was clear and easy to follow', scoreMax: 5, hasScore: true },
-      { question: 'Work was complete and met requirements', scoreMax: 5, hasScore: true },
-      { question: 'Evidence of strong teamwork/coordination', scoreMax: 5, hasScore: true },
-      { question: 'Overall effectiveness/quality', scoreMax: 5, hasScore: true },
+      { question: 'Deliverable was clear and easy to follow', scoreMax: 5 },
+      { question: 'Work was complete and met requirements', scoreMax: 5 },
+      { question: 'Evidence of strong teamwork/coordination', scoreMax: 5 },
+      { question: 'Overall effectiveness/quality', scoreMax: 5 },
     ]
   }
 
@@ -121,7 +121,7 @@ export default function CreateAssignment() {
   const attemptCreateAssignment = async () => {
     if (!id) {
       setStatusType('error')
-      setStatusMessage('Missing class id')
+        setStatusMessage("We couldn't tell which class this assignment belongs to. Please go back and try again.")
       return
     }
 
@@ -189,11 +189,12 @@ export default function CreateAssignment() {
           assignment_type: assignmentType,
           included_group_ids: showGroupSelector ? includedGroupIds : undefined,
           rubric_criteria: showRubricEditor
-            ? rubricCriteria.map((c) => ({
-                question: c.question,
-                hasScore: true,
-                scoreMax: c.scoreMax,
-              }))
+            ? rubricCriteria
+                .filter((c) => c.question.trim())
+                .map((c) => ({
+                  question: c.question,
+                  scoreMax: c.scoreMax,
+                }))
             : undefined,
         })
       }

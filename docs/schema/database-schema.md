@@ -58,7 +58,7 @@ Field types, primary keys, and notable constraints are included for quick refere
   - id (PK), assignmentID (FK -> Assignment.id), canComment (BOOLEAN NOT NULL DEFAULT TRUE)
   - Multiple rubrics per assignment permitted; business logic decides which one is active
 - Criteria_Description (rubric rows)
-  - id (PK), rubricID (FK -> Rubric.id), question, scoreMax, hasScore (default TRUE)
+  - id (PK), rubricID (FK -> Rubric.id), question, scoreMax
   - Defines each question/row shown to reviewers
 - Criterion (responses per review per row)
   - id (PK), reviewID (FK -> Review.id), criterionRowID (FK -> Criteria_Description.id), grade, comments
@@ -69,7 +69,7 @@ Field types, primary keys, and notable constraints are included for quick refere
 - Auto-incrementing integer primary keys for all base tables except the two join tables, which use composite keys
 - `User.email` is unique and indexed; `User.role` constrained to (`student`, `teacher`, `admin`)
 - `Assignment.due_date` is nullable; when set, application logic blocks edits after the deadline
-- `Rubric.canComment` and `Criteria_Description.hasScore` both default to TRUE
+- `Rubric.canComment` defaults to TRUE
 - Foreign keys are declared in SQLAlchemy and respected by SQLite/Postgres; many are commented out in `schema.sql` purely to ease local imports
 
 ## Alignment With Code

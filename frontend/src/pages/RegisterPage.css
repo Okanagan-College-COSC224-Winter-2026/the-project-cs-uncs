@@ -50,6 +50,13 @@
   gap: var(--spacing-lg);
 }
 
+.RegisterForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .RegisterButton {
   margin-bottom: var(--spacing-md);
   width: 100%;

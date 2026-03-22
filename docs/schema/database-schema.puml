@@ -86,7 +86,6 @@ class CriteriaDescription {
   +rubricID: Integer
   +question: String
   +scoreMax: Integer
-  +hasScore: Boolean <<default TRUE>>
 }
 }
 

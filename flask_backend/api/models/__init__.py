@@ -11,6 +11,13 @@ from .group_evaluation_target_model import GroupEvaluationTarget
 from .group_member_model import GroupMember
 from .review_model import Review
 from .rubric_model import Rubric
+from .submission_model import Submission
+from .submission_attachment_model import SubmissionAttachment
+from .user_course_model import User_Course
+from .user_model import User
+
+# Schemas import triggers SQLAlchemy mapper configuration via Marshmallow.
+# Keep it after all models are imported so relationship targets are registered.
 from .schemas import (
     AssignmentSchema,
     CourseListSchema,
@@ -28,9 +35,6 @@ from .schemas import (
     UserRegistrationSchema,
     UserSchema,
 )
-from .submission_model import Submission
-from .user_course_model import User_Course
-from .user_model import User
 
 __all__ = [
     "db",
@@ -50,6 +54,7 @@ __all__ = [
     "GroupEvaluationCriterion",
     "User_Course",
     "Submission",
+    "SubmissionAttachment",
     "UserSchema",
     "UserRegistrationSchema",
     "UserLoginSchema",

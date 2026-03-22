@@ -127,7 +127,6 @@ def group_status(assignment_id: int):
                     "id": c.id,
                     "question": c.question,
                     "scoreMax": c.scoreMax,
-                    "hasScore": c.hasScore,
                 }
                 for c in criteria
             ],
@@ -217,17 +216,14 @@ def submit_group_peer_eval(assignment_id: int):
             grade = c.get("grade")
             comments = c.get("comments")
 
-            if row.hasScore:
-                if grade is None:
-                    return jsonify({"msg": "grade is required for scored criteria"}), 400
-                try:
-                    grade_int = int(grade)
-                except (ValueError, TypeError):
-                    return jsonify({"msg": "Invalid grade"}), 400
-                if grade_int < 0 or (row.scoreMax is not None and grade_int > int(row.scoreMax)):
-                    return jsonify({"msg": "Grade out of range"}), 400
-            else:
-                grade_int = None
+            if grade is None:
+                return jsonify({"msg": "grade is required"}), 400
+            try:
+                grade_int = int(grade)
+            except (ValueError, TypeError):
+                return jsonify({"msg": "Invalid grade"}), 400
+            if grade_int < 0 or (row.scoreMax is not None and grade_int > int(row.scoreMax)):
+                return jsonify({"msg": "Grade out of range"}), 400
 
             if comments is not None and not isinstance(comments, str):
                 return jsonify({"msg": "Invalid comments"}), 400
@@ -251,11 +247,10 @@ def submit_group_peer_eval(assignment_id: int):
 
         for c in ev["criteria"]:
             row_id = int(c["criterionRowID"])
-            row = criteria_by_id[row_id]
             grade = c.get("grade")
             comments = c.get("comments")
 
-            grade_int = int(grade) if row.hasScore and grade is not None else None
+            grade_int = int(grade)
             comments_text = comments.strip() if isinstance(comments, str) and comments.strip() else None
 
             db.session.add(
@@ -356,17 +351,14 @@ def update_group_peer_eval(assignment_id: int):
             grade = c.get("grade")
             comments = c.get("comments")
 
-            if row.hasScore:
-                if grade is None:
-                    return jsonify({"msg": "grade is required for scored criteria"}), 400
-                try:
-                    grade_int = int(grade)
-                except (ValueError, TypeError):
-                    return jsonify({"msg": "Invalid grade"}), 400
-                if grade_int < 0 or (row.scoreMax is not None and grade_int > int(row.scoreMax)):
-                    return jsonify({"msg": "Grade out of range"}), 400
-            else:
-                grade_int = None
+            if grade is None:
+                return jsonify({"msg": "grade is required"}), 400
+            try:
+                grade_int = int(grade)
+            except (ValueError, TypeError):
+                return jsonify({"msg": "Invalid grade"}), 400
+            if grade_int < 0 or (row.scoreMax is not None and grade_int > int(row.scoreMax)):
+                return jsonify({"msg": "Grade out of range"}), 400
 
             if comments is not None and not isinstance(comments, str):
                 return jsonify({"msg": "Invalid comments"}), 400
@@ -387,11 +379,10 @@ def update_group_peer_eval(assignment_id: int):
 
         for c in ev["criteria"]:
             row_id = int(c["criterionRowID"])
-            row = criteria_by_id[row_id]
             grade = c.get("grade")
             comments = c.get("comments")
 
-            grade_int = int(grade) if row.hasScore and grade is not None else None
+            grade_int = int(grade)
             comments_text = comments.strip() if isinstance(comments, str) and comments.strip() else None
 
             db.session.add(
@@ -496,7 +487,6 @@ def received_group_feedback(assignment_id: int):
                     "criterionRowID": crit.criterionRowID,
                     "question": row.question if row else "Question unavailable",
                     "scoreMax": row.scoreMax if row else None,
-                    "hasScore": row.hasScore if row else True,
                     "grade": crit.grade,
                     "comments": crit.comments,
                 }
@@ -560,7 +550,6 @@ def teacher_group_overview(assignment_id: int):
                         "criterionRowID": crit.criterionRowID,
                         "question": row.question if row else "Question unavailable",
                         "scoreMax": row.scoreMax if row else None,
-                        "hasScore": row.hasScore if row else True,
                         "grade": crit.grade,
                         "comments": crit.comments,
                     }
@@ -617,11 +606,10 @@ def teacher_group_summary(assignment_id: int):
     if rubric:
         rows = CriteriaDescription.query.filter_by(rubricID=rubric.id).all()
         for r in rows:
-            if r.hasScore:
-                try:
-                    max_per_review += int(r.scoreMax or 0)
-                except (ValueError, TypeError):
-                    max_per_review += 0
+            try:
+                max_per_review += int(r.scoreMax or 0)
+            except (ValueError, TypeError):
+                max_per_review += 0
 
     by_group_id = {
         g.id: {

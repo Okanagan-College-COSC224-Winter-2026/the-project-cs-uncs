@@ -1,9 +1,20 @@
 import { importStudentsForCourse } from "./api";
 
-export const importCSV = (id: string | number) => {
+type ImportCsvHandlers = {
+  onSuccess?: (message: string) => void;
+  onError?: (message: string) => void;
+};
+
+const asMessage = (value: unknown): string => {
+  if (value instanceof Error) return value.message;
+  return String(value);
+};
+
+export const importCSV = (id: string | number, handlers: ImportCsvHandlers = {}) => {
   // Prompt the user to select a file
   const input = document.createElement("input");
   input.setAttribute("type", "file");
+  input.setAttribute("accept", ".csv,text/csv");
 
   // Handle the file selection event
   input.addEventListener("change", async () => {
@@ -14,21 +25,26 @@ export const importCSV = (id: string | number) => {
       const text = reader.result?.toString();
 
       if (!text) {
-        alert("Please select a file to upload");
+        handlers.onError?.("Please select a file to upload");
         return;
       }
 
       try {
         const result = await importStudentsForCourse(Number(id), text);
-        // ADD: Show success message from backend
-        alert(result.msg || "Students added successfully!");
+        handlers.onSuccess?.(result.msg || "Students added successfully!");
       } catch (error) {
-        alert("Error: " + error);
+        handlers.onError?.(asMessage(error));
       }
     };
 
     if (!file) {
-      alert("Please select a file to upload");
+      handlers.onError?.("Please select a file to upload");
+      return;
+    }
+
+    const fileName = file.name || "";
+    if (!fileName.toLowerCase().endsWith(".csv")) {
+      handlers.onError?.("Please select a .csv file");
       return;
     }
 

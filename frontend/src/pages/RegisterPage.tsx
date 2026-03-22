@@ -3,7 +3,7 @@ import './RegisterPage.css';
 import Textbox from '../components/Textbox';
 import Button from '../components/Button';
 import StatusMessage from '../components/StatusMessage';
-import { tryRegister } from '../util/api';
+import { joinRosterCourse, tryRegister } from '../util/api';
 import { useNavigate } from 'react-router-dom';
 
 interface AvailableCourse {
@@ -25,23 +25,52 @@ export default function RegisterPage() {
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
 
-  const canRegister = !!name.trim() && !!email.trim() && !!password.trim();
+  const looksLikeEmail = (value: string) => {
+    // Intentionally simple: just enough to catch obvious typos.
+    return /^\S+@\S+\.\S+$/.test(value)
+  }
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setStatusType('error');
-      setStatusMessage('All fields are required');
-      return;
+    setStatusType('error')
+    setStatusMessage('')
+
+    const trimmedName = name.trim()
+    const trimmedEmail = email.trim()
+    const trimmedPassword = password.trim()
+    const trimmedConfirmPassword = confirmPassword.trim()
+
+    if (!trimmedName) {
+      setStatusMessage('Please enter your name.')
+      return
+    }
+
+    if (!trimmedEmail) {
+      setStatusMessage('Please enter your email address.')
+      return
+    }
+
+    if (!looksLikeEmail(trimmedEmail)) {
+      setStatusMessage('Please enter a valid email address (example: name@school.edu).')
+      return
+    }
+
+    if (!trimmedPassword) {
+      setStatusMessage('Please create a password.')
+      return
+    }
+
+    if (!trimmedConfirmPassword) {
+      setStatusMessage('Please confirm your password.')
+      return
     }
 
     if (password !== confirmPassword) {
-      setStatusType('error');
-      setStatusMessage('Passwords do not match');
-      return;
+      setStatusMessage("Passwords don't match. Please try again.")
+      return
     }
 
     try {
-      const response = await tryRegister(name, email, password);
+      const response = await tryRegister(trimmedName, trimmedEmail, trimmedPassword);
 
       // Check for available courses in response
       if (response.available_courses && response.available_courses.length > 0) {
@@ -72,18 +101,7 @@ export default function RegisterPage() {
     try {
       // Join each selected course
       for (const courseId of selectedCourses) {
-        const response = await fetch('http://localhost:5000/class/join_course', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ course_id: courseId })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to join course ${courseId}`);
-        }
+        await joinRosterCourse(courseId)
       }
 
       setStatusType('success');
@@ -100,6 +118,7 @@ export default function RegisterPage() {
   if (isRegistered && availableCourses.length > 0) {
     return (
       <div className="RegisterPage">
+        {statusMessage && <StatusMessage message={statusMessage} type={statusType} className="RegisterError" />}
         <div className="RegisterContainer">
           <h1>Join Your Courses</h1>
           <p>Your email appears on the roster for these courses. Select which ones you'd like to join:</p>
@@ -127,8 +146,6 @@ export default function RegisterPage() {
             ))}
           </div>
 
-          <StatusMessage message={statusMessage} type={statusType} />
-
           <div className="ButtonGroup">
             <Button
               onClick={handleJoinCourses}
@@ -151,69 +168,66 @@ export default function RegisterPage() {
 
   return (
     <div className="RegisterPage">
+      {statusMessage && <StatusMessage message={statusMessage} type={statusType} className="RegisterError" />}
       <div className="RegisterBlock">
         <h1>Register</h1>
 
         <div className="RegisterInner">
           <form
-            className="RegisterInputs"
+            className="RegisterForm"
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              if (!canRegister) {
-                return;
-              }
               handleRegister();
             }}
           >
-            <div className="RegisterInputChunk">
-              <label htmlFor="register-name">Name</label>
-              <Textbox
-                id='register-name'
-                placeholder='Name...'
-                onInput={setName}
-                className='RegisterInput'
-              />
+            <div className="RegisterInputs">
+              <div className="RegisterInputChunk">
+                <label htmlFor="register-name">Name</label>
+                <Textbox
+                  id='register-name'
+                  placeholder='Name...'
+                  onInput={setName}
+                  className='RegisterInput'
+                />
+              </div>
+
+              <div className="RegisterInputChunk">
+                <label htmlFor="register-email">Email</label>
+                <Textbox
+                  id='register-email'
+                  placeholder='Email...'
+                  onInput={setEmail}
+                  className='RegisterInput'
+                />
+              </div>
+
+              <div className="RegisterInputChunk">
+                <label htmlFor="register-password">Password</label>
+                <Textbox
+                  id='register-password'
+                  type='password'
+                  placeholder='Password...'
+                  onInput={setPassword}
+                  className='RegisterInput'
+                />
+              </div>
+
+              <div className="RegisterInputChunk">
+                <label htmlFor="register-confirm-password">Confirm Password</label>
+                <Textbox
+                  id='register-confirm-password'
+                  type='password'
+                  placeholder='Confirm Password...'
+                  onInput={setConfirmPassword}
+                  className='RegisterInput'
+                />
+              </div>
             </div>
 
-            <div className="RegisterInputChunk">
-              <label htmlFor="register-email">Email</label>
-              <Textbox
-                id='register-email'
-                type='email'
-                placeholder='Email...'
-                onInput={setEmail}
-                className='RegisterInput'
-              />
-            </div>
-
-            <div className="RegisterInputChunk">
-              <label htmlFor="register-password">Password</label>
-              <Textbox
-                id='register-password'
-                type='password'
-                placeholder='Password...'
-                onInput={setPassword}
-                className='RegisterInput'
-              />
-            </div>
-
-            <div className="RegisterInputChunk">
-              <label htmlFor="register-confirm-password">Confirm Password</label>
-              <Textbox
-                id='register-confirm-password'
-                type='password'
-                placeholder='Confirm Password...'
-                onInput={setConfirmPassword}
-                className='RegisterInput'
-              />
-            </div>
-
-            <StatusMessage message={statusMessage} type={statusType} />
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <Button
                 htmlType="submit"
-                disabled={!canRegister}
               >
                 Register
               </Button>

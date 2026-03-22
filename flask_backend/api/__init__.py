@@ -51,7 +51,13 @@ def create_app(test_config=None):
             "DATABASE_URL", "sqlite:///" + os.path.join(app.instance_path, "app.sqlite")
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        JWT_SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret"),
+        # NOTE: HS256 secrets should be at least 32 bytes.
+        # If JWT_SECRET_KEY isn't set (local dev), use a long default to avoid
+        # weak-secret warnings. Changing this value will invalidate existing
+        # dev cookies (users will need to log in again).
+        JWT_SECRET_KEY=os.environ.get(
+            "JWT_SECRET_KEY", "dev-jwt-secret-change-me-please-32-bytes-min"
+        ),
         # JWT expiration: Flask-JWT-Extended defaults to 15 minutes if unset.
         # That can feel like "random" logouts in local dev (the frontend redirects on 401).
         # Use a longer dev default but keep production short unless explicitly overridden.
@@ -193,5 +199,12 @@ def create_app(test_config=None):
     app.register_blueprint(rubric_controller.bp)
     app.register_blueprint(group_controller.bp)
     app.register_blueprint(peer_eval_controller.bp)
+
+    # Dev convenience: ensure any newly-added tables exist for local SQLite DBs.
+    # This prevents runtime 500s when the code adds a model but the developer
+    # hasn't re-run `flask init_db` yet.
+    if (not is_production) and (not app.config.get("TESTING", False)):
+        with app.app_context():
+            db.create_all()
 
     return app

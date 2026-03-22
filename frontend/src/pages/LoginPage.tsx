@@ -12,8 +12,33 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const looksLikeEmail = (value: string) => {
+    // Intentionally simple: just enough to catch obvious typos.
+    return /^\S+@\S+\.\S+$/.test(value)
+  }
+
   const attemptLogin = async () => {
     try {
+      setError('')
+
+      const trimmedEmail = email.trim()
+      const trimmedPassword = password.trim()
+
+      if (!trimmedEmail) {
+        setError('Please enter your email address.')
+        return
+      }
+
+      if (!looksLikeEmail(trimmedEmail)) {
+        setError('Please enter a valid email address (example: name@school.edu).')
+        return
+      }
+
+      if (!trimmedPassword) {
+        setError('Please enter your password.')
+        return
+      }
+
       const result = await tryLogin(email, password);
       if (result) {
         // Check if user must change password
@@ -25,8 +50,8 @@ export default function LoginPage() {
       } else {
         setError('Invalid email or password');
       }
-    } catch {
-      setError('Invalid email or password');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     }
   }
 

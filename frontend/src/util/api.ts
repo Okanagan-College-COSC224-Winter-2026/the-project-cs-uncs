@@ -8,11 +8,6 @@ const getMsgFromErrorPayload = (payload: unknown): string | null => {
   return typeof msg === 'string' ? msg : null
 }
 
-// export const getProfile = async (id: string) => {
-//   // TODO
-// }
-
-
 export const maybeHandleExpire = (response: Response) => {
   if (didExpire(response)) {
     // Remove the token

@@ -24,7 +24,6 @@ from ..models import (
     GroupMember
 )
 from ..models.db import db
-from werkzeug.security import generate_password_hash
 
 from ..controllers.assignment_controller import _ensure_default_rubric_for_assignment
 

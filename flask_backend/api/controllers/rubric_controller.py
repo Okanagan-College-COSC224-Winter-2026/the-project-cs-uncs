@@ -16,7 +16,7 @@ def get_rubric_for_assignment(assignment_id):
     Used by the frontend rubric editor to determine the rubric_id even when
     there are zero criteria.
     """
-    assignment = Assignment.query.get(assignment_id)
+    assignment = db.session.get(Assignment, assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
@@ -39,11 +39,11 @@ def create_rubric():
     email = get_jwt_identity()
     user = User.get_by_email(email)
     
-    assignment = Assignment.query.get(assignment_id)
+    assignment = db.session.get(Assignment, assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
         
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Class not found"}), 404
 
@@ -68,7 +68,7 @@ def create_rubric():
 @jwt_required()
 def get_criteria(assignment_id):
     """Get criteria for a specific assignment (for students/teachers)"""
-    assignment = Assignment.query.get(assignment_id)
+    assignment = db.session.get(Assignment, assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
@@ -103,16 +103,16 @@ def create_criteria():
     if not rubric_id:
         return jsonify({"msg": "Rubric ID is required"}), 400
 
-    rubric = Rubric.query.get(rubric_id)
+    rubric = db.session.get(Rubric, rubric_id)
     if not rubric:
         return jsonify({"msg": "Rubric not found"}), 404
         
     # Verify ownership via assignment -> course -> teacher
-    assignment = Assignment.query.get(rubric.assignmentID)
+    assignment = db.session.get(Assignment, rubric.assignmentID)
     if not assignment:
         return jsonify({"msg": "Assignment associated with rubric not found"}), 404
         
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Course associated with assignment not found"}), 404
         
@@ -156,19 +156,19 @@ def create_criteria():
 @jwt_teacher_required
 def update_criteria(criteria_id):
     """Update a single criteria description (question/scoreMax)."""
-    criterion = CriteriaDescription.query.get(criteria_id)
+    criterion = db.session.get(CriteriaDescription, criteria_id)
     if not criterion:
         return jsonify({"msg": "Criteria not found"}), 404
 
-    rubric = Rubric.query.get(criterion.rubricID)
+    rubric = db.session.get(Rubric, criterion.rubricID)
     if not rubric:
         return jsonify({"msg": "Rubric not found"}), 404
 
-    assignment = Assignment.query.get(rubric.assignmentID)
+    assignment = db.session.get(Assignment, rubric.assignmentID)
     if not assignment:
         return jsonify({"msg": "Assignment associated with rubric not found"}), 404
 
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Course associated with assignment not found"}), 404
 
@@ -224,19 +224,19 @@ def update_criteria(criteria_id):
 @jwt_teacher_required
 def delete_criteria(criteria_id):
     """Delete a single criteria description from a rubric."""
-    criterion = CriteriaDescription.query.get(criteria_id)
+    criterion = db.session.get(CriteriaDescription, criteria_id)
     if not criterion:
         return jsonify({"msg": "Criteria not found"}), 404
 
-    rubric = Rubric.query.get(criterion.rubricID)
+    rubric = db.session.get(Rubric, criterion.rubricID)
     if not rubric:
         return jsonify({"msg": "Rubric not found"}), 404
 
-    assignment = Assignment.query.get(rubric.assignmentID)
+    assignment = db.session.get(Assignment, rubric.assignmentID)
     if not assignment:
         return jsonify({"msg": "Assignment associated with rubric not found"}), 404
 
-    course = Course.query.get(assignment.courseID)
+    course = db.session.get(Course, assignment.courseID)
     if not course:
         return jsonify({"msg": "Course associated with assignment not found"}), 404
 

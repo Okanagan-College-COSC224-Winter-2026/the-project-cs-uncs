@@ -73,7 +73,7 @@ The system has three role types with hierarchical permissions:
 - Define evaluation criteria for assignments
 - Created by teachers
 - Contain multiple criteria/questions
-- Each criterion can be scored or comment-only
+- Each criterion is scored (with a configurable max score)
 - Provide consistent evaluation standards
 
 ### 6. **Reviews**

@@ -281,7 +281,9 @@ def enroll_students():
             User_Course.add(student.id, class_id)
             enrolled_students.append(email)
 
-    return jsonify({"msg": f"{len(enrolled_students)} students added to course {course.name}"}), 200
+    enrolled_count = len(enrolled_students)
+    noun = "student" if enrolled_count == 1 else "students"
+    return jsonify({"msg": f"{enrolled_count} {noun} added to course {course.name}"}), 200
 
 
 def _parse_emails(value: str) -> List[str]:
@@ -364,10 +366,12 @@ def enroll_students_emails():
         except Exception as e:
             errors.append(f"Error enrolling {email}: {str(e)}")
 
+    enrolled_count = len(enrolled)
+    noun = "student" if enrolled_count == 1 else "students"
     return (
         jsonify(
             {
-                "msg": f"{len(enrolled)} students added to course {course.name}",
+                "msg": f"{enrolled_count} {noun} added to course {course.name}",
                 "enrolled": enrolled,
                 "skipped": skipped,
                 "errors": errors,

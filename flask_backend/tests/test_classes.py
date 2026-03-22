@@ -306,6 +306,37 @@ def test_enroll_in_class(test_client, make_admin):
     assert response.status_code == 200
     assert response.json["msg"] == "2 students added to course Science 101"
 
+
+def test_enroll_in_class_single_student_message(test_client, make_admin):
+    """
+    GIVEN a logged-in teacher user
+    WHEN POST /class/enroll_students enrolls exactly one student
+    THEN the response message should use the singular form "student"
+    """
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Science 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = response.json["class"]["id"]
+
+    csv_text = "id,name,email\n300325853,Gregory Bigglesworth,gbizzle@yandex.ru\n"
+    response = test_client.post(
+        "/class/enroll_students",
+        data=json.dumps({"class_id": class_id, "students": csv_text}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["msg"] == "1 student added to course Science 101"
+
 def test_enroll_in_class_not_teacher(test_client):
     """
     GIVEN a logged-in non-teacher user

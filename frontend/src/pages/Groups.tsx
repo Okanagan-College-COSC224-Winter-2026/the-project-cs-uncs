@@ -47,6 +47,7 @@ export default function Groups() {
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [memberToAdd, setMemberToAdd] = useState<number | null>(null);
     const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null);
+    const [confirmDeleteGroupId, setConfirmDeleteGroupId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -187,7 +188,11 @@ export default function Groups() {
     };
 
     const handleDeleteGroup = async (groupId: number) => {
-        if (!window.confirm("Delete this group?")) return;
+        if (confirmDeleteGroupId !== groupId) {
+            setConfirmDeleteGroupId(groupId);
+            setError("Click Delete again to confirm.");
+            return;
+        }
 
         try {
             setError(null);
@@ -198,6 +203,7 @@ export default function Groups() {
             if (selectedGroup?.id === groupId) {
                 setSelectedGroup(null);
             }
+            setConfirmDeleteGroupId(null);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             setError(msg || "Failed to delete group");

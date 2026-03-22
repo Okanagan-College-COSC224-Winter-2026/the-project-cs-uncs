@@ -189,10 +189,12 @@ export default function CreateAssignment() {
           assignment_type: assignmentType,
           included_group_ids: showGroupSelector ? includedGroupIds : undefined,
           rubric_criteria: showRubricEditor
-            ? rubricCriteria.map((c) => ({
-                question: c.question,
-                scoreMax: c.scoreMax,
-              }))
+            ? rubricCriteria
+                .filter((c) => c.question.trim())
+                .map((c) => ({
+                  question: c.question,
+                  scoreMax: c.scoreMax,
+                }))
             : undefined,
         })
       }

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import click
 from flask.cli import with_appcontext
+from sqlalchemy import inspect, text
 from werkzeug.security import generate_password_hash
 
 from ..models import (
@@ -43,6 +44,114 @@ def drop_db_command():
     if click.confirm("Are you sure you want to drop all tables?"):
         db.drop_all()
         click.echo("Database tables dropped")
+
+
+@click.command("drop_has_score_column")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt")
+@with_appcontext
+def drop_has_score_column_command(yes: bool):
+    """Drop legacy Criteria_Description.hasScore column if it exists.
+
+    This repo removed the `hasScore` field entirely, but old SQLite/Postgres
+    databases may still have the column. This command removes it without
+    changing any other data.
+    """
+
+    table_name = CriteriaDescription.__tablename__
+    engine = db.engine
+
+    inspector = inspect(engine)
+    if table_name not in inspector.get_table_names():
+        click.echo(f"Table '{table_name}' not found; nothing to do.")
+        return
+
+    columns = {col["name"] for col in inspector.get_columns(table_name)}
+    if "hasScore" in columns:
+        column_name = "hasScore"
+    elif "has_score" in columns:
+        column_name = "has_score"
+    else:
+        click.echo(f"Column '{table_name}.hasScore' not present; nothing to do.")
+        return
+
+    if not yes:
+        db_uri = engine.url.render_as_string(hide_password=True)
+        if not click.confirm(
+            f"This will DROP column '{column_name}' from '{table_name}' on: {db_uri}. Continue?"
+        ):
+            click.echo("Aborted")
+            return
+
+    dialect = engine.dialect.name
+
+    with engine.begin() as conn:
+        if dialect == "sqlite":
+            # Prefer modern SQLite's DROP COLUMN, but fallback to a table rebuild.
+            try:
+                conn.execute(
+                    text(f'ALTER TABLE "{table_name}" DROP COLUMN "{column_name}"')
+                )
+                click.echo(
+                    f"Dropped '{column_name}' from '{table_name}' using ALTER TABLE."
+                )
+                return
+            except Exception:
+                tmp_table = f"{table_name}__new"
+
+                conn.execute(text("PRAGMA foreign_keys=OFF;"))
+                conn.execute(text(f'DROP TABLE IF EXISTS "{tmp_table}";'))
+
+                # Recreate the table without the legacy column.
+                conn.execute(
+                    text(
+                        f'''
+                        CREATE TABLE "{tmp_table}" (
+                            id INTEGER PRIMARY KEY,
+                            "rubricID" INTEGER NOT NULL,
+                            question VARCHAR(255),
+                            "scoreMax" INTEGER,
+                            FOREIGN KEY("rubricID") REFERENCES "Rubric"(id)
+                        )
+                        '''
+                    )
+                )
+                conn.execute(
+                    text(
+                        f'''
+                        INSERT INTO "{tmp_table}" (id, "rubricID", question, "scoreMax")
+                        SELECT id, "rubricID", question, "scoreMax"
+                        FROM "{table_name}";
+                        '''
+                    )
+                )
+                conn.execute(text(f'DROP TABLE "{table_name}";'))
+                conn.execute(
+                    text(f'ALTER TABLE "{tmp_table}" RENAME TO "{table_name}";')
+                )
+                conn.execute(
+                    text(
+                        f'CREATE INDEX IF NOT EXISTS "ix_{table_name}_rubricID" ON "{table_name}"("rubricID");'
+                    )
+                )
+                conn.execute(text("PRAGMA foreign_keys=ON;"))
+
+                click.echo(
+                    f"Rebuilt '{table_name}' without '{column_name}' (SQLite fallback path)."
+                )
+                return
+
+        if dialect in {"postgresql", "postgres"}:
+            conn.execute(
+                text(f'ALTER TABLE "{table_name}" DROP COLUMN IF EXISTS "{column_name}"')
+            )
+        elif dialect in {"mysql", "mariadb"}:
+            # MySQL doesn't support DROP COLUMN IF EXISTS.
+            conn.execute(text(f"ALTER TABLE `{table_name}` DROP COLUMN `{column_name}`"))
+        else:
+            # Generic ANSI-ish attempt.
+            conn.execute(text(f'ALTER TABLE "{table_name}" DROP COLUMN "{column_name}"'))
+
+    click.echo(f"Dropped '{column_name}' from '{table_name}'.")
 
 
 @click.command("add_users")
@@ -201,27 +310,22 @@ def add_users_command():
             {
                 "question": "Content Quality - Does the work demonstrate understanding of the topic?",
                 "scoreMax": 10,
-                "hasScore": True
             },
             {
                 "question": "Organization - Is the work well-structured and logical?",
                 "scoreMax": 10,
-                "hasScore": True
             },
             {
                 "question": "Clarity - Is the writing clear and easy to understand?",
                 "scoreMax": 10,
-                "hasScore": True
             },
             {
                 "question": "Completeness - Does the work address all requirements?",
                 "scoreMax": 10,
-                "hasScore": True
             },
             {
                 "question": "Overall Impression - What is your overall assessment?",
                 "scoreMax": 10,
-                "hasScore": True
             }
         ]
 
@@ -230,7 +334,6 @@ def add_users_command():
                 rubricID=rubric.id,
                 question=crit_data["question"],
                 scoreMax=crit_data["scoreMax"],
-                hasScore=crit_data["hasScore"]
             )
             db.session.add(criterion)
 
@@ -723,12 +826,8 @@ def add_users_command():
                     Criterion(
                         reviewID=review.id,
                         criterionRowID=row.id,
-                        grade=score if row.hasScore else None,
-                        comments=(
-                            f"{comment_prefix} {row.question}"
-                            if not row.hasScore
-                            else f"{comment_prefix}"
-                        ),
+                        grade=score,
+                        comments=f"{comment_prefix}",
                     )
                 )
 
@@ -1036,12 +1135,8 @@ def add_users_command():
                         GroupEvaluationCriterion(
                             target_id=target.id,
                             criterionRowID=row.id,
-                            grade=(4 if row.hasScore else None),
-                            comments=(
-                                None
-                                if row.hasScore
-                                else "Suggested improvement: tighten scope and clarify deliverables."
-                            ),
+                            grade=4,
+                            comments=None,
                         )
                     )
 
@@ -1272,6 +1367,7 @@ def init_app(app):
     """Register CLI commands with the Flask app"""
     app.cli.add_command(init_db_command)
     app.cli.add_command(drop_db_command)
+    app.cli.add_command(drop_has_score_column_command)
     app.cli.add_command(add_users_command)
     app.cli.add_command(create_admin_command)
     app.cli.add_command(ensure_admin_command)

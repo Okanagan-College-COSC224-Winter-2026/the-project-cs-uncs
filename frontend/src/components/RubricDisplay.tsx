@@ -27,7 +27,6 @@ export default function RubricDisplay({
     const [error, setError] = useState<string | null>(null);
     const questions: string[] = [];
     const scoreMaxes: number[] = [];
-    const hasScores: boolean[] = [];
 
     const effectiveCriteria = Array.isArray(criteriaOverride) ? criteriaOverride : criteria;
 
@@ -71,7 +70,6 @@ export default function RubricDisplay({
     effectiveCriteria.forEach((crit) => {
         questions.push(crit.question);
         scoreMaxes.push(crit.scoreMax);
-        hasScores.push(crit.hasScore);
     });
 
     return (
@@ -95,7 +93,6 @@ export default function RubricDisplay({
                         questions={questions}
                         scoreMaxes={scoreMaxes}
                         canComment={false}
-                        hasScores={hasScores}
                         onCriterionSelect={onCriterionSelect ?? (() => {})}
                         grades={grades}
                         readOnly={readOnly}

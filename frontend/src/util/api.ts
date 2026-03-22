@@ -516,11 +516,11 @@ export const getRubricCriteria = async (assignmentID: number) => {
   return request
 }
 
-export const createCriteria = async (rubricID: number, question: string, scoreMax: number, canComment: boolean, hasScore: boolean = true) => {
+export const createCriteria = async (rubricID: number, question: string, scoreMax: number, canComment: boolean) => {
   const response = await fetch(`${BASE_URL}/create_criteria`, {
     method: 'POST',
     body: JSON.stringify({
-      rubricID, question, scoreMax, canComment, hasScore
+      rubricID, question, scoreMax, canComment
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -588,7 +588,7 @@ export const deleteCriteriaDescription = async (criteriaId: number) => {
 
 export const updateCriteriaDescription = async (
   criteriaId: number,
-  payload: { question?: string; scoreMax?: number; hasScore?: boolean }
+  payload: { question?: string; scoreMax?: number }
 ) => {
   const resp = await fetch(`${BASE_URL}/update_criteria/${criteriaId}`, {
     method: 'PATCH',
@@ -1029,7 +1029,7 @@ export type PeerEvalGroupStatusResponse = {
   reviewer_group: { id: number; name: string };
   submitted: boolean;
   targets: Array<{ id: number; name: string }>;
-  criteria: Array<{ id: number; question: string; scoreMax: number; hasScore: boolean }>;
+  criteria: Array<{ id: number; question: string; scoreMax: number }>;
   submission?: {
     id: number;
     submitted_at: string | null;
@@ -1158,7 +1158,6 @@ export type PeerEvalGroupReceivedResponse = {
       criterionRowID: number;
       question: string;
       scoreMax: number | null;
-      hasScore: boolean;
       grade: number | null;
       comments: string | null;
     }>;
@@ -1195,7 +1194,6 @@ export type TeacherGroupPeerEvalOverviewResponse = {
         criterionRowID: number;
         question: string;
         scoreMax: number | null;
-        hasScore: boolean;
         grade: number | null;
         comments: string | null;
       }>;
@@ -1311,7 +1309,7 @@ export type CreateAssignmentRequest = {
   due_date?: string;
   assignment_type?: 'standard' | 'peer_eval_group' | 'peer_eval_individual';
   included_group_ids?: number[];
-  rubric_criteria?: Array<{ question: string; scoreMax?: number; hasScore?: boolean }>;
+  rubric_criteria?: Array<{ question: string; scoreMax?: number }>;
 };
 
 export async function createAssignment(

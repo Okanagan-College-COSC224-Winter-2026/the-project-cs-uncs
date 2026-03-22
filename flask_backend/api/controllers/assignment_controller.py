@@ -71,19 +71,19 @@ def _coerce_int_list(value):
 def _default_rubric_template(assignment_type: str):
     if assignment_type == "peer_eval_individual":
         return [
-            ("Contributed meaningfully to the team's work", 5, True),
-            ("Communicated clearly and respectfully", 5, True),
-            ("Was reliable and met commitments", 5, True),
-            ("Produced high-quality work", 5, True),
-            ("Helped the team succeed (supportive/collaborative)", 5, True),
+            ("Contributed meaningfully to the team's work", 5),
+            ("Communicated clearly and respectfully", 5),
+            ("Was reliable and met commitments", 5),
+            ("Produced high-quality work", 5),
+            ("Helped the team succeed (supportive/collaborative)", 5),
         ]
 
     if assignment_type == "peer_eval_group":
         return [
-            ("Deliverable was clear and easy to follow", 5, True),
-            ("Work was complete and met requirements", 5, True),
-            ("Evidence of strong teamwork/coordination", 5, True),
-            ("Overall effectiveness/quality", 5, True),
+            ("Deliverable was clear and easy to follow", 5),
+            ("Work was complete and met requirements", 5),
+            ("Evidence of strong teamwork/coordination", 5),
+            ("Overall effectiveness/quality", 5),
         ]
 
     return []
@@ -92,7 +92,9 @@ def _default_rubric_template(assignment_type: str):
 def _normalize_rubric_criteria_payload(rubric_criteria):
     """Normalize rubric criteria payload from request.
 
-    Expected format: list of {question: str, scoreMax?: int, hasScore?: bool}
+    Expected format: list of {question: str, scoreMax?: int}
+
+    Note: legacy clients may still send hasScore; it is ignored.
     """
     if rubric_criteria is None:
         return None
@@ -108,21 +110,9 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
         if not isinstance(question, str) or not question.strip():
             raise ValueError("Each criterion must have a question")
 
-        has_score = row.get("hasScore")
-        if has_score is None:
-            has_score = True
-        if not isinstance(has_score, bool):
-            raise ValueError("hasScore must be a boolean")
-
-        if not has_score:
-            raise ValueError(
-                "Rubric criteria must use numeric scores (hasScore=true). "
-                "Use the 'Additional comments (optional)' box during review submission instead."
-            )
-
         score_max = row.get("scoreMax")
         if score_max is None:
-            score_max = 0 if not has_score else 5
+            score_max = 5
         try:
             score_max_int = int(score_max)
         except (TypeError, ValueError):
@@ -132,7 +122,7 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
         if score_max_int > 10:
             raise ValueError("scoreMax must be <= 10")
 
-        normalized.append((question.strip(), score_max_int, has_score))
+        normalized.append((question.strip(), score_max_int))
 
     return normalized
 
@@ -150,13 +140,12 @@ def _ensure_default_rubric_for_assignment(assignment: Assignment, *, template_ov
     Rubric.create_rubric(rubric)
 
     template = template_override if template_override is not None else _default_rubric_template(assignment.assignment_type)
-    for question, score_max, has_score in template:
+    for question, score_max in template:
         CriteriaDescription.create_criteria_description(
             CriteriaDescription(
                 rubricID=rubric.id,
                 question=question,
                 scoreMax=score_max,
-                hasScore=has_score,
             )
         )
 

@@ -74,8 +74,7 @@ CREATE TABLE Criteria_Description (
     id SERIAL PRIMARY KEY,
     rubricID INT NOT NULL,
     question VARCHAR(255),
-    scoreMax INT,
-    hasScore BOOLEAN NOT NULL DEFAULT TRUE
+    scoreMax INT
 );
 
 -- TEST VALUES
@@ -191,13 +190,13 @@ VALUES
     (5); */
 
 -- Insert dummy Criteria_Description rows
-/* INSERT INTO Criteria_Description (rubricID, question, scoreMax, hasScore)
+/* INSERT INTO Criteria_Description (rubricID, question, scoreMax)
 VALUES
-    (1, 'Overall contribution', 100, TRUE),
-    (1, 'Communication', 100, TRUE),
-    (2, 'Timeliness', 100, FALSE),
-    (2, 'Technical quality', 100, TRUE),
-    (3, 'Peer support', 100, TRUE); */
+    (1, 'Overall contribution', 100),
+    (1, 'Communication', 100),
+    (2, 'Timeliness', 100),
+    (2, 'Technical quality', 100),
+    (3, 'Peer support', 100); */
 -- -- Add foreign key constraints
 -- ALTER TABLE Assignment
 --     ADD CONSTRAINT fk_assignment_course

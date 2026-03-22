@@ -11,7 +11,6 @@ interface CriterionFeedback {
   criterionRowID: number;
   question: string;
   scoreMax: number | null;
-  hasScore: boolean;
   grade: number | null;
   comments: string | null;
 }
@@ -180,15 +179,15 @@ export default function ReceivedFeedback() {
                         <strong>{criterion.question}</strong>
                       </div>
 
-                      {criterion.hasScore && criterion.scoreMax !== null && (
-                        <div className="criterion-score">
-                          <span className="score-label">Score:</span>
-                          <span className="score-value">
-                            {criterion.grade !== null ? criterion.grade : '—'}
+                      <div className="criterion-score">
+                        <span className="score-label">Score:</span>
+                        <span className="score-value">
+                          {criterion.grade !== null ? criterion.grade : '—'}
+                          {criterion.scoreMax !== null ? (
                             <span className="score-max"> / {criterion.scoreMax}</span>
-                          </span>
-                        </div>
-                      )}
+                          ) : null}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

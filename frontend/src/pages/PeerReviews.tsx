@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   getAssignedReviews,
@@ -69,12 +69,12 @@ export default function PeerReviews() {
     }
   }, []);
 
-  const refreshAssignedReviews = async () => {
+  const refreshAssignedReviews = useCallback(async () => {
     if (!id) return;
     const reviewData = await getAssignedReviews(Number(id));
     setReviews(reviewData.reviews);
     setAssignment(reviewData.assignment);
-  };
+  }, [id]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -115,7 +115,7 @@ export default function PeerReviews() {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, refreshAssignedReviews]);
 
   useEffect(() => {
     if (!id) return;
@@ -134,7 +134,6 @@ export default function PeerReviews() {
     return {
       questions: criteria.map((c) => c.question),
       scoreMaxes: criteria.map((c) => c.scoreMax),
-      hasScores: criteria.map((c) => c.hasScore),
       ids: criteria.map((c) => c.id),
     };
   }, [groupStatus]);
@@ -164,7 +163,6 @@ export default function PeerReviews() {
     for (const target of groupStatus.targets) {
       const byTarget = groupDraft[target.id] || {};
       for (const crit of groupStatus.criteria) {
-        if (!crit.hasScore) continue;
         const grade = byTarget[crit.id] ?? 0;
         if (grade <= 0) return false;
       }
@@ -185,7 +183,7 @@ export default function PeerReviews() {
           reviewee_group_id: t.id,
           criteria: groupStatus.criteria.map((c) => ({
             criterionRowID: c.id,
-            grade: c.hasScore ? (byTarget[c.id] ?? null) : null,
+            grade: byTarget[c.id] ?? 0,
             comments: groupCommentCriterionId && c.id === groupCommentCriterionId ? (additional || null) : null,
           })),
         };
@@ -428,7 +426,6 @@ export default function PeerReviews() {
                             <Criteria
                               questions={groupCriteriaMeta.questions}
                               scoreMaxes={groupCriteriaMeta.scoreMaxes}
-                              hasScores={groupCriteriaMeta.hasScores}
                               canComment={false}
                               onCriterionSelect={() => { /* read-only */ }}
                               grades={grades}
@@ -470,7 +467,6 @@ export default function PeerReviews() {
                         <Criteria
                           questions={groupCriteriaMeta.questions}
                           scoreMaxes={groupCriteriaMeta.scoreMaxes}
-                          hasScores={groupCriteriaMeta.hasScores}
                           canComment={false}
                           onCriterionSelect={(row, col) => setGroupGrade(t.id, row, col)}
                           grades={grades}

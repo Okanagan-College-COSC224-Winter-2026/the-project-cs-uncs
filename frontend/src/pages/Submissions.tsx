@@ -340,7 +340,6 @@ export default function Submissions() {
 
                             const questions = sorted.map((c) => c.question);
                             const scoreMaxes = sorted.map((c) => (c.scoreMax == null ? 0 : c.scoreMax));
-                            const hasScores = sorted.map((c) => c.hasScore);
                             const grades = sorted.map((c) => c.grade ?? 0);
 
                             return (
@@ -351,7 +350,6 @@ export default function Submissions() {
                                 <Criteria
                                   questions={questions}
                                   scoreMaxes={scoreMaxes}
-                                  hasScores={hasScores}
                                   canComment={false}
                                   onCriterionSelect={() => { /* read-only */ }}
                                   grades={grades}

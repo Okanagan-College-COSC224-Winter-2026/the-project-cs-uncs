@@ -22,7 +22,6 @@ interface CriteriaDescription {
   id: number;
   question: string;
   scoreMax: number;
-  hasScore: boolean;
 }
 
 interface Criterion {
@@ -172,7 +171,6 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
 
     // Validate that all scored criteria have a selected grade
     const missing = criteriaDescriptions
-      .filter((d) => d.hasScore)
       .some((d) => {
         const found = criteria.find((c) => c.criterionRowID === d.id);
         return !found || !found.grade || found.grade <= 0;
@@ -190,7 +188,7 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
       const trimmedAdditional = additionalComments.trim();
       const criteriaPayload = criteriaDescriptions.map((d) => {
         const found = criteria.find((c) => c.criterionRowID === d.id);
-        const grade = d.hasScore ? (found?.grade ?? 0) : 0;
+        const grade = found?.grade ?? 0;
         const comments = commentCriterionId && d.id === commentCriterionId ? trimmedAdditional : '';
         return { criterionRowID: d.id, grade, comments };
       });
@@ -363,7 +361,6 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
             <Criteria
               questions={criteriaDescriptions.map((d) => d.question)}
               scoreMaxes={criteriaDescriptions.map((d) => d.scoreMax)}
-              hasScores={criteriaDescriptions.map((d) => d.hasScore)}
               canComment={false}
               onCriterionSelect={handleCriterionSelect}
               grades={criteriaDescriptions.map((d) => Number(getCriterionGrade(d.id)) || 0)}
@@ -415,7 +412,6 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
             disabled={
               submitting ||
               criteriaDescriptions
-                .filter((d) => d.hasScore)
                 .some((d) => (Number(getCriterionGrade(d.id)) || 0) <= 0)
             }
           >

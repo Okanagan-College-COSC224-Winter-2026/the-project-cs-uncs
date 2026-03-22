@@ -25,7 +25,6 @@ interface Criterion {
   grade: number | null;
   comments: string | null;
   scoreMax?: number | null;
-  hasScore?: boolean;
 }
 
 interface ReviewDetail {
@@ -91,7 +90,7 @@ export default function TeacherReviewDashboard() {
     return Array.from(new Set(comments)).join('\n\n')
   }
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
-  const [criteriaByRowId, setCriteriaByRowId] = useState<Record<number, { question: string; hasScore: boolean; scoreMax: number }>>({});
+  const [criteriaByRowId, setCriteriaByRowId] = useState<Record<number, { question: string; scoreMax: number }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null);
@@ -141,7 +140,7 @@ export default function TeacherReviewDashboard() {
           const courseId = Number(details?.course?.id ?? details?.courseID)
           const rubricCriteria = await getRubricCriteria(Number(id))
 
-          const map: Record<number, { question: string; hasScore: boolean; scoreMax: number }> = {}
+          const map: Record<number, { question: string; scoreMax: number }> = {}
           if (Array.isArray(rubricCriteria)) {
             for (const c of rubricCriteria) {
               if (!c || typeof c !== 'object') continue
@@ -150,7 +149,6 @@ export default function TeacherReviewDashboard() {
               if (!Number.isFinite(rowId)) continue
               map[rowId] = {
                 question: String(record.question ?? '').trim() || `Criterion ${rowId}`,
-                hasScore: Boolean(record.hasScore ?? true),
                 scoreMax: Number(record.scoreMax ?? 0),
               }
             }
@@ -296,10 +294,6 @@ export default function TeacherReviewDashboard() {
   const scoreForReview = (review: ReviewDetail) => {
     let total = 0
     for (const c of review.criteria ?? []) {
-      const rowId = Number(c.criterionRowID)
-      const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
-      const include = meta ? meta.hasScore : true
-      if (!include) continue
       const grade = Number(c.grade ?? 0)
       total += Number.isFinite(grade) ? grade : 0
     }
@@ -349,7 +343,6 @@ export default function TeacherReviewDashboard() {
             <div className="dashboard-reviews-list">
               {relevant.map(({ submission, evaluation }) => {
                 const total = (evaluation.criteria ?? []).reduce((sum, c) => {
-                  if (!c.hasScore) return sum
                   const grade = Number(c.grade ?? 0)
                   return sum + (Number.isFinite(grade) ? grade : 0)
                 }, 0)
@@ -377,7 +370,7 @@ export default function TeacherReviewDashboard() {
 
                     <div className="review-details" style={{ display: 'block' }}>
                       <div className="dashboard-criteria-list">
-                        {(evaluation.criteria ?? []).filter((c) => c.hasScore).map((c) => {
+                        {(evaluation.criteria ?? []).map((c) => {
                           const grade = Number(c.grade ?? 0)
                           const max = c.scoreMax == null ? null : Number(c.scoreMax)
                           const question = String(c.question ?? '').trim() || `Criterion ${c.criterionRowID}`
@@ -563,12 +556,7 @@ export default function TeacherReviewDashboard() {
 
                 <div className="review-details" style={{ display: 'block' }}>
                   <div className="dashboard-criteria-list">
-                    {review.criteria.filter((c) => {
-                      const rowId = Number(c.criterionRowID)
-                      const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
-                      const hasScore = meta?.hasScore ?? true
-                      return hasScore
-                    }).map((c) => {
+                    {review.criteria.map((c) => {
                       const rowId = Number(c.criterionRowID)
                       const meta = Number.isFinite(rowId) ? criteriaByRowId[rowId] : undefined
                       const question = meta?.question ?? `Criterion ${rowId}`
@@ -758,7 +746,7 @@ export default function TeacherReviewDashboard() {
                       ) : (
                         <div className="dashboard-criteria-list">
                           <h4>Submitted Feedback:</h4>
-                          {review.criteria.filter((criterion) => criterion.hasScore !== false).map((criterion) => (
+                          {review.criteria.map((criterion) => (
                             <div key={criterion.id} className="criterion-detail">
                               <div className="criterion-header">
                                 <span className="criterion-label">

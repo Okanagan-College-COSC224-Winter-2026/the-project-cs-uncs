@@ -251,7 +251,15 @@ export default function Groups() {
 
     return (
         <div className="Page">
-            <BackArrow />
+            {selectedGroup ? (
+                <div className="GroupsDrillBackRow">
+                    <Button type="secondary" onClick={() => setSelectedGroup(null)}>
+                        ← Back
+                    </Button>
+                </div>
+            ) : (
+                <BackArrow />
+            )}
             <div className="ClassHeader">
                 <div className="ClassHeaderLeft">
                     <h2>
@@ -317,14 +325,6 @@ export default function Groups() {
                                 Save Group
                             </Button>
                         </div>
-                    </div>
-                ) : null}
-
-                {selectedGroup ? (
-                    <div className="GroupsTopActions">
-                        <Button type="secondary" onClick={() => setSelectedGroup(null)}>
-                            ← Back
-                        </Button>
                     </div>
                 ) : null}
 

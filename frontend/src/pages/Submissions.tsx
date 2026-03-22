@@ -240,7 +240,15 @@ export default function Submissions() {
 
   return (
     <div className="Page">
-      <BackArrow />
+      {selectedGroup ? (
+        <div className="GroupsDrillBackRow">
+          <Button type="secondary" onClick={() => setSelectedGroup(null)}>
+            ← Back
+          </Button>
+        </div>
+      ) : (
+        <BackArrow />
+      )}
       <div className="AssignmentHeader">
         <h2>
           <HeaderTitle title={assignmentName} loading={loading} fallback="Assignment" />
@@ -296,12 +304,6 @@ export default function Submissions() {
             </div>
           ) : selectedGroup ? (
             <>
-              <div className="GroupsTopActions">
-                <Button type="secondary" onClick={() => setSelectedGroup(null)}>
-                  ← Back
-                </Button>
-              </div>
-
               <div className="GroupsPanel">
                 <h3 style={{ margin: 0 }}>{selectedGroup.name}</h3>
 

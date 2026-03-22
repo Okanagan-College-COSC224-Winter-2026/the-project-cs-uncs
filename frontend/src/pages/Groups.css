@@ -117,6 +117,10 @@
     gap: var(--spacing-sm);
 }
 
+.GroupsDrillBackRow {
+    margin-bottom: 0;
+}
+
 .GroupItem {
     display: flex;
     flex-direction: row;

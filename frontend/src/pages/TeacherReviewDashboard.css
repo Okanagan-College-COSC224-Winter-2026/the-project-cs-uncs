@@ -2,6 +2,10 @@
   padding: 0;
 }
 
+.teacher-dashboard-drillBackRow {
+  margin-bottom: 0;
+}
+
 .teacher-dashboard-content {
   padding: 0;
 }

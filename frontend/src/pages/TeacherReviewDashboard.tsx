@@ -96,6 +96,21 @@ export default function TeacherReviewDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null);
 
+  const isDrilledIn = selectedGroupId != null || selectedStudentId != null
+
+  const handleDrillBack = () => {
+    if (selectedStudentId != null) {
+      setSelectedStudentId(null)
+      setExpandedReviewId(null)
+      return
+    }
+    if (selectedGroupId != null) {
+      setSelectedGroupId(null)
+      setSelectedStudentId(null)
+      setExpandedReviewId(null)
+    }
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -321,12 +336,6 @@ export default function TeacherReviewDashboard() {
 
       return (
         <div className="reviews-section">
-          <div className="teacher-breadcrumbRow">
-            <Button type="secondary" onClick={() => setSelectedGroupId(null)}>
-              ← Back
-            </Button>
-          </div>
-
           <h3>{selectedGroupName}</h3>
           {!groupOverview ? (
             <div className="dashboard-no-reviews">
@@ -499,18 +508,6 @@ export default function TeacherReviewDashboard() {
 
       return (
         <div className="reviews-section">
-          <div className="teacher-breadcrumbRow">
-            <Button
-              type="secondary"
-              onClick={() => {
-                setSelectedGroupId(null)
-                setSelectedStudentId(null)
-              }}
-            >
-              ← Back
-            </Button>
-          </div>
-
           <h3>{selectedGroup.name}</h3>
           <div className="teacher-memberTotals">
             {selectedGroup.members.map((m) => (
@@ -539,12 +536,6 @@ export default function TeacherReviewDashboard() {
 
     return (
       <div className="reviews-section">
-        <div className="teacher-breadcrumbRow">
-          <Button type="secondary" onClick={() => setSelectedStudentId(null)}>
-              ← Back
-          </Button>
-        </div>
-
         <h3>{selectedStudent.name}</h3>
         {received.length === 0 ? (
           <div className="dashboard-no-reviews">
@@ -618,7 +609,15 @@ export default function TeacherReviewDashboard() {
 
   return (
     <div className="teacher-dashboard-container Page">
-      <BackArrow />
+      {isDrilledIn ? (
+        <div className="teacher-dashboard-drillBackRow">
+          <Button type="secondary" onClick={handleDrillBack}>
+            ← Back
+          </Button>
+        </div>
+      ) : (
+        <BackArrow />
+      )}
       <div className="AssignmentHeader">
         <h2>
           <HeaderTitle title={assignment?.name} loading={false} fallback="Assignment" />

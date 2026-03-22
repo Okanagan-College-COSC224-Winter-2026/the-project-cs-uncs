@@ -318,8 +318,7 @@ def enroll_students():
     """
     Enroll students into a class by class ID and list of student emails from a csv file.
     - If a student is already enrolled, skip them.
-    - If a student email does not exist, create the account with a generated temporary password.
-    - Send a welcome email with temporary credentials for newly created accounts.
+    - If a student email does not exist, create the account with a temporary password and email it.
     - The list of student emails is passed in the request body as CSV text.
     """
 
@@ -342,7 +341,7 @@ def enroll_students():
     if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "You are not authorized to enroll students in this class"}), 403
 
-    students, parse_errors = _csv_to_roster_rows(student_emails_csv)
+    students, parse_errors = csv_to_list(student_emails_csv)
     if parse_errors:
         return jsonify({"msg": "Errors in CSV", "errors": parse_errors}), 400
 

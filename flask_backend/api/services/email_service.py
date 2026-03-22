@@ -54,6 +54,10 @@ def send_new_account_email(*, recipient: str, student_name: str, temp_password: 
     )
 
     if not smtp_host or not from_email:
+        # During automated tests we don't want real SMTP to be required.
+        # Tests that care about email behavior explicitly monkeypatch this function.
+        if current_app.config.get("TESTING"):
+            return True, ""
         return False, "SMTP is not configured (missing SMTP_HOST/MAIL_SERVER or sender)."
 
     use_ssl = str(

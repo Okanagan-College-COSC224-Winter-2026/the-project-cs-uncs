@@ -5,8 +5,11 @@ Tests for class enrollment endpoints.
 import json
 
 from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
 
 from api.models import User
+from api.models import Course
+from api.models.db import db as _db
 
 
 def test_teacher_can_enroll_students_by_email(test_client, make_admin, monkeypatch):
@@ -261,27 +264,29 @@ def test_enroll_in_class_not_found(test_client, make_admin):
 
 
 def test_enroll_in_class_unauthorized(test_client, make_admin):
-    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
-    make_admin(email="otherteacher@example.com", password="teacher", name="otherteacheruser")
-
-    test_client.post(
-        "/auth/login",
-        data=json.dumps({"email": "otherteacher@example.com", "password": "teacher"}),
-        headers={"Content-Type": "application/json"},
+    teacher = User(
+        name="teacheruser",
+        email="teacher@example.com",
+        hash_pass=generate_password_hash("teacher"),
+        role="teacher",
     )
-
-    test_client.post(
-        "/auth/login",
-        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
-        headers={"Content-Type": "application/json"},
+    other_teacher = User(
+        name="otherteacheruser",
+        email="otherteacher@example.com",
+        hash_pass=generate_password_hash("teacher"),
+        role="teacher",
     )
-    response = test_client.post(
-        "/class/create_class",
-        data=json.dumps({"name": "Science 101"}),
-        headers={"Content-Type": "application/json"},
-    )
-    class_id = response.json["class"]["id"]
+    _db.session.add(teacher)
+    _db.session.add(other_teacher)
+    _db.session.commit()
 
+    # Create the course owned by `teacher`.
+    course = Course(teacherID=teacher.id, name="Science 101")
+    _db.session.add(course)
+    _db.session.commit()
+    class_id = course.id
+
+    # Login as the other teacher and try to enroll into a course they don't own.
     test_client.post(
         "/auth/login",
         data=json.dumps({"email": "otherteacher@example.com", "password": "teacher"}),

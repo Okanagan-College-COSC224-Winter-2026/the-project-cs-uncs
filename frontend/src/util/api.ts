@@ -686,6 +686,38 @@ export const submitReviewFeedback = async (
 }
 
 /**
+ * Update an already-submitted peer review (edit without unsubmit)
+ */
+export const updateReviewFeedback = async (
+  reviewId: number,
+  criteria: { criterionRowID: number; grade: number; comments: string }[]
+) => {
+  const response = await fetch(`${BASE_URL}/review/update/${reviewId}`, {
+    method: 'POST',
+    body: JSON.stringify({ criteria }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include'
+  });
+
+  maybeHandleExpire(response);
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const errorData = await response.json().catch(() => ({} as any));
+      throw new Error(errorData.msg || `Response status: ${response.status}`);
+    }
+
+    await response.text().catch(() => '');
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Unsubmit a completed peer review so it can be edited and re-submitted
  */
 export const unsubmitReviewFeedback = async (reviewId: number) => {

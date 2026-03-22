@@ -301,6 +301,96 @@ def submit_review_feedback(review_id):
     }), 200
 
 
+@bp.route("/update/<int:review_id>", methods=["POST"])
+@jwt_role_required("student", "teacher", "admin")
+def update_review_feedback(review_id):
+    """Update feedback for an already-submitted peer review.
+
+    This supports an "Edit" flow where a completed review can be modified
+    without requiring an unsubmit.
+
+    Request body:
+    {
+        "criteria": [
+            {
+                "criterionRowID": 1,
+                "grade": 5,
+                "comments": "Great work!"
+            },
+            ...
+        ]
+    }
+
+    Authorization:
+    - Only the assigned reviewer may update their review.
+    """
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+
+    review = Review.get_by_id(review_id)
+    if not review:
+        return jsonify({"msg": "Review not found"}), 404
+
+    if review.reviewerID != user.id:
+        return jsonify({"msg": "You are not authorized to update this review"}), 403
+
+    assignment = review.assignment
+    if assignment and assignment.assignment_type == "peer_eval_individual":
+        reviewer_group = (
+            Group.query.join(GroupMember, GroupMember.group_id == Group.id)
+            .filter(Group.course_id == assignment.courseID, GroupMember.user_id == user.id)
+            .first()
+        )
+        reviewee_group = (
+            Group.query.join(GroupMember, GroupMember.group_id == Group.id)
+            .filter(
+                Group.course_id == assignment.courseID,
+                GroupMember.user_id == review.revieweeID,
+            )
+            .first()
+        )
+        if not reviewer_group or not reviewee_group or reviewer_group.id != reviewee_group.id:
+            return jsonify({"msg": "You are not eligible to update this review"}), 403
+
+    if not review.completed:
+        return jsonify({"msg": "This review has not been submitted"}), 400
+
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    data = request.json
+    criteria_data = data.get("criteria", [])
+    if not criteria_data:
+        return jsonify({"msg": "At least one criterion is required"}), 400
+
+    for criterion_data in criteria_data:
+        existing = Criterion.query.filter_by(
+            reviewID=review_id,
+            criterionRowID=criterion_data.get("criterionRowID"),
+        ).first()
+
+        if existing:
+            existing.grade = criterion_data.get("grade")
+            existing.comments = criterion_data.get("comments", "")
+            existing.update()
+        else:
+            criterion = Criterion(
+                reviewID=review_id,
+                criterionRowID=criterion_data.get("criterionRowID"),
+                grade=criterion_data.get("grade"),
+                comments=criterion_data.get("comments", ""),
+            )
+            Criterion.create_criterion(criterion)
+
+    # Keep the review completed, but bump the completed timestamp.
+    review.mark_complete()
+
+    return jsonify({
+        "msg": "Review updated successfully",
+        "review": review_schema.dump(review),
+    }), 200
+
+
 @bp.route("/unsubmit/<int:review_id>", methods=["POST"])
 @jwt_role_required("student", "teacher", "admin")
 def unsubmit_review_feedback(review_id):

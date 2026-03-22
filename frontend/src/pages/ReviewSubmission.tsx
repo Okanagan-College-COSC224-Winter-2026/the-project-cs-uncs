@@ -4,6 +4,7 @@ import {
   getReviewDetails,
   getReviewSubmission,
   submitReviewFeedback,
+  updateReviewFeedback,
   unsubmitReviewFeedback,
   getCriteria,
   getAssignmentDetails,
@@ -12,6 +13,7 @@ import {
 import Criteria from '../components/Criteria';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
+import Button from '../components/Button';
 import HeaderTitle from '../components/HeaderTitle';
 import './ReviewSubmission.css';
 import './Assignment.css';
@@ -71,6 +73,7 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [unsubmitting, setUnsubmitting] = useState(false);
+  const [editingSubmittedReview, setEditingSubmittedReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -95,6 +98,7 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
 
         const reviewData = await getReviewDetails(Number(reviewId));
         setReview(reviewData.review);
+        setEditingSubmittedReview(false);
 
         // Determine assignment type to decide whether a file submission is relevant.
         const details = await getAssignmentDetails(reviewData.review.assignment.id);
@@ -163,6 +167,9 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   const handleSubmit = async () => {
     if (!reviewId) return;
 
+    const currentlyCompleted = review?.completed ?? false;
+    if (currentlyCompleted && !editingSubmittedReview) return;
+
     // Validate that all scored criteria have a selected grade
     const missing = criteriaDescriptions
       .filter((d) => d.hasScore)
@@ -188,9 +195,13 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
         return { criterionRowID: d.id, grade, comments };
       });
 
-      await submitReviewFeedback(Number(reviewId), criteriaPayload);
-
-      setSuccessMessage('Review submitted successfully!');
+      if (currentlyCompleted) {
+        await updateReviewFeedback(Number(reviewId), criteriaPayload);
+        setSuccessMessage('Review updated successfully!');
+      } else {
+        await submitReviewFeedback(Number(reviewId), criteriaPayload);
+        setSuccessMessage('Review submitted successfully!');
+      }
 
       // Exit (drill-in) or navigate back to the peer reviews list after a short delay
       setTimeout(() => {
@@ -225,13 +236,25 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
       } else {
         setReview((prev) => (prev ? { ...prev, completed: false } : prev));
       }
-      setSuccessMessage('Review unsubmitted. You can now edit and resubmit.');
+      setEditingSubmittedReview(false);
+      // Unsubmit should reset the local form so the user starts fresh.
+      setCriteria([]);
+      setAdditionalComments('');
+      setSuccessMessage('Review unsubmitted.');
     } catch (err) {
       console.error('Error un-submitting review:', err);
       setError((err as Error).message || 'Failed to unsubmit review. Please try again.');
     } finally {
       setUnsubmitting(false);
     }
+  };
+
+  const handleEdit = () => {
+    if (!review?.completed) return;
+    if (assignmentType !== 'peer_eval_individual') return;
+    setEditingSubmittedReview(true);
+    setSuccessMessage(null);
+    setError(null);
   };
 
   const getCriterionGrade = (criterionRowID: number) => {
@@ -299,6 +322,7 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   }
 
   const isCompleted = review?.completed || false;
+  const isReadOnly = isCompleted && !editingSubmittedReview;
 
   const content = (
     <div className="review-submission-content">
@@ -343,10 +367,10 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
               canComment={false}
               onCriterionSelect={handleCriterionSelect}
               grades={criteriaDescriptions.map((d) => Number(getCriterionGrade(d.id)) || 0)}
-              readOnly={isCompleted}
+              readOnly={isReadOnly}
             />
 
-            {!isCompleted || additionalComments.trim() ? (
+            {!isReadOnly || additionalComments.trim() ? (
               <div className="criteria-list">
                 <div className="criterion-item">
                   <div className="criterion-comments">
@@ -355,8 +379,8 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
                       id="additional-comments"
                       value={additionalComments}
                       onChange={(e) => setAdditionalComments(e.target.value)}
-                      disabled={isCompleted}
-                      className={isCompleted ? 'read-only' : ''}
+                      disabled={isReadOnly}
+                      className={isReadOnly ? 'read-only' : ''}
                       placeholder="Optional comments..."
                       rows={3}
                     />
@@ -365,30 +389,38 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
               </div>
             ) : null}
 
-            {isCompleted ? (
+            {isCompleted && !editingSubmittedReview ? (
               <div className="review-action-row">
-                <button
-                  className="submit-button"
-                  onClick={handleUnsubmit}
-                  disabled={unsubmitting || submitting}
-                >
-                  {unsubmitting ? 'Unsubmitting...' : 'Unsubmit Review'}
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Button onClick={handleUnsubmit} disabled={unsubmitting || submitting}>
+                    {unsubmitting ? 'Unsubmitting...' : 'Unsubmit Review'}
+                  </Button>
+
+                  {assignmentType === 'peer_eval_individual' ? (
+                    <Button type="secondary" onClick={handleEdit} disabled={unsubmitting || submitting}>
+                      Edit
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </>
         )}
       </div>
 
-      {!isCompleted && (
+      {(!isCompleted || editingSubmittedReview) && (
         <div className="submit-section">
-          <button
-            className="submit-button"
+          <Button
             onClick={handleSubmit}
-            disabled={submitting || criteriaDescriptions.filter((d) => d.hasScore).some((d) => (Number(getCriterionGrade(d.id)) || 0) <= 0)}
+            disabled={
+              submitting ||
+              criteriaDescriptions
+                .filter((d) => d.hasScore)
+                .some((d) => (Number(getCriterionGrade(d.id)) || 0) <= 0)
+            }
           >
-            {submitting ? 'Submitting...' : 'Submit Review'}
-          </button>
+            {submitting ? 'Submitting...' : (editingSubmittedReview ? 'Update Review' : 'Submit Review')}
+          </Button>
         </div>
       )}
     </div>

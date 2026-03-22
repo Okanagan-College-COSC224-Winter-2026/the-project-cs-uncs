@@ -906,6 +906,62 @@ class TestPeerEvalIndividualEligibility:
         assert submit.status_code == 403
         assert submit.get_json()["msg"] == "You are not eligible to submit this review"
 
+    def test_individual_review_update_blocked_if_no_longer_teammates(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "teacher4b@test.com", "teacher")
+        s1 = _create_user("Student 1", "is1b@test.com", "student")
+        s2 = _create_user("Student 2", "is2b@test.com", "student")
+        s3 = _create_user("Student 3", "is3b@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "G1")
+        g2 = _create_group(course.id, "G2")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "teacher4b@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Individual Peer Eval",
+                "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        login_as(test_client, "is1b@test.com")
+        sync = test_client.post(f"/peer_eval/individual/sync/{assignment_id}")
+        assert sync.status_code == 200
+
+        review = Review.query.filter_by(
+            assignmentID=assignment_id, reviewerID=s1.id, revieweeID=s2.id
+        ).first()
+        assert review is not None
+
+        criteria = []
+        assignment = Assignment.get_by_id(assignment_id)
+        rubric = assignment.rubrics.first()
+        assert rubric is not None
+        for row in rubric.criteria_descriptions.all():
+            item = {"criterionRowID": row.id, "comments": "ok"}
+            if row.hasScore:
+                item["grade"] = 0
+            criteria.append(item)
+
+        submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
+        assert submit.status_code == 200
+
+        # Move reviewee to a different group.
+        GroupMember.remove_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s2.id)
+
+        update = test_client.post(f"/review/update/{review.id}", json={"criteria": criteria})
+        assert update.status_code == 403
+        assert update.get_json()["msg"] == "You are not eligible to update this review"
+
     def test_individual_assigned_reviews_only_show_current_teammates_after_group_change(self, test_client, dbsession):
         teacher = _create_user("Teacher", "teacher4@test.com", "teacher")
         s1 = _create_user("Student 1", "as1@test.com", "student")

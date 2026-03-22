@@ -542,6 +542,87 @@ class TestUnsubmitReviewFeedback:
         assert response.status_code == 403
 
 
+class TestUpdateReviewFeedback:
+    """Test POST /review/update/<review_id>"""
+
+    def test_update_review_success(self, test_client, students, reviews_assigned, rubric_with_criteria):
+        """Reviewer can update a completed review without unsubmitting"""
+        _, criteria = rubric_with_criteria
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        review = reviews_assigned[0]
+
+        submit = test_client.post(f'/review/submit/{review.id}', json={
+            'criteria': [
+                {'criterionRowID': criteria[0].id, 'grade': 8, 'comments': 'Good work!'},
+                {'criterionRowID': criteria[1].id, 'grade': 9, 'comments': 'Excellent!'},
+            ]
+        })
+        assert submit.status_code == 200
+
+        update = test_client.post(f'/review/update/{review.id}', json={
+            'criteria': [
+                {'criterionRowID': criteria[0].id, 'grade': 3, 'comments': 'Updated comment'},
+                {'criterionRowID': criteria[1].id, 'grade': 4, 'comments': ''},
+            ]
+        })
+        assert update.status_code == 200
+        data = update.get_json()
+        assert data['msg'] == 'Review updated successfully'
+        assert data['review']['completed'] is True
+
+        updated_row = Criterion.query.filter_by(reviewID=review.id, criterionRowID=criteria[0].id).first()
+        assert updated_row is not None
+        assert updated_row.grade == 3
+        assert updated_row.comments == 'Updated comment'
+
+    def test_update_review_not_completed(self, test_client, students, reviews_assigned, rubric_with_criteria):
+        """Cannot update a review that has not been submitted"""
+        _, criteria = rubric_with_criteria
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student1@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        review = reviews_assigned[0]
+        assert review.completed is False
+
+        update = test_client.post(f'/review/update/{review.id}', json={
+            'criteria': [
+                {'criterionRowID': criteria[0].id, 'grade': 1, 'comments': 'Test'},
+            ]
+        })
+        assert update.status_code == 400
+        assert 'not been submitted' in update.get_json()['msg']
+
+    def test_update_review_unauthorized(self, test_client, students, reviews_assigned, rubric_with_criteria):
+        """Student cannot update a review they're not assigned to"""
+        _, criteria = rubric_with_criteria
+
+        review = reviews_assigned[0]
+        review.mark_complete()
+
+        response = test_client.post('/auth/login', json={
+            'email': 'student3@test.com',
+            'password': 'password123'
+        })
+        assert response.status_code == 200
+
+        update = test_client.post(f'/review/update/{review.id}', json={
+            'criteria': [
+                {'criterionRowID': criteria[0].id, 'grade': 2, 'comments': 'Nope'},
+            ]
+        })
+        assert update.status_code == 403
+
+
 class TestCreateReview:
     """Test POST /review/create (teacher/admin only)"""
 

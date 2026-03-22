@@ -380,7 +380,7 @@ def create_assignment():
 @bp.route("/edit_assignment/<int:assignment_id>", methods=["PATCH"])
 @jwt_teacher_required
 def edit_assignment(assignment_id):
-    """Edit an existing assignment if the authenticated user is the teacher of the class and the due date has not passed"""
+    """Edit an existing assignment if the authenticated user is the teacher of the class."""
     data = request.get_json()
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
@@ -406,14 +406,16 @@ def edit_assignment(assignment_id):
         except ValueError:
             tz_offset_minutes = None
 
-    if not assignment.can_modify(tz_offset_minutes=tz_offset_minutes):
-        return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
-
     assignment.name = data.get("name", assignment.name)
     assignment.rubric_text = data.get("rubric", assignment.rubric_text)
     due_date = data.get("due_date")
     if due_date:
-        assignment.due_date = datetime.fromisoformat(due_date)
+        try:
+            assignment.due_date = _parse_due_date_input(due_date, tz_offset_minutes=tz_offset_minutes)
+        except (ValueError, TypeError) as e:
+            if str(e) == "past":
+                return jsonify({"msg": "Due date cannot be in the past"}), 400
+            return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     assignment.update()
     return (
@@ -477,10 +479,6 @@ def edit_assignment_details(assignment_id):
             tz_offset_minutes = None
 
     uploads_dir = Path(current_app.instance_path) / "uploads"
-
-    if (name is not None) or (due_date is not None):
-        if not assignment.can_modify(tz_offset_minutes=tz_offset_minutes):
-            return jsonify({"msg": "Assignment cannot be modified after its due date"}), 400
 
     if name is not None:
         if not name or not str(name).strip():

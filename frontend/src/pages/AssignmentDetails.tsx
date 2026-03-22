@@ -271,14 +271,25 @@ export default function AssignmentDetails() {
         return;
       }
 
-      if (editDueDate && editDueDate < todayMinDate) {
-        setError("Due date cannot be in the past.");
-        return;
+      const originalDueDate = toDateInputValue(assignment?.due_date ?? null);
+      const dueDateChanged = editDueDate !== originalDueDate;
+
+      if (dueDateChanged) {
+        if (!editDueDate) {
+          setError("Due date is required.");
+          return;
+        }
+        if (editDueDate < todayMinDate) {
+          setError("Due date cannot be in the past.");
+          return;
+        }
       }
 
       const formData = new FormData();
       formData.append("name", editTitle);
-      formData.append("due_date", editDueDate);
+      if (dueDateChanged) {
+        formData.append("due_date", editDueDate);
+      }
       formData.append("description", editDescription);
       if (newFile) {
         formData.append("file", newFile);
@@ -463,12 +474,10 @@ export default function AssignmentDetails() {
 
       <TabNavigation tabs={tabs} />
 
-      {error ? (
-        <div className="error-message">{error}</div>
-      ) : (
-        <div className="TabPageContent">
-          <div className="assignment-details-content">
-            {successMessage ? <div className="success-message">{successMessage}</div> : null}
+      <div className="TabPageContent">
+        <div className="assignment-details-content">
+          {error ? <div className="error-message">{error}</div> : null}
+          {successMessage ? <div className="success-message">{successMessage}</div> : null}
 
             <div className="assignment-details-metaRow">
               <div className="assignment-details-metaHeader">
@@ -641,9 +650,8 @@ export default function AssignmentDetails() {
               {renderStudentTimingMessage()}
             </>
           ) : null}
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

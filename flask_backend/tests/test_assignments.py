@@ -407,11 +407,11 @@ def test_teacher_can_edit_assignment_details_title_and_due_date_multipart(test_c
     assert returned_due is not None
     assert str(returned_due).startswith(new_due_date_only)
 
-def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin, dbsession):
+def test_teacher_can_edit_assignment_after_due_date(test_client, make_admin, dbsession):
     """
     GIVEN a teacher user
     WHEN they try to edit an assignment after its due date
-    THEN the API should return a 400 error
+    THEN the API should allow the edit
     """
     # Use make_admin fixture to create a teacher user
     make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
@@ -458,8 +458,10 @@ def test_teacher_cannot_edit_assignment_after_due_date(test_client, make_admin, 
         ),
         headers={"Content-Type": "application/json"},
     )
-    assert edit_response.status_code == 400
-    assert edit_response.json["msg"] == "Assignment cannot be modified after its due date"
+    assert edit_response.status_code == 200
+    assert edit_response.json["msg"] == "Assignment updated"
+    assert edit_response.json["assignment"]["name"] == "Updated Painting 1"
+    assert edit_response.json["assignment"]["rubric_text"] == "Originality"
 
 def test_non_assigned_teacher_cannot_edit_assignment(test_client, make_admin):
     """

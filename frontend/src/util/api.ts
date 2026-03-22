@@ -2,6 +2,12 @@ import { didExpire, removeToken } from "./login";
 
 const BASE_URL = 'http://localhost:5000'
 
+const getMsgFromErrorPayload = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') return null
+  const msg = (payload as Record<string, unknown>).msg
+  return typeof msg === 'string' ? msg : null
+}
+
 // export const getProfile = async (id: string) => {
 //   // TODO
 // }
@@ -706,8 +712,9 @@ export const updateReviewFeedback = async (
   if (!response.ok) {
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      const errorData = await response.json().catch(() => ({} as any));
-      throw new Error(errorData.msg || `Response status: ${response.status}`);
+      const parsed: unknown = await response.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${response.status}`);
     }
 
     await response.text().catch(() => '');
@@ -731,8 +738,9 @@ export const unsubmitReviewFeedback = async (reviewId: number) => {
   if (!response.ok) {
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      const errorData = await response.json().catch(() => ({} as any));
-      throw new Error(errorData.msg || `Response status: ${response.status}`);
+      const parsed: unknown = await response.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${response.status}`);
     }
 
     // If the backend returns HTML (e.g., 404/500 default page), avoid JSON parse errors.
@@ -1103,8 +1111,9 @@ export const unsubmitGroupPeerEval = async (assignmentId: number) => {
   if (!resp.ok) {
     const contentType = resp.headers.get('content-type') || ''
     if (contentType.includes('application/json')) {
-      const errorData = await resp.json().catch(() => ({} as any))
-      throw new Error(errorData.msg || `Response status: ${resp.status}`)
+      const parsed: unknown = await resp.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${resp.status}`)
     }
 
     await resp.text().catch(() => '')
@@ -1129,8 +1138,9 @@ export const updateGroupPeerEval = async (assignmentId: number, evaluations: Pee
   if (!resp.ok) {
     const contentType = resp.headers.get('content-type') || ''
     if (contentType.includes('application/json')) {
-      const errorData = await resp.json().catch(() => ({} as any))
-      throw new Error(errorData.msg || `Response status: ${resp.status}`)
+      const parsed: unknown = await resp.json().catch(() => null)
+      const msg = getMsgFromErrorPayload(parsed)
+      throw new Error(msg || `Response status: ${resp.status}`)
     }
 
     await resp.text().catch(() => '')

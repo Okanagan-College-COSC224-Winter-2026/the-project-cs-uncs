@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ClassCard from "../components/ClassCard";
+import StatusMessage from "../components/StatusMessage";
 
 import './Home.css'
 import { listClasses, listAssignments, searchClasses } from "../util/api";
@@ -10,10 +11,12 @@ export default function Home() {
   const [allCourses, setAllCourses] = useState<CourseWithAssignments[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
     ;(async () => {
       try {
+        setErrorMessage("");
         const coursesResp = await listClasses();
         
         // Fetch assignments for each course
@@ -41,6 +44,7 @@ export default function Home() {
         setAllCourses(coursesWithAssignments);
       } catch (error) {
         console.error("Error fetching courses:", error);
+        setErrorMessage(error instanceof Error ? error.message : "Failed to load courses.");
       } finally {
         setLoading(false);
       }
@@ -49,6 +53,7 @@ export default function Home() {
 
   const handleSearch = async (q: string) => {
     setSearchQuery(q);
+    setErrorMessage("");
     if (!q || q.trim() === "") {
       // If empty query, restore the cached full list (avoids re-fetching every course + assignments).
       if (allCourses) {
@@ -81,17 +86,61 @@ export default function Home() {
         setAllCourses(coursesWithAssignments);
       } catch (e) {
         console.error(e);
+        setErrorMessage(e instanceof Error ? e.message : "Failed to load courses.");
       }
       return;
     }
     try {
       const resp = await searchClasses(q);
       const results = resp.results || [];
-      // Map to CourseWithAssignments shape (no assignments fetched here)
-      const mapped = results.map((r: { id: number; name: string }) => ({ id: r.id, name: r.name, assignments: [], assignmentCount: 0 }));
+
+      // Defense-in-depth: only render classes the current user is authorized to see.
+      let allowedIds: Set<number>;
+      if (allCourses) {
+        allowedIds = new Set(allCourses.map((c) => Number(c.id)));
+      } else {
+        const allowedCourses = await listClasses();
+        allowedIds = new Set(allowedCourses.map((c: Course) => Number(c.id)));
+      }
+
+      const visibleResults = results.filter((r: { id: number }) => allowedIds.has(Number(r.id)));
+
+      const cachedById = new Map((allCourses || []).map((c) => [Number(c.id), c]));
+
+      const mapped = await Promise.all(
+        visibleResults.map(async (r: { id: number; name: string }) => {
+          const cached = cachedById.get(Number(r.id));
+          if (cached) {
+            return {
+              ...cached,
+              name: r.name,
+              assignmentCount: Number(cached.assignmentCount || 0),
+            };
+          }
+
+          // Fallback for cases where the initial course cache is unavailable.
+          try {
+            const assignments = await listAssignments(String(r.id));
+            return {
+              id: r.id,
+              name: r.name,
+              assignments: assignments || [],
+              assignmentCount: assignments?.length || 0,
+            };
+          } catch {
+            return {
+              id: r.id,
+              name: r.name,
+              assignments: [],
+              assignmentCount: 0,
+            };
+          }
+        })
+      );
       setCourses(mapped);
     } catch (error) {
       console.error("Search error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Search failed.");
       setCourses([]);
     }
   }
@@ -108,6 +157,8 @@ export default function Home() {
   return (
     <div className="Home Page">
       <h1>Peer Review Dashboard</h1>
+
+      <StatusMessage message={errorMessage} type="error" />
 
       <div className="Search">
         <input

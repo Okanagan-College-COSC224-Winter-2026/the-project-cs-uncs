@@ -31,19 +31,26 @@ export default function ClassMembers() {
 
   useEffect(() => {
     if (!teacherOrAdmin) return
-    if (!id) return
+    if (!id) {
+      setLoadingHeader(false)
+      return
+    }
+
+    let cancelled = false
 
     ;(async () => {
-      setLoadingHeader(true);
-      const members = await listCourseMembers(id as string)
-      const classes = await listClasses();
-      const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
-      setMembers(members)
-      setClassName(currentClass?.name || null);
-
       try {
+        setLoadingHeader(true);
+        const [members, classes] = await Promise.all([listCourseMembers(id as string), listClasses()]);
+        if (cancelled) return;
+
+        const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
+        setMembers(members)
+        setClassName(currentClass?.name || null);
+
         if (id) {
           const groups: CourseGroup[] = await listCourseGroups(Number(id))
+          if (cancelled) return;
           const map: Record<number, string> = {}
           for (const g of groups) {
             for (const m of g.members || []) {
@@ -57,12 +64,19 @@ export default function ClassMembers() {
           setGroupNameByUserId(map)
         }
       } catch (e) {
-        console.error('Failed to load groups for course:', e)
+        if (cancelled) return;
+        console.error('Failed to load class members page data:', e)
+        setStatusType('error')
+        setStatusMessage(e instanceof Error ? e.message : 'Failed to load class members.')
         setGroupNameByUserId({})
+      } finally {
+        if (!cancelled) setLoadingHeader(false);
       }
-
-      setLoadingHeader(false);
     })()
+
+    return () => {
+      cancelled = true
+    }
   }, [id, teacherOrAdmin])  
 
   if (!teacherOrAdmin) {

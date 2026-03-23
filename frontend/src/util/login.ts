@@ -16,8 +16,15 @@ export const didExpire = (response: Response) => {
 }
 
 export const getUserRole = (): string => {
-  const user = JSON.parse(localStorage.getItem("user") || '{ "role": "student" }');
-  return user.role || "student";
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return "student";
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.role === "string") return parsed.role;
+  } catch {
+    // Fall back to student when local storage is malformed.
+  }
+  return "student";
 }
 
 export const isTeacher = () => {

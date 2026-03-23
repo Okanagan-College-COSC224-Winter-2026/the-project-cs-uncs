@@ -33,6 +33,20 @@ bp = Blueprint("assignment", __name__, url_prefix="/assignment")
 _ASSIGNMENT_TYPES = {"standard", "peer_eval_group", "peer_eval_individual"}
 
 
+def _is_teacher_attached_to_course(user: User, course: Course) -> bool:
+    return bool(user and course and user.is_teacher() and course.teacherID == user.id)
+
+
+def _can_access_course_assignments(user: User, course: Course) -> bool:
+    if not user or not course:
+        return False
+    if user.is_admin() or _is_teacher_attached_to_course(user, course):
+        return True
+    if user.is_student() and User_Course.get(user.id, course.id) is not None:
+        return True
+    return False
+
+
 def _coerce_int_list(value):
     """Coerce an input value into a list[int] when possible.
 
@@ -576,10 +590,20 @@ def get_assignment_details(assignment_id):
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
     payload = AssignmentSchema().dump(assignment)
 
     current_email = get_jwt_identity()
     user = User.get_by_email(current_email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not _can_access_course_assignments(user, course):
+        return jsonify({"msg": "Unauthorized"}), 403
+
     if user and user.is_student():
         enrollment = User_Course.get(user.id, assignment.courseID)
         if not enrollment:
@@ -632,6 +656,18 @@ def download_assignment_attachment(assignment_id):
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not _can_access_course_assignments(user, course):
+        return jsonify({"msg": "Unauthorized"}), 403
 
     if not assignment.attachment_storage_name:
         return jsonify({"msg": "No attachment for this assignment"}), 404
@@ -1029,11 +1065,17 @@ def get_assignments(class_id):
     if not course:
         return jsonify({"msg": "Class not found"}), 404
 
+    current_email = get_jwt_identity()
+    user = User.get_by_email(current_email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not _can_access_course_assignments(user, course):
+        return jsonify({"msg": "Unauthorized"}), 403
+
     assignments = Assignment.get_by_class_id(class_id)
     assignments_data = AssignmentSchema(many=True).dump(assignments)
 
-    current_email = get_jwt_identity()
-    user = User.get_by_email(current_email)
     if user and user.is_student():
         assignment_ids = [a.id for a in assignments]
         done_by_assignment_id = {aid: False for aid in assignment_ids}

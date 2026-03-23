@@ -1,6 +1,7 @@
 import functools
+import time
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import (
     create_access_token,
     get_jwt_identity,
@@ -21,6 +22,53 @@ login_schema = UserLoginSchema()
 user_schema = UserSchema()
 
 
+def _get_login_limiter_state():
+    return current_app.extensions.setdefault(
+        "auth_login_limiter", {"failures": {}, "lockouts": {}}
+    )
+
+
+def _login_limit_config():
+    return (
+        int(current_app.config.get("AUTH_LOGIN_MAX_ATTEMPTS", 5)),
+        int(current_app.config.get("AUTH_LOGIN_WINDOW_SECONDS", 300)),
+        int(current_app.config.get("AUTH_LOGIN_LOCKOUT_SECONDS", 900)),
+    )
+
+
+def _auth_is_limited(key: str) -> int:
+    state = _get_login_limiter_state()
+    lockout_until = float(state["lockouts"].get(key, 0))
+    now = time.time()
+    if lockout_until > now:
+        return int(lockout_until - now)
+
+    if key in state["lockouts"]:
+        state["lockouts"].pop(key, None)
+    return 0
+
+
+def _auth_record_failure(key: str):
+    state = _get_login_limiter_state()
+    max_attempts, window_seconds, lockout_seconds = _login_limit_config()
+    now = time.time()
+
+    attempts = state["failures"].setdefault(key, [])
+    attempts = [ts for ts in attempts if now - ts <= window_seconds]
+    attempts.append(now)
+    state["failures"][key] = attempts
+
+    if len(attempts) >= max_attempts:
+        state["lockouts"][key] = now + lockout_seconds
+        state["failures"].pop(key, None)
+
+
+def _auth_clear_failures(key: str):
+    state = _get_login_limiter_state()
+    state["failures"].pop(key, None)
+    state["lockouts"].pop(key, None)
+
+
 
 @bp.route("/login", methods=["POST"])
 def login():
@@ -34,10 +82,40 @@ def login():
     except ValidationError as err:
         return jsonify({"msg": "Validation error", "errors": err.messages}), 400
 
+    request_ip = (request.remote_addr or "unknown").split(",", 1)[0].strip()
+    request_email = data["email"].strip().lower()
+    limit_key = f"{request_ip}|{request_email}"
+
+    retry_after = _auth_is_limited(limit_key)
+    if retry_after > 0:
+        return (
+            jsonify(
+                {
+                    "msg": "Too many login attempts. Please try again later.",
+                    "retry_after_seconds": retry_after,
+                }
+            ),
+            429,
+        )
+
     # Verify credentials
     user = User.get_by_email(data["email"])
     if user is None or not check_password_hash(user.hash_pass, data["password"]):
+        _auth_record_failure(limit_key)
+        retry_after = _auth_is_limited(limit_key)
+        if retry_after > 0:
+            return (
+                jsonify(
+                    {
+                        "msg": "Too many login attempts. Please try again later.",
+                        "retry_after_seconds": retry_after,
+                    }
+                ),
+                429,
+            )
         return jsonify({"msg": "Bad email or password"}), 401
+
+    _auth_clear_failures(limit_key)
 
     # Generate access token and set as httponly cookie
     access_token = create_access_token(identity=data["email"])

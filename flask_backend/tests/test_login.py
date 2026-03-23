@@ -116,35 +116,59 @@ def test_logout(test_client):
 
 def test_login_rate_limited_after_repeated_failures(test_client):
     """Repeated failed login attempts should trigger a temporary lockout."""
-    test_client.application.config["AUTH_LOGIN_MAX_ATTEMPTS"] = 3
-    test_client.application.config["AUTH_LOGIN_WINDOW_SECONDS"] = 60
-    test_client.application.config["AUTH_LOGIN_LOCKOUT_SECONDS"] = 120
+    config = test_client.application.config
+    had_max_attempts = "AUTH_LOGIN_MAX_ATTEMPTS" in config
+    prev_max_attempts = config.get("AUTH_LOGIN_MAX_ATTEMPTS")
+    had_window_seconds = "AUTH_LOGIN_WINDOW_SECONDS" in config
+    prev_window_seconds = config.get("AUTH_LOGIN_WINDOW_SECONDS")
+    had_lockout_seconds = "AUTH_LOGIN_LOCKOUT_SECONDS" in config
+    prev_lockout_seconds = config.get("AUTH_LOGIN_LOCKOUT_SECONDS")
 
-    test_client.post(
-        "/auth/register",
-        data=json.dumps({"name": "ratelimit", "password": "123456", "email": "ratelimit@example.com"}),
-        headers={"Content-Type": "application/json"},
-    )
+    config["AUTH_LOGIN_MAX_ATTEMPTS"] = 3
+    config["AUTH_LOGIN_WINDOW_SECONDS"] = 60
+    config["AUTH_LOGIN_LOCKOUT_SECONDS"] = 120
 
-    for _ in range(2):
-        response = test_client.post(
+    try:
+        test_client.post(
+            "/auth/register",
+            data=json.dumps({"name": "ratelimit", "password": "123456", "email": "ratelimit@example.com"}),
+            headers={"Content-Type": "application/json"},
+        )
+
+        for _ in range(2):
+            response = test_client.post(
+                "/auth/login",
+                data=json.dumps({"email": "ratelimit@example.com", "password": "wrong-password"}),
+                headers={"Content-Type": "application/json"},
+            )
+            assert response.status_code == 401
+
+        third = test_client.post(
             "/auth/login",
             data=json.dumps({"email": "ratelimit@example.com", "password": "wrong-password"}),
             headers={"Content-Type": "application/json"},
         )
-        assert response.status_code == 401
+        assert third.status_code == 429
+        assert "retry_after_seconds" in third.json
 
-    third = test_client.post(
-        "/auth/login",
-        data=json.dumps({"email": "ratelimit@example.com", "password": "wrong-password"}),
-        headers={"Content-Type": "application/json"},
-    )
-    assert third.status_code == 429
-    assert "retry_after_seconds" in third.json
+        blocked = test_client.post(
+            "/auth/login",
+            data=json.dumps({"email": "ratelimit@example.com", "password": "123456"}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert blocked.status_code == 429
+    finally:
+        if had_max_attempts:
+            config["AUTH_LOGIN_MAX_ATTEMPTS"] = prev_max_attempts
+        else:
+            config.pop("AUTH_LOGIN_MAX_ATTEMPTS", None)
 
-    blocked = test_client.post(
-        "/auth/login",
-        data=json.dumps({"email": "ratelimit@example.com", "password": "123456"}),
-        headers={"Content-Type": "application/json"},
-    )
-    assert blocked.status_code == 429
+        if had_window_seconds:
+            config["AUTH_LOGIN_WINDOW_SECONDS"] = prev_window_seconds
+        else:
+            config.pop("AUTH_LOGIN_WINDOW_SECONDS", None)
+
+        if had_lockout_seconds:
+            config["AUTH_LOGIN_LOCKOUT_SECONDS"] = prev_lockout_seconds
+        else:
+            config.pop("AUTH_LOGIN_LOCKOUT_SECONDS", None)

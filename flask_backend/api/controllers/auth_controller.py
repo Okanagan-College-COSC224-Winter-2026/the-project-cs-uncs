@@ -82,7 +82,7 @@ def login():
     except ValidationError as err:
         return jsonify({"msg": "Validation error", "errors": err.messages}), 400
 
-    request_ip = (request.headers.get("X-Forwarded-For") or request.remote_addr or "unknown").split(",", 1)[0].strip()
+    request_ip = (request.remote_addr or "unknown").split(",", 1)[0].strip()
     request_email = data["email"].strip().lower()
     limit_key = f"{request_ip}|{request_email}"
 

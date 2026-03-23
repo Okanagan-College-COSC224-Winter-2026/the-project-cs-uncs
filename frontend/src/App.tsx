@@ -1,6 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ClassRouteGuard from "./components/ClassRouteGuard";
+import AssignmentRouteGuard from "./components/AssignmentRouteGuard";
+import RoleRouteGuard from "./components/RoleRouteGuard";
 import Sidebar from "./components/Sidebar";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -58,7 +61,9 @@ function AppContent() {
 
           <Route path="/admin/users" element={
             <ProtectedRoute>
-              <AdminUsers />
+              <RoleRouteGuard allowedRoles={["admin"]}>
+                <AdminUsers />
+              </RoleRouteGuard>
             </ProtectedRoute>
           } />
 
@@ -82,62 +87,82 @@ function AppContent() {
 
           <Route path="/classes/:id/home" element={
             <ProtectedRoute>
-              <ClassHome />
+              <ClassRouteGuard>
+                <ClassHome />
+              </ClassRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/classes/:id/members" element={
             <ProtectedRoute>
-              <ClassMembers />
+              <ClassRouteGuard>
+                <ClassMembers />
+              </ClassRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/classes/:id/groups" element={
             <ProtectedRoute>
-              <Groups />
+              <ClassRouteGuard>
+                <Groups />
+              </ClassRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/classes/:id/my-group" element={
             <ProtectedRoute>
-              <MyGroup />
+              <ClassRouteGuard>
+                <MyGroup />
+              </ClassRouteGuard>
             </ProtectedRoute>
           } />
 
 
           <Route path="/classes/:id/create-assignment" element={
             <ProtectedRoute>
-              <CreateAssignment />
+              <ClassRouteGuard requireTeacherOrAdmin>
+                <CreateAssignment />
+              </ClassRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignments/:id" element={
             <ProtectedRoute>
-              <Assignment />
+              <AssignmentRouteGuard>
+                <Assignment />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id" element={
             <ProtectedRoute>
-              <Assignment />
+              <AssignmentRouteGuard>
+                <Assignment />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id/details" element={
             <ProtectedRoute>
-              <AssignmentDetails />
+              <AssignmentRouteGuard>
+                <AssignmentDetails />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id/groups" element={
             <ProtectedRoute>
-              <Groups />
+              <AssignmentRouteGuard>
+                <Groups />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id/submissions" element={
             <ProtectedRoute>
-              <Submissions />
+              <AssignmentRouteGuard requireTeacherOrAdmin>
+                <Submissions />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
@@ -148,31 +173,41 @@ function AppContent() {
 
           <Route path="/assignment/:id/my-group" element={
             <ProtectedRoute>
-              <MyGroup />
+              <AssignmentRouteGuard>
+                <MyGroup />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id/reviews" element={
             <ProtectedRoute>
-              <PeerReviews />
+              <AssignmentRouteGuard>
+                <PeerReviews />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id/teacher-reviews" element={
             <ProtectedRoute>
-              <TeacherReviewDashboard />
+              <AssignmentRouteGuard requireTeacherOrAdmin>
+                <TeacherReviewDashboard />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:assignmentId/review/:reviewId" element={
             <ProtectedRoute>
-              <ReviewSubmission />
+              <AssignmentRouteGuard paramName="assignmentId">
+                <ReviewSubmission />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
 
           <Route path="/assignment/:id/feedback" element={
             <ProtectedRoute>
-              <ReceivedFeedback />
+              <AssignmentRouteGuard>
+                <ReceivedFeedback />
+              </AssignmentRouteGuard>
             </ProtectedRoute>
           } />
         </Routes>

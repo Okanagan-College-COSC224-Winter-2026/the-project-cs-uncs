@@ -4,7 +4,6 @@ Tests for assignments endpoints
 
 import json
 import datetime
-
 from api.models import Assignment
 
 def test_teacher_can_create_assignment(test_client, make_admin):
@@ -920,7 +919,7 @@ def test_create_assignment_without_due_date_is_rejected(test_client, make_admin)
 def test_create_assignment_with_invalid_due_date_format(test_client, make_admin):
     """
     GIVEN a teacher user
-    WHEN they submit an assignment with an invalid due date format
+    WHEN they try to create an assignment with an invalid due date format
     THEN the API should return a 400 error
     """
     # ARRANGE

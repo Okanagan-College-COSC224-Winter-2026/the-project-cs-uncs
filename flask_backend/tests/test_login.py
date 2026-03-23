@@ -112,3 +112,39 @@ def test_logout(test_client):
     assert response.json["msg"] == "Successfully logged out"
     # Should clear the cookie
     assert "Set-Cookie" in response.headers
+
+
+def test_login_rate_limited_after_repeated_failures(test_client):
+    """Repeated failed login attempts should trigger a temporary lockout."""
+    test_client.application.config["AUTH_LOGIN_MAX_ATTEMPTS"] = 3
+    test_client.application.config["AUTH_LOGIN_WINDOW_SECONDS"] = 60
+    test_client.application.config["AUTH_LOGIN_LOCKOUT_SECONDS"] = 120
+
+    test_client.post(
+        "/auth/register",
+        data=json.dumps({"name": "ratelimit", "password": "123456", "email": "ratelimit@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    for _ in range(2):
+        response = test_client.post(
+            "/auth/login",
+            data=json.dumps({"email": "ratelimit@example.com", "password": "wrong-password"}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 401
+
+    third = test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "ratelimit@example.com", "password": "wrong-password"}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert third.status_code == 429
+    assert "retry_after_seconds" in third.json
+
+    blocked = test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "ratelimit@example.com", "password": "123456"}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert blocked.status_code == 429

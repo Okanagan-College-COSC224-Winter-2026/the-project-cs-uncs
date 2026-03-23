@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ClassCard from "../components/ClassCard";
 import StatusMessage from "../components/StatusMessage";
 
@@ -7,11 +8,27 @@ import { listClasses, listAssignments, searchClasses } from "../util/api";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function Home() {
+  const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const classesSectionRef = useRef<HTMLDivElement | null>(null);
   const [courses, setCourses] = useState<CourseWithAssignments[]>([]);
   const [allCourses, setAllCourses] = useState<CourseWithAssignments[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>("");
+
+  const adminMode = isAdmin();
+  const totalAssignments = courses.reduce((sum, course) => sum + Number(course.assignmentCount || 0), 0);
+
+  const handleBrowseClasses = () => {
+    if (allCourses) {
+      setCourses(allCourses);
+    }
+    setSearchQuery("");
+    setErrorMessage("");
+    classesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    searchInputRef.current?.focus();
+  };
 
   useEffect(() => {
     ;(async () => {
@@ -148,7 +165,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="Home Page">
-        <h1>Peer Review Dashboard</h1>
+        <h1>{adminMode ? "Admin Dashboard" : "Peer Review Dashboard"}</h1>
         <p className="PageStatusText">Loading…</p>
       </div>
     );
@@ -156,19 +173,52 @@ export default function Home() {
 
   return (
     <div className="Home Page">
-      <h1>Peer Review Dashboard</h1>
+      <h1>{adminMode ? "Admin Dashboard" : "Peer Review Dashboard"}</h1>
 
       <StatusMessage message={errorMessage} type="error" />
 
+      {adminMode ? (
+        <div className="AdminIntro">
+          <p className="AdminIntroText">
+            Manage users, monitor classes, and quickly jump into course spaces.
+          </p>
+          <div className="AdminStats">
+            <div className="AdminStatCard">
+              <div className="AdminStatValue">{courses.length}</div>
+              <div className="AdminStatLabel">Visible classes</div>
+            </div>
+            <div className="AdminStatCard">
+              <div className="AdminStatValue">{totalAssignments}</div>
+              <div className="AdminStatLabel">Assignments across classes</div>
+            </div>
+          </div>
+
+          <div className="AdminActions">
+            <button className="AdminActionCard" onClick={() => navigate('/admin/users')}>
+              <h3>Manage Users</h3>
+              <p>Create users, update roles, and manage account access.</p>
+            </button>
+            <button className="AdminActionCard" onClick={handleBrowseClasses}>
+              <h3>Browse Classes</h3>
+              <p>Jump to class directory and search classes you can inspect.</p>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="Search">
         <input
+          ref={searchInputRef}
           type="text"
           className="SearchInput"
-          placeholder="Search for Courses"
+          placeholder={adminMode ? "Search classes to inspect" : "Search for Courses"}
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
         />
       </div>
+
+      <div className="ClassesSection" ref={classesSectionRef}>
+        {adminMode ? <h2 className="ClassesTitle">Class Directory</h2> : null}
 
       <div className="Classes">
         {
@@ -188,7 +238,7 @@ export default function Home() {
                   name={course.name}
                   subtitle={assignmentText}
                   onclick={() => {
-                    window.location.href = `/classes/${course.id}/home`;
+                    navigate(`/classes/${course.id}/home`);
                   }}
                 />
               );
@@ -196,13 +246,10 @@ export default function Home() {
           )
         }
 
-        {isTeacher() && <div className="ClassCreateButton" onClick={() => window.location.href = '/classes/create'}>
+        {isTeacher() && !adminMode && <div className="ClassCreateButton" onClick={() => navigate('/classes/create')}>
           <h2>Create Class</h2>
         </div>}
-        
-        {isAdmin() && <div className="ClassCreateButton" onClick={() => window.location.href = '/admin/users'}>
-          <h2>Manage Users</h2>
-        </div>}
+      </div>
       </div>
     </div>
   )

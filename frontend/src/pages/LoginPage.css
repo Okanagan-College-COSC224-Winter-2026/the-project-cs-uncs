@@ -11,7 +11,7 @@
   /* Negative margin to offset the "inner" padding and ensure the background covers the entire viewport */
   margin: calc(-1 * var(--spacing-lg));
 
-  background: linear-gradient(135deg, var(--background-primary) 0%, var(--background-secondary) 100%);
+  background: var(--background-primary);
   transition: var(--transition-slow);
 }
 

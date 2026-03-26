@@ -28,17 +28,33 @@ export default function ClassHome() {
 
   useEffect(() => {
     let cancelled = false;
+    let latestRequestId = 0;
 
     const load = async () => {
-      if (!id) return;
+      if (!id) {
+        setLoadingHeader(false);
+        return;
+      }
+
+      const requestId = ++latestRequestId;
       setLoadingHeader(true);
-      const resp = await listAssignments(String(id));
-      const classes = await listClasses();
-      const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
-      if (cancelled) return;
-      setAssignments(resp);
-      setClassName(currentClass?.name || null);
-      setLoadingHeader(false);
+
+      try {
+        const [resp, classes] = await Promise.all([listAssignments(String(id)), listClasses()]);
+        if (cancelled || requestId !== latestRequestId) return;
+
+        const currentClass = classes.find((c: { id: number }) => c.id === Number(id));
+        setAssignments(resp);
+        setClassName(currentClass?.name || null);
+      } catch (error) {
+        if (cancelled || requestId !== latestRequestId) return;
+        setStatusType("error");
+        setStatusMessage(error instanceof Error ? error.message : "Failed to load class details.");
+      } finally {
+        if (!cancelled && requestId === latestRequestId) {
+          setLoadingHeader(false);
+        }
+      }
     };
 
     void load();

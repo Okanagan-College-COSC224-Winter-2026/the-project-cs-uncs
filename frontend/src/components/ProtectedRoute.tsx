@@ -12,9 +12,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
 
     useEffect(() => {
+        let cancelled = false;
+
         ;(async () => {
             try {
                 const user = await getCurrentUser();
+                if (cancelled) return;
 
                 // If user must change password, redirect to /change-password
                 // (unless they're already on that page)
@@ -25,11 +28,22 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
                 setIsAuthChecked(true);
             } catch (error) {
+                if (cancelled) return;
                 console.error("Error checking authentication:", error);
                 navigate("/");
             }
         })();
+
+        return () => {
+            cancelled = true;
+        };
     }, [navigate, location.pathname]);
 
-    return isAuthChecked ? <>{children}</> : null;
+    return isAuthChecked ? (
+        <>{children}</>
+    ) : (
+        <div className="Page">
+            <p className="PageStatusText">Checking your session…</p>
+        </div>
+    );
 }

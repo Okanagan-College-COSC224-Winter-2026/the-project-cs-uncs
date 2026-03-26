@@ -1,19 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ClassCard from "../components/ClassCard";
+import StatusMessage from "../components/StatusMessage";
 
 import './Home.css'
 import { listClasses, listAssignments, searchClasses } from "../util/api";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function Home() {
+  const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const classesSectionRef = useRef<HTMLDivElement | null>(null);
   const [courses, setCourses] = useState<CourseWithAssignments[]>([]);
   const [allCourses, setAllCourses] = useState<CourseWithAssignments[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  const adminMode = isAdmin();
+  const totalAssignments = courses.reduce((sum, course) => sum + Number(course.assignmentCount || 0), 0);
+
+  const handleBrowseClasses = () => {
+    if (allCourses) {
+      setCourses(allCourses);
+    }
+    setSearchQuery("");
+    setErrorMessage("");
+    classesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    searchInputRef.current?.focus();
+  };
 
   useEffect(() => {
     ;(async () => {
       try {
+        setErrorMessage("");
         const coursesResp = await listClasses();
         
         // Fetch assignments for each course
@@ -41,6 +61,7 @@ export default function Home() {
         setAllCourses(coursesWithAssignments);
       } catch (error) {
         console.error("Error fetching courses:", error);
+        setErrorMessage(error instanceof Error ? error.message : "Failed to load courses.");
       } finally {
         setLoading(false);
       }
@@ -49,6 +70,7 @@ export default function Home() {
 
   const handleSearch = async (q: string) => {
     setSearchQuery(q);
+    setErrorMessage("");
     if (!q || q.trim() === "") {
       // If empty query, restore the cached full list (avoids re-fetching every course + assignments).
       if (allCourses) {
@@ -81,17 +103,61 @@ export default function Home() {
         setAllCourses(coursesWithAssignments);
       } catch (e) {
         console.error(e);
+        setErrorMessage(e instanceof Error ? e.message : "Failed to load courses.");
       }
       return;
     }
     try {
       const resp = await searchClasses(q);
       const results = resp.results || [];
-      // Map to CourseWithAssignments shape (no assignments fetched here)
-      const mapped = results.map((r: { id: number; name: string }) => ({ id: r.id, name: r.name, assignments: [], assignmentCount: 0 }));
+
+      // Defense-in-depth: only render classes the current user is authorized to see.
+      let allowedIds: Set<number>;
+      if (allCourses) {
+        allowedIds = new Set(allCourses.map((c) => Number(c.id)));
+      } else {
+        const allowedCourses = await listClasses();
+        allowedIds = new Set(allowedCourses.map((c: Course) => Number(c.id)));
+      }
+
+      const visibleResults = results.filter((r: { id: number }) => allowedIds.has(Number(r.id)));
+
+      const cachedById = new Map((allCourses || []).map((c) => [Number(c.id), c]));
+
+      const mapped = await Promise.all(
+        visibleResults.map(async (r: { id: number; name: string }) => {
+          const cached = cachedById.get(Number(r.id));
+          if (cached) {
+            return {
+              ...cached,
+              name: r.name,
+              assignmentCount: Number(cached.assignmentCount || 0),
+            };
+          }
+
+          // Fallback for cases where the initial course cache is unavailable.
+          try {
+            const assignments = await listAssignments(String(r.id));
+            return {
+              id: r.id,
+              name: r.name,
+              assignments: assignments || [],
+              assignmentCount: assignments?.length || 0,
+            };
+          } catch {
+            return {
+              id: r.id,
+              name: r.name,
+              assignments: [],
+              assignmentCount: 0,
+            };
+          }
+        })
+      );
       setCourses(mapped);
     } catch (error) {
       console.error("Search error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Search failed.");
       setCourses([]);
     }
   }
@@ -99,7 +165,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="Home Page">
-        <h1>Peer Review Dashboard</h1>
+        <h1>{adminMode ? "Admin Dashboard" : "Peer Review Dashboard"}</h1>
         <p className="PageStatusText">Loading…</p>
       </div>
     );
@@ -107,17 +173,52 @@ export default function Home() {
 
   return (
     <div className="Home Page">
-      <h1>Peer Review Dashboard</h1>
+      <h1>{adminMode ? "Admin Dashboard" : "Peer Review Dashboard"}</h1>
+
+      <StatusMessage message={errorMessage} type="error" />
+
+      {adminMode ? (
+        <div className="AdminIntro">
+          <p className="AdminIntroText">
+            Manage users, monitor classes, and quickly jump into course spaces.
+          </p>
+          <div className="AdminStats">
+            <div className="AdminStatCard">
+              <div className="AdminStatValue">{courses.length}</div>
+              <div className="AdminStatLabel">Visible classes</div>
+            </div>
+            <div className="AdminStatCard">
+              <div className="AdminStatValue">{totalAssignments}</div>
+              <div className="AdminStatLabel">Assignments across classes</div>
+            </div>
+          </div>
+
+          <div className="AdminActions">
+            <button className="AdminActionCard" onClick={() => navigate('/admin/users')}>
+              <h3>Manage Users</h3>
+              <p>Create users, update roles, and manage account access.</p>
+            </button>
+            <button className="AdminActionCard" onClick={handleBrowseClasses}>
+              <h3>Browse Classes</h3>
+              <p>Jump to class directory and search classes you can inspect.</p>
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="Search">
         <input
+          ref={searchInputRef}
           type="text"
           className="SearchInput"
-          placeholder="Search for Courses"
+          placeholder={adminMode ? "Search classes to inspect" : "Search for Courses"}
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
         />
       </div>
+
+      <div className="ClassesSection" ref={classesSectionRef}>
+        {adminMode ? <h2 className="ClassesTitle">Class Directory</h2> : null}
 
       <div className="Classes">
         {
@@ -137,7 +238,7 @@ export default function Home() {
                   name={course.name}
                   subtitle={assignmentText}
                   onclick={() => {
-                    window.location.href = `/classes/${course.id}/home`;
+                    navigate(`/classes/${course.id}/home`);
                   }}
                 />
               );
@@ -145,13 +246,10 @@ export default function Home() {
           )
         }
 
-        {isTeacher() && <div className="ClassCreateButton" onClick={() => window.location.href = '/classes/create'}>
+        {isTeacher() && !adminMode && <div className="ClassCreateButton" onClick={() => navigate('/classes/create')}>
           <h2>Create Class</h2>
         </div>}
-        
-        {isAdmin() && <div className="ClassCreateButton" onClick={() => window.location.href = '/admin/users'}>
-          <h2>Manage Users</h2>
-        </div>}
+      </div>
       </div>
     </div>
   )

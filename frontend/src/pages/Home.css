@@ -21,6 +21,17 @@
   padding: var(--spacing-md) 0;
 }
 
+.ClassesSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.ClassesTitle {
+  margin: 0;
+  color: var(--text-primary);
+}
+
 .ClassCreateButton {
   display: flex;
   flex-direction: column;
@@ -60,6 +71,79 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+}
+
+.AdminIntro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  background: var(--background-secondary);
+}
+
+.AdminIntroText {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.AdminStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.AdminStatCard {
+  min-width: 180px;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--background-primary);
+}
+
+.AdminStatValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.AdminStatLabel {
+  margin-top: var(--spacing-xs);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.AdminActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.AdminActionCard {
+  text-align: left;
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.AdminActionCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--button-primary);
+}
+
+.AdminActionCard h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.AdminActionCard p {
+  margin: 0;
+  color: var(--text-secondary);
 }
 
 .SearchInput {

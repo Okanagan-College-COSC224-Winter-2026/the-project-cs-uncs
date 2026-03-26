@@ -63,8 +63,25 @@ def search_classes():
     if not q:
         return jsonify({"results": [], "message": "Query parameter 'q' required"}), 400
 
-    # Partial, case-insensitive match on the course name
-    matches = Course.query.filter(Course.name.ilike(f"%{q}%")).all()
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    name_filter = Course.name.ilike(f"%{q}%")
+
+    if user.is_admin():
+        matches = Course.query.filter(name_filter).all()
+    elif user.is_teacher():
+        matches = Course.query.filter(name_filter, Course.teacherID == user.id).all()
+    elif user.is_student():
+        matches = (
+            Course.query.join(User_Course, User_Course.courseID == Course.id)
+            .filter(name_filter, User_Course.userID == user.id)
+            .all()
+        )
+    else:
+        matches = []
 
     results = []
     for c in matches:

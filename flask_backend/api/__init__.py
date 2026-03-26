@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, get_jwt, get_jwt_identity, verify_jwt_in_request
 from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import PyJWTError
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from .cli import init_app
 from .controllers import (
@@ -43,6 +44,7 @@ def create_app(test_config=None):
             )
 
     # Default configuration
+    max_upload_mb = int(os.environ.get("MAX_UPLOAD_MB", "10"))
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev"),
         # A local sqlite database stored in the instance folder for development
@@ -75,6 +77,11 @@ def create_app(test_config=None):
         ),  # Strict in production for maximum security
         JWT_ACCESS_COOKIE_PATH="/",
         JWT_COOKIE_DOMAIN=os.environ.get("JWT_COOKIE_DOMAIN", None),
+        MAX_UPLOAD_MB=max_upload_mb,
+        MAX_CONTENT_LENGTH=max_upload_mb * 1024 * 1024,
+        AUTH_LOGIN_MAX_ATTEMPTS=int(os.environ.get("AUTH_LOGIN_MAX_ATTEMPTS", "5")),
+        AUTH_LOGIN_WINDOW_SECONDS=int(os.environ.get("AUTH_LOGIN_WINDOW_SECONDS", "300")),
+        AUTH_LOGIN_LOCKOUT_SECONDS=int(os.environ.get("AUTH_LOGIN_LOCKOUT_SECONDS", "900")),
     )
 
     if test_config is None:
@@ -127,6 +134,19 @@ def create_app(test_config=None):
     @app.route("/hello")
     def hello():
         return {"message": "Hello, World!"}
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_file_too_large(_err):
+        max_upload_mb = app.config.get("MAX_UPLOAD_MB", 10)
+        return (
+            jsonify(
+                {
+                    "msg": f"Upload too large. Maximum allowed size is {max_upload_mb} MB.",
+                    "max_upload_size_mb": max_upload_mb,
+                }
+            ),
+            413,
+        )
 
     # Initialize CLI commands
     init_app(app)

@@ -12,6 +12,27 @@ interface Props {
   hideDueStatus?: boolean
 }
 
+function getAssignmentTypeIcon(assignmentType?: string): { alt: string; cssClass: string } {
+  if (assignmentType === 'peer_eval_individual') {
+    return {
+      alt: 'Individual peer evaluation assignment',
+      cssClass: 'peer-individual'
+    }
+  }
+
+  if (assignmentType === 'peer_eval_group') {
+    return {
+      alt: 'Group peer evaluation assignment',
+      cssClass: 'peer-group'
+    }
+  }
+
+  return {
+    alt: 'Standard assignment',
+    cssClass: 'standard'
+  }
+}
+
 function getAssignmentStatus(dueDate?: string): { status: string; label: string; color: string } {
   if (!dueDate) {
     return { status: 'not-due', label: 'No Due Date', color: 'gray' };
@@ -51,6 +72,7 @@ function formatDate(dateString?: string): string {
 export default function AssignmentCard(props: Props) {
   const statusInfo = getAssignmentStatus(props.due_date);
   const showStatusBubble = !(isTeacher() || isAdmin()) && !props.hideDueStatus;
+  const assignmentIcon = getAssignmentTypeIcon(props.assignment_type)
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent the card's onClick from firing
@@ -79,7 +101,11 @@ export default function AssignmentCard(props: Props) {
       }}
       className='A_Card'
     >
-      <img src="/icons/document.svg" alt="document" />
+      <span
+        role="img"
+        aria-label={assignmentIcon.alt}
+        className={`A_Card_Icon ${assignmentIcon.cssClass}`}
+      />
 
       <div className="A_Card_Content">
         <div className="A_Card_Name">{props.name}</div>

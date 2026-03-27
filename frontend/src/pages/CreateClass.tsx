@@ -4,7 +4,7 @@ import Button from '../components/Button'
 import Textbox from '../components/Textbox'
 import StatusMessage from '../components/StatusMessage'
 import './CreateClass.css'
-import { createClass } from '../util/api'
+import { createClass } from '../util/api_client/classes'
 
 export default function CreateClass() {
   const [name, setName] = useState('')
@@ -51,4 +51,3 @@ export default function CreateClass() {
     </div>
   )
 }
-

@@ -19,6 +19,24 @@
   box-shadow: var(--shadow-md);
 }
 
+.criteriaTable .criterionHead {
+  border-left: none;
+}
+
+.criteriaTable td:last-child {
+  border-right: none;
+}
+
+.criteriaTable tr:first-child .criterionHead,
+.criteriaTable tr:first-child td {
+  border-top: none;
+}
+
+.criteriaTable tr:last-child .criterionHead,
+.criteriaTable tr:last-child td {
+  border-bottom: none;
+}
+
 .criterionHead {
   background-color: var(--background-secondary);
   text-align: center;

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Textbox from '../components/Textbox';
 import StatusMessage from '../components/StatusMessage';
-import { changePassword, getCurrentUser } from '../util/api';
+import { changePassword, getCurrentUser } from '../util/api_client/users';
 import './LoginPage.css';
 
 export default function ChangePassword() {

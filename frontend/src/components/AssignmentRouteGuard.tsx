@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react"
 import { Navigate, useParams } from "react-router-dom"
 
 import { isAdmin, isTeacher } from "../util/login"
-import { getAssignmentDetails } from "../util/api"
+import { getAssignmentDetails } from "../util/api_client/assignments"
 
 type AssignmentRouteGuardProps = {
   children: ReactNode

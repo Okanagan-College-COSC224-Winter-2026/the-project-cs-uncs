@@ -22,6 +22,12 @@
   box-sizing: border-box;
 }
 
+.CreateAssignmentHint {
+  margin-top: calc(var(--spacing-lg) * -0.6);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 .CreateAssignmentFile {
   width: 100%;
 }

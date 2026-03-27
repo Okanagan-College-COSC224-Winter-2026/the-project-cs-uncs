@@ -4,6 +4,7 @@ import TabNavigation from "../components/TabNavigation";
 import Button from "../components/Button";
 import BackArrow from "../components/BackArrow";
 import HeaderTitle from "../components/HeaderTitle";
+import MarkdownDescription from "../components/MarkdownDescription";
 import { isAdmin, isStudent, isTeacher } from "../util/login";
 import {
   getAssignmentAttachmentUrl,
@@ -496,7 +497,11 @@ export default function AssignmentDetails() {
           <div className="assignment-details-sectionHeader">
             <h3>Description</h3>
           </div>
-          {description ? <p className="assignment-description">{description}</p> : <p>No description provided.</p>}
+          {description ? (
+            <MarkdownDescription className="assignment-description" text={description} />
+          ) : (
+            <p>No description provided.</p>
+          )}
 
           {!isPeerEval ? (
             <>
@@ -620,6 +625,9 @@ export default function AssignmentDetails() {
                       onChange={(e) => setEditDescription(e.target.value)}
                       rows={6}
                     />
+                    <span className="assignment-markdown-help">
+                      Markdown supported: **bold**, *italic*, bullet lists, and [links](https://example.com)
+                    </span>
                   </label>
 
                   {!isPeerEval ? (

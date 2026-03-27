@@ -243,10 +243,13 @@ export default function CreateAssignment() {
       <textarea
         className="Textbox CreateAssignmentDescription"
         value={description}
-        placeholder="Optional description"
+        placeholder="Optional description (Markdown supported)"
         onChange={(e) => setDescription(e.target.value)}
         rows={5}
       />
+      <p className="CreateAssignmentHint">
+        Use Markdown for formatting: **bold**, *italic*, bullet lists, and [links](https://example.com).
+      </p>
 
       <h2>Due Date</h2>
       <Textbox

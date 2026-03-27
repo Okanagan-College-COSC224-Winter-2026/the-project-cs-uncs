@@ -53,8 +53,38 @@
 }
 
 .assignment-description {
-  white-space: pre-wrap;
   color: var(--text-primary);
+}
+
+.assignment-description p,
+.assignment-description ul,
+.assignment-description ol,
+.assignment-description h1,
+.assignment-description h2,
+.assignment-description h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.assignment-description ul,
+.assignment-description ol {
+  padding-left: 1.25rem;
+}
+
+.assignment-description a {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.assignment-description code {
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.assignment-markdown-help {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .assignment-details-label {

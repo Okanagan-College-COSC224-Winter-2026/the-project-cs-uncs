@@ -3,7 +3,8 @@ import './RegisterPage.css';
 import Textbox from '../components/Textbox';
 import Button from '../components/Button';
 import StatusMessage from '../components/StatusMessage';
-import { joinRosterCourse, tryRegister } from '../util/api';
+import { tryRegister } from '../util/api_client/auth';
+import { joinRosterCourse } from '../util/api_client/classes';
 import { useNavigate } from 'react-router-dom';
 
 interface AvailableCourse {

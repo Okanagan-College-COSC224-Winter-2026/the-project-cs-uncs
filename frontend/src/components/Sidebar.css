@@ -93,12 +93,46 @@
 .SidebarRow a {
   text-decoration: none;
   color: var(--text-primary);
-  text-align: center;
   font-size: 0.95rem;
   font-weight: 500;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: var(--spacing-sm) 0;
   transition: color var(--transition-fast);
+}
+
+.SidebarRowIcon {
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.SidebarRowIcon.logout {
+  -webkit-mask-image: url('../../public/icons/logout.svg');
+  mask-image: url('../../public/icons/logout.svg');
+}
+
+.SidebarRowIcon.home {
+  -webkit-mask-image: url('../../public/icons/home.svg');
+  mask-image: url('../../public/icons/home.svg');
+}
+
+.SidebarRowIcon.user {
+  -webkit-mask-image: url('../../public/icons/user.svg');
+  mask-image: url('../../public/icons/user.svg');
+}
+
+.SidebarRowIcon.lock {
+  -webkit-mask-image: url('../../public/icons/lock.svg');
+  mask-image: url('../../public/icons/lock.svg');
 }
 
 .SidebarRow.selected {

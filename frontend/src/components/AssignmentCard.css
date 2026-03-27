@@ -26,11 +26,33 @@
   gap: var(--spacing-md);
 }
 
-.A_Card img {
+.A_Card_Icon {
   width: 48px;
   height: 48px;
   border-radius: var(--border-radius-sm);
   flex-shrink: 0;
+  background-color: var(--text-primary);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.A_Card_Icon.standard {
+  -webkit-mask-image: url('../../public/icons/document.svg');
+  mask-image: url('../../public/icons/document.svg');
+}
+
+.A_Card_Icon.peer-individual {
+  -webkit-mask-image: url('../../public/icons/assignment-peer-individual.svg');
+  mask-image: url('../../public/icons/assignment-peer-individual.svg');
+}
+
+.A_Card_Icon.peer-group {
+  -webkit-mask-image: url('../../public/icons/assignment-peer-group.svg');
+  mask-image: url('../../public/icons/assignment-peer-group.svg');
 }
 
 .A_Card_Content {

@@ -4,7 +4,8 @@ import ClassCard from "../components/ClassCard";
 import StatusMessage from "../components/StatusMessage";
 
 import './Home.css'
-import { listClasses, listAssignments, searchClasses } from "../util/api";
+import { listAssignments } from "../util/api_client/assignments";
+import { listClasses, searchClasses } from "../util/api_client/classes";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function Home() {

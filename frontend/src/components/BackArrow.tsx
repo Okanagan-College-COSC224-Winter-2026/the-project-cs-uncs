@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from './Button'
-import { getAssignmentDetails } from '../util/api'
+import { getAssignmentDetails } from '../util/api_client/assignments'
 import './BackArrow.css'
 
 interface Props {
@@ -139,7 +139,10 @@ export default function BackArrow(props: Props) {
   return (
     <div className={'BackArrow' + extraClass}>
       <Button type="secondary" className="BackArrowButton" onClick={() => void goBack()} disabled={resolving}>
-        ← Back
+        <span className="BackArrowButtonContent">
+          <span className="BackArrowIcon" aria-hidden="true" />
+          <span>Back</span>
+        </span>
       </Button>
     </div>
   )

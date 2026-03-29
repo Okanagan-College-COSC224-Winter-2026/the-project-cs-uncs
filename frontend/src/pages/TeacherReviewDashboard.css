@@ -353,7 +353,7 @@
 
 .dashboard-badge {
   padding: 0.4rem 0.8rem;
-  border-radius: 20px;
+  border-radius: var(--border-radius-lg);
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -404,7 +404,7 @@
 .criterion-detail {
   background-color: var(--card-background);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   padding: 1rem;
   margin-bottom: 1rem;
 }
@@ -430,7 +430,7 @@
   background-color: color-mix(in srgb, var(--info) 15%, transparent);
   color: var(--info);
   padding: 0.3rem 0.8rem;
-  border-radius: 15px;
+  border-radius: var(--border-radius-lg);
   font-size: 0.9rem;
   font-weight: 600;
   border: 1px solid var(--info);

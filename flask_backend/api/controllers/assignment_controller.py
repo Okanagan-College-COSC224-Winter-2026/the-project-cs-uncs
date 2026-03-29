@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+import re
 from uuid import uuid4
 
 import json
@@ -31,6 +32,21 @@ bp = Blueprint("assignment", __name__, url_prefix="/assignment")
 
 
 _ASSIGNMENT_TYPES = {"standard", "peer_eval_group", "peer_eval_individual"}
+_HTML_TAG_PATTERN = re.compile(r"</?[A-Za-z][^>]*>")
+
+
+def _normalize_assignment_description(value):
+    if value is None:
+        return None
+
+    text = str(value)
+    if not text.strip():
+        return None
+
+    if _HTML_TAG_PATTERN.search(text):
+        raise ValueError("raw_html")
+
+    return text
 
 
 def _is_teacher_attached_to_course(user: User, course: Course) -> bool:
@@ -306,6 +322,11 @@ def create_assignment():
     if assignment_type not in _ASSIGNMENT_TYPES:
         return jsonify({"msg": "Invalid assignment type"}), 400
 
+    try:
+        description = _normalize_assignment_description(description)
+    except ValueError:
+        return jsonify({"msg": "Description cannot contain raw HTML. Use Markdown formatting instead."}), 400
+
     email = get_jwt_identity()
     user = User.get_by_email(email)
     if not user:
@@ -511,7 +532,10 @@ def edit_assignment_details(assignment_id):
             return jsonify({"msg": "Invalid due date format. Please use ISO format (YYYY-MM-DD or ISO 8601)"}), 400
 
     if description is not None:
-        assignment.description = description if description and description.strip() else None
+        try:
+            assignment.description = _normalize_assignment_description(description)
+        except ValueError:
+            return jsonify({"msg": "Description cannot contain raw HTML. Use Markdown formatting instead."}), 400
 
     if remove_attachment and assignment.attachment_storage_name:
         try:

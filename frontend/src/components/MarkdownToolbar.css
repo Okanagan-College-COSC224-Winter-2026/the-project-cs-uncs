@@ -1,0 +1,168 @@
+.MarkdownToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.MarkdownEditorField {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 2px solid var(--field-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--input-background);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.MarkdownEditorField .MarkdownToolbar {
+  padding: var(--spacing-xs);
+  background-color: var(--input-background);
+  border-bottom: 1px solid var(--field-border);
+  align-items: center;
+}
+
+.MarkdownEditorField .Textbox {
+  border: none;
+  border-radius: 0;
+  background-color: var(--input-background);
+}
+
+.MarkdownEditorField .Textbox:focus,
+.MarkdownEditorField .Textbox:focus-visible {
+  box-shadow: none;
+}
+
+.MarkdownEditorField:focus-within .MarkdownToolbar {
+  border-color: var(--field-border-focus);
+}
+
+.MarkdownEditorField:focus-within {
+  border-color: var(--field-border-focus);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.MarkdownToolbarButton {
+  appearance: none;
+  border: none;
+  border-radius: var(--border-radius-md);
+  background-color: transparent;
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.MarkdownToolbarIconButton {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.MarkdownToolbarIcon {
+  display: block;
+}
+
+.MarkdownToolbarButton:hover {
+  background-color: var(--background-tertiary);
+}
+
+.MarkdownToolbarButton:disabled,
+.MarkdownToolbarButton[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.MarkdownToolbarButton:disabled:hover,
+.MarkdownToolbarButton[aria-disabled='true']:hover {
+  background-color: transparent;
+}
+
+.MarkdownToolbarIconButton:hover {
+  background-color: color-mix(in srgb, var(--background-tertiary) 75%, var(--text-primary) 25%);
+}
+
+.MarkdownToolbarIconButton:disabled:hover,
+.MarkdownToolbarIconButton[aria-disabled='true']:hover {
+  background-color: transparent;
+}
+
+.MarkdownToolbarButton.active {
+  background-color: var(--button-secondary);
+  border-color: var(--button-secondary);
+  color: var(--text-primary);
+}
+
+.MarkdownToolbarButton.active:hover {
+  background-color: var(--button-secondary-hover);
+  border-color: var(--button-secondary-hover);
+}
+
+.MarkdownToolbarButton:focus-visible {
+  outline: none;
+}
+
+.MarkdownToolbarHeadingLabel {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin: 0 2px 0 4px;
+}
+
+.MarkdownToolbarHeadingControl {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.MarkdownToolbarHeadingControl:hover {
+  background-color: var(--background-tertiary);
+}
+
+.MarkdownToolbarHeadingControl:focus-within {
+  background-color: var(--background-secondary);
+}
+
+.MarkdownToolbarHeadingControl option {
+  background-color: var(--background-tertiary);
+}
+
+.MarkdownToolbarHeadingSelect {
+  appearance: none;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  background-color: transparent;
+  color: var(--text-primary);
+  padding: 6px 26px 6px 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.MarkdownToolbarHeadingSelect:hover {
+  background-color: transparent;
+}
+
+.MarkdownToolbarHeadingSelect:focus-visible {
+  outline: none;
+}
+
+.MarkdownToolbarHeadingChevron {
+  position: absolute;
+  right: 6px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.MarkdownToolbarHeadingControl:hover .MarkdownToolbarHeadingChevron,
+.MarkdownToolbarHeadingControl:focus-within .MarkdownToolbarHeadingChevron {
+  color: var(--text-primary);
+}
+

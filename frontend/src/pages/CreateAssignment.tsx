@@ -4,6 +4,7 @@ import BackArrow from '../components/BackArrow'
 import Button from '../components/Button'
 import StatusMessage from '../components/StatusMessage'
 import Textbox from '../components/Textbox'
+import MarkdownToolbar from '../components/MarkdownToolbar'
 import type { RubricCriterionDraft } from '../components/RubricCriteriaEditor'
 import RubricEditorPanel from '../components/RubricEditorPanel'
 import { createAssignment, listCourseGroups, type CourseGroup } from '../util/api'
@@ -41,6 +42,7 @@ export default function CreateAssignment() {
   const navigate = useNavigate()
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -240,15 +242,19 @@ export default function CreateAssignment() {
       <Textbox onInput={setTitle} placeholder="Assignment title" />
 
       <h2>Description</h2>
-      <textarea
-        className="Textbox CreateAssignmentDescription"
-        value={description}
-        placeholder="Optional description (Markdown supported)"
-        onChange={(e) => setDescription(e.target.value)}
-        rows={5}
-      />
+      <div className="MarkdownEditorField">
+        <MarkdownToolbar textareaRef={descriptionTextareaRef} value={description} />
+        <textarea
+          ref={descriptionTextareaRef}
+          className="Textbox CreateAssignmentDescription"
+          value={description}
+          placeholder="Optional description (Markdown supported)"
+          onChange={(e) => setDescription(e.target.value)}
+          rows={5}
+        />
+      </div>
       <p className="CreateAssignmentHint">
-        Use Markdown for formatting: **bold**, *italic*, bullet lists, and [links](https://example.com).
+        Markdown is supported.
       </p>
 
       <h2>Due Date</h2>

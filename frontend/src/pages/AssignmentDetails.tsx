@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import TabNavigation from "../components/TabNavigation";
 import Button from "../components/Button";
 import BackArrow from "../components/BackArrow";
 import HeaderTitle from "../components/HeaderTitle";
 import MarkdownDescription from "../components/MarkdownDescription";
+import MarkdownToolbar from "../components/MarkdownToolbar";
 import { isAdmin, isStudent, isTeacher } from "../util/login";
 import {
   getAssignmentAttachmentUrl,
@@ -63,6 +64,7 @@ export default function AssignmentDetails() {
   const [newFile, setNewFile] = useState<File | null>(null);
   const [removeAttachment, setRemoveAttachment] = useState(false);
   const [saving, setSaving] = useState(false);
+  const editDescriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
   const [uploadingSubmission, setUploadingSubmission] = useState(false);
@@ -507,7 +509,7 @@ export default function AssignmentDetails() {
             <>
               <h3>Attachment</h3>
               {hasAttachment && id ? (
-                <a href={getAssignmentAttachmentUrl(Number(id))} target="_blank" rel="noreferrer">
+                <a href={getAssignmentAttachmentUrl(Number(id))} target="_blank" rel="noopener noreferrer">
                   Download{assignment?.attachment_original_name ? `: ${assignment.attachment_original_name}` : " attachment"}
                 </a>
               ) : (
@@ -540,7 +542,7 @@ export default function AssignmentDetails() {
                         const href = a.id != null ? getSubmissionAttachmentDownloadUrl(a.id) : getSubmissionDownloadUrl(mySubmission.id);
                         return (
                           <div key={a.id ?? idx}>
-                            <a href={href} target="_blank" rel="noreferrer">
+                            <a href={href} target="_blank" rel="noopener noreferrer">
                               Download: {label}
                             </a>
                           </div>
@@ -549,7 +551,7 @@ export default function AssignmentDetails() {
                     </div>
                   ) : mySubmission.file_name ? (
                     <div style={{ marginTop: 6 }}>
-                      <a href={getSubmissionDownloadUrl(mySubmission.id)} target="_blank" rel="noreferrer">
+                      <a href={getSubmissionDownloadUrl(mySubmission.id)} target="_blank" rel="noopener noreferrer">
                         Download
                       </a>
                     </div>
@@ -617,18 +619,26 @@ export default function AssignmentDetails() {
                     />
                   </label>
 
-                  <label className="assignment-details-label">
-                    Description
-                    <textarea
-                      className="assignment-details-textarea"
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      rows={6}
-                    />
+                  <div className="assignment-details-label">
+                    <label htmlFor="assignment-description-edit">Description</label>
+                    <div className="MarkdownEditorField">
+                      <MarkdownToolbar
+                        textareaRef={editDescriptionTextareaRef}
+                        value={editDescription}
+                      />
+                      <textarea
+                        id="assignment-description-edit"
+                        ref={editDescriptionTextareaRef}
+                        className="Textbox assignment-details-textarea"
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        rows={6}
+                      />
+                    </div>
                     <span className="assignment-markdown-help">
-                      Markdown supported: **bold**, *italic*, bullet lists, and [links](https://example.com)
+                      Markdown is supported.
                     </span>
-                  </label>
+                  </div>
 
                   {!isPeerEval ? (
                     <>

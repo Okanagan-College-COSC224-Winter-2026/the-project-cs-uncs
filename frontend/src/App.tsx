@@ -28,9 +28,34 @@ import Groups from "./pages/Groups";
 import Submissions from "./pages/Submissions";
 import MyGroup from "./pages/MyGroup";
 
+import { useEffect, useState } from "react";
+import { getCurrentUser } from "./util/api_client/users";
+
 function AppContent() {
   const location = useLocation();
   const noSidebarPaths = ["/", "/login", "/register"];
+
+  // Block rendering until user info is synced from backend
+  const [userSyncDone, setUserSyncDone] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user && typeof user === "object") {
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+      } catch {
+        // Not logged in or error, do nothing
+      } finally {
+        setUserSyncDone(true);
+      }
+    })();
+  }, []);
+
+  if (!userSyncDone) {
+    return <div className="Page"><p>Loading...</p></div>;
+  }
 
   return (
     <div className="App">

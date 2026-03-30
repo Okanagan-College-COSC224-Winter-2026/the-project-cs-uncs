@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { listAllUsers, createUserAdmin, updateUserAdmin, updateUserRoleAdmin, deleteUserAdmin } from "../util/api";
+import { listAllUsers, createUserAdmin, updateUserAdmin, updateUserRoleAdmin, deleteUserAdmin, resetUserPasswordAdmin } from "../util/api";
 import BackArrow from "../components/BackArrow";
 import StatusMessage from "../components/StatusMessage";
+import Modal from '../components/Modal'
+import Textbox from '../components/Textbox'
+import Button from '../components/Button'
 import './AdminUsers.css'
 
 type User = {
@@ -170,6 +173,47 @@ export default function AdminUsers() {
     }
   }
 
+  // Modal state for reset-password
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetUserId, setResetUserId] = useState<number | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetMustChange, setResetMustChange] = useState(true);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const openResetModal = (userId: number) => {
+    setResetUserId(userId);
+    setResetNewPassword('');
+    setResetMustChange(true);
+    setResetModalOpen(true);
+    setError(null);
+  }
+
+  const handleResetSubmit = async () => {
+    if (!resetUserId) return;
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    try {
+      setResetLoading(true);
+      setError(null);
+      await resetUserPasswordAdmin(resetUserId, resetNewPassword, resetMustChange);
+      setResetModalOpen(false);
+      await fetchUsers();
+      setSuccessMessage('Password reset successfully');
+      setSuccessModalOpen(true);
+      // auto-close after 2s
+      setTimeout(() => setSuccessModalOpen(false), 2000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'Unable to reset password.');
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
   return (
     <div className="AdminUsers Page">
       <BackArrow />
@@ -248,7 +292,7 @@ export default function AdminUsers() {
                 return (
                   <>
                     {pageItems.map((u) => (
-                      <UserRow key={u.id} user={u} currentUserId={currentUserId} onSave={handleSave} onDelete={handleDelete} />
+                      <UserRow key={u.id} user={u} currentUserId={currentUserId} onSave={handleSave} onDelete={handleDelete} onReset={openResetModal} />
                     ))}
                     {pageItems.length === 0 && (
                       <tr><td colSpan={5}>No users match your search.</td></tr>
@@ -281,11 +325,41 @@ export default function AdminUsers() {
           })()
         )}
       </section>
+      {resetModalOpen && (
+        <Modal onClose={() => setResetModalOpen(false)}>
+          <div className="ModalHeader">Reset password</div>
+          <div className="ModalBody">
+            <p>Set a new password for user ID {resetUserId}.</p>
+            <label style={{ display: 'block', marginBottom: 6 }}>New password</label>
+            <Textbox type="password" placeholder="New password" onInput={setResetNewPassword} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <input type="checkbox" checked={resetMustChange} onChange={e => setResetMustChange(e.target.checked)} />
+              Require user to change password at next login
+            </label>
+            {error ? <div style={{ color: 'var(--danger, #c00)', marginTop: 8 }}>{error}</div> : null}
+          </div>
+          <div className="ModalFooter">
+            <Button htmlType="button" type="secondary" onClick={() => setResetModalOpen(false)}>Cancel</Button>
+            <Button htmlType="button" onClick={handleResetSubmit} disabled={resetLoading}>{resetLoading ? 'Resetting…' : 'Reset password'}</Button>
+          </div>
+        </Modal>
+      )}
+      {successModalOpen && (
+        <Modal onClose={() => setSuccessModalOpen(false)}>
+          <div className="ModalHeader">Success</div>
+          <div className="ModalBody">
+            <p>{successMessage}</p>
+          </div>
+          <div className="ModalFooter">
+            <Button htmlType="button" onClick={() => setSuccessModalOpen(false)}>OK</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
-function UserRow({ user, onSave, onDelete, currentUserId }: { user: User; onSave: (id: number, upd: Partial<User>) => void; onDelete: (id: number) => void; currentUserId: number | null }) {
+function UserRow({ user, onSave, onDelete, onReset, currentUserId }: { user: User; onSave: (id: number, upd: Partial<User>) => void; onDelete: (id: number) => void; onReset: (id: number) => void; currentUserId: number | null }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
@@ -318,6 +392,7 @@ function UserRow({ user, onSave, onDelete, currentUserId }: { user: User; onSave
         ) : (
           <>
             <button onClick={() => setEditing(true)}>Edit</button>
+            <button onClick={() => onReset(user.id)}>Reset password</button>
             {currentUserId === user.id ? (
               <button disabled title="Cannot delete your own account">Delete</button>
             ) : (

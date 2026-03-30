@@ -198,3 +198,36 @@ def update_user(user_id):
     user.update()
 
     return jsonify({"msg": "User updated successfully", "user": UserSchema().dump(user)}), 200
+
+
+@bp.route("/users/<int:user_id>/reset_password", methods=["POST"])
+@jwt_admin_required
+def reset_user_password(user_id):
+    """Reset a user's password (admin only).
+
+    Expects JSON: { "new_password": "...", "must_change_password": true|false }
+    """
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    new_password = request.json.get("new_password", None)
+    must_change = request.json.get("must_change_password", True)
+
+    if not new_password:
+        return jsonify({"msg": "New password is required"}), 400
+    if len(new_password) < 6:
+        return jsonify({"msg": "New password must be at least 6 characters"}), 400
+
+    current_email = get_jwt_identity()
+    current_app.logger.info(f"admin:reset_user_password - admin {current_email} resetting password for user_id={user_id}")
+
+    user = User.get_by_id(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    # Update password and must_change_password flag
+    user.hash_pass = generate_password_hash(new_password)
+    user.must_change_password = bool(must_change)
+    user.update()
+
+    return jsonify({"msg": "Password reset successfully", "user": UserSchema().dump(user)}), 200

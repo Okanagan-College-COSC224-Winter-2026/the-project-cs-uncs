@@ -89,3 +89,20 @@ export const deleteUserAdmin = async (userId: number) => {
   return await resp.json()
 }
 
+export const resetUserPasswordAdmin = async (userId: number, newPassword: string, mustChangePassword: boolean = true) => {
+  const resp = await safeFetch(`${BASE_URL}/admin/users/${userId}/reset_password`, {
+    method: 'POST',
+    body: JSON.stringify({ new_password: newPassword, must_change_password: mustChangePassword }),
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(await getErrorMessageFromResponse(resp, 'Failed to reset user password'))
+  }
+
+  return await resp.json()
+}
+

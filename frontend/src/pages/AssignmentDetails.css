@@ -53,8 +53,71 @@
 }
 
 .assignment-description {
-  white-space: pre-wrap;
   color: var(--text-primary);
+}
+
+.assignment-description p,
+.assignment-description ul,
+.assignment-description ol,
+.assignment-description h1,
+.assignment-description h2,
+.assignment-description h3,
+.assignment-description h4,
+.assignment-description h5,
+.assignment-description h6,
+.assignment-description pre {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.assignment-description ul,
+.assignment-description ol {
+  padding-left: 1.25rem;
+}
+
+.assignment-description a {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.assignment-description code {
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-sm);
+  padding: 0 4px;
+}
+
+.assignment-description pre {
+  overflow-x: auto;
+  background-color: var(--background-secondary);
+  padding: var(--spacing-sm);
+}
+
+.assignment-description pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.assignment-description table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-sm);
+}
+
+.assignment-description th,
+.assignment-description td {
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  text-align: left;
+}
+
+.assignment-description th {
+  background-color: var(--background-secondary);
+}
+
+.assignment-markdown-help {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .assignment-details-label {
@@ -66,12 +129,8 @@
 }
 
 .assignment-details-textarea {
-  padding: var(--spacing-sm);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-  background-color: var(--background-secondary);
-  color: var(--text-primary);
   resize: vertical;
+  min-height: 140px;
 }
 
 .assignment-details-file {
@@ -80,33 +139,14 @@
   font: inherit;
 }
 
-.assignment-details-file::file-selector-button {
+.assignment-details-file::file-selector-button,
+.assignment-details-file::-webkit-file-upload-button{
   appearance: none;
   background: var(--button-secondary);
   color: #ffffff;
 
   border: none;
-  border-radius: 6px;
-
-  padding: 8px 16px;
-
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-
-  margin-right: var(--spacing-md);
-
-  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.assignment-details-file::-webkit-file-upload-button {
-  appearance: none;
-  background: var(--button-secondary);
-  color: #ffffff;
-
-  border: none;
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
 
   padding: 8px 16px;
 

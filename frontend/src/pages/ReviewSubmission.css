@@ -40,7 +40,7 @@
   padding: 1rem;
   background-color: color-mix(in srgb, var(--success) 20%, transparent);
   border-left: 4px solid var(--success);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: var(--success);
   font-weight: 500;
   margin-bottom: 1rem;
@@ -50,7 +50,7 @@
   padding: 1rem;
   background-color: color-mix(in srgb, var(--error) 20%, transparent);
   border-left: 4px solid var(--error);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: var(--error);
   font-weight: 500;
   margin-bottom: 1rem;
@@ -60,7 +60,7 @@
   padding: 1rem;
   background-color: color-mix(in srgb, var(--warning) 20%, transparent);
   border-left: 4px solid var(--warning);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: var(--warning);
   font-weight: 500;
   margin-bottom: 1rem;
@@ -70,7 +70,7 @@
   padding: 1rem;
   background-color: color-mix(in srgb, var(--info) 20%, transparent);
   border-left: 4px solid var(--info);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: var(--info);
   font-weight: 500;
   margin-bottom: 1rem;
@@ -105,7 +105,7 @@
   padding: 1rem;
   background-color: color-mix(in srgb, var(--warning) 20%, transparent);
   border-left: 4px solid var(--warning);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: var(--warning);
   margin-bottom: 2rem;
 }

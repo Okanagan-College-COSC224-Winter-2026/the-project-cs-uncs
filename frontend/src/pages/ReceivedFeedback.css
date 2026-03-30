@@ -145,7 +145,7 @@
   padding: 1rem;
   background-color: color-mix(in srgb, var(--error) 20%, transparent);
   border-left: 4px solid var(--error);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: var(--error);
   font-weight: 500;
   margin-bottom: 1rem;

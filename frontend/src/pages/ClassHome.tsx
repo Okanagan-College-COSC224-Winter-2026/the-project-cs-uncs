@@ -57,7 +57,7 @@ export default function ClassHome() {
         }
       }
     };
-    document.title = currentClass?.name;
+    document.title = 'Class';
 
     void load();
 

@@ -68,6 +68,7 @@
   /* Border Radius */
   --border-radius: 8px;
   --border-radius-sm: 4px;
+  --border-radius-md: 6px;
   --border-radius-lg: 12px;
 
   /* Layout */

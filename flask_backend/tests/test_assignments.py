@@ -47,6 +47,40 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     assert assignment_response.json["assignment"]["due_date"] == due_date
 
 
+def test_teacher_cannot_create_assignment_with_raw_html_description(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Security 101"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=5)).isoformat()
+
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "Unsafe Description",
+                "description": "<script>alert('xss')</script>",
+                "due_date": due_date,
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert assignment_response.status_code == 400
+    assert assignment_response.json["msg"] == "Description cannot contain raw HTML. Use Markdown formatting instead."
+
+
 def test_teacher_cannot_create_assignment_with_past_due_date(test_client, make_admin):
     make_admin(email="admin@example.com", password="admin", name="adminuser")
 
@@ -313,6 +347,51 @@ def test_teacher_can_edit_assignment_details_title_and_due_date(test_client, mak
     assert returned_due is not None
     # For date-only updates, backend interprets end-of-day and should preserve the same calendar date.
     assert str(returned_due).startswith(new_due_date_only)
+
+
+def test_teacher_cannot_edit_assignment_details_with_raw_html_description(test_client, make_admin):
+    make_admin(email="teacher@example.com", password="teacher", name="teacheruser")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "teacher@example.com", "password": "teacher"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    class_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "HTML Safety"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = class_response.json["class"]["id"]
+
+    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat()
+    assignment_response = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps(
+            {
+                "courseID": class_id,
+                "name": "Essay",
+                "description": "Safe **markdown**",
+                "due_date": due_date,
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assignment_id = assignment_response.json["assignment"]["id"]
+
+    edit_response = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps({"description": "<img src=x onerror=alert(1)>"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert edit_response.status_code == 400
+    assert edit_response.json["msg"] == "Description cannot contain raw HTML. Use Markdown formatting instead."
+
+    assignment = Assignment.get_by_id(assignment_id)
+    assert assignment is not None
+    assert assignment.description == "Safe **markdown**"
 
 
 def test_teacher_cannot_set_past_due_date_via_edit_details(test_client, make_admin):

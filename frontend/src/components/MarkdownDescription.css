@@ -1,0 +1,194 @@
+.markdown-description {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.markdown-description h1,
+.markdown-description h2,
+.markdown-description h3,
+.markdown-description h4,
+.markdown-description h5,
+.markdown-description h6 {
+  margin: 1.5em 0 0.5em 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-description h1 {
+  font-size: 28px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.3em;
+}
+
+.markdown-description h2 {
+  font-size: 24px;
+}
+
+.markdown-description h3 {
+  font-size: 20px;
+}
+
+.markdown-description h4 {
+  font-size: 18px;
+}
+
+.markdown-description h5 {
+  font-size: 16px;
+}
+
+.markdown-description h6 {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.markdown-description p {
+  margin: 0.8em 0;
+}
+
+.markdown-description strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.markdown-description em {
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+.markdown-description del {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.markdown-description u {
+  text-decoration: underline;
+}
+
+.markdown-description code {
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 2px 6px;
+  font-family: Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.markdown-description a {
+  color: var(--accent-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-bottom-color var(--transition-fast);
+}
+
+.markdown-description a:hover {
+  border-bottom-color: var(--accent-secondary);
+}
+
+.markdown-description ul,
+.markdown-description ol {
+  margin: 0.8em 0;
+  padding-left: 2em;
+}
+
+.markdown-description li {
+  margin: 0.4em 0;
+}
+
+.markdown-description table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  border: 1px solid var(--border-color);
+}
+
+.markdown-description th,
+.markdown-description td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-description th {
+  background-color: var(--background-secondary);
+  font-weight: 600;
+}
+
+.markdown-description tr:nth-child(even) {
+  background-color: var(--card-background);
+}
+
+.markdown-description .md-code-block {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.markdown-description .md-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.markdown-description .md-code-language {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.markdown-description .md-code-copy {
+  padding: 4px 8px;
+  background-color: var(--button-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.markdown-description .md-code-copy:hover {
+  background-color: var(--button-secondary-hover);
+}
+
+.markdown-description .md-code-copy:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.markdown-description .md-code-pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background-color: var(--background-primary);
+}
+
+.markdown-description .md-code-pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+}
+
+.markdown-description sup {
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
+.markdown-description sub {
+  font-size: 0.8em;
+  vertical-align: sub;
+}
+

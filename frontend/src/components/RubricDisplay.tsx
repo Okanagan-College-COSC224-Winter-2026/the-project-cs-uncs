@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Criteria from './Criteria';
-import { getCriteria } from '../util/api';
+import { getCriteria } from '../util/api_client/rubrics';
 import './RubricDisplay.css';
 
 interface RubricDisplayProps {

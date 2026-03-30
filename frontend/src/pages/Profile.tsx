@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import StatusMessage from '../components/StatusMessage'
 import './Profile.css'
-import { getCurrentUser, getCurrentUserPhotoUrl, updateCurrentUser, uploadCurrentUserPhoto } from '../util/api'
+import { getCurrentUser, getCurrentUserPhotoUrl, updateCurrentUser, uploadCurrentUserPhoto } from '../util/api_client/users'
 
 export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)

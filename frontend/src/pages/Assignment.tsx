@@ -11,17 +11,18 @@ import type { RubricCriterionDraft } from "../components/RubricCriteriaEditor";
 import RubricEditorPanel from "../components/RubricEditorPanel";
 import "../components/RubricCreator.css";
 import { hasEmptyRubricQuestion, normalizeRubricDraftForEdit } from "../util/rubric";
-
-import { 
+import {
   getAssignmentDetails,
+  peekAssignmentDetails,
+} from "../util/api_client/assignments";
+import {
   createCriteria,
   createRubric,
   deleteCriteriaDescription,
   getRubricCriteria,
   getRubricForAssignment,
-  peekAssignmentDetails,
   updateCriteriaDescription,
-} from "../util/api";
+} from "../util/api_client/rubrics";
 
 export default function Assignment() {
   const { id } = useParams();
@@ -317,4 +318,3 @@ export default function Assignment() {
     </div>
   );
 }
-

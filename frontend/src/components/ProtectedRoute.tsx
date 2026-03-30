@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getCurrentUser } from "../util/api";
+import { getCurrentUser } from "../util/api_client/users";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;

@@ -4,7 +4,7 @@ import './LoginPage.css';
 import Textbox from '../components/Textbox';
 import Button from '../components/Button';
 import StatusMessage from '../components/StatusMessage';
-import { tryLogin } from '../util/api';
+import { tryLogin } from '../util/api_client/auth';
 
 export default function LoginPage() {
   const navigate = useNavigate();

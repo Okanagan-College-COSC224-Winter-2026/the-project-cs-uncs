@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react"
 import { Navigate, useParams } from "react-router-dom"
 
 import { isAdmin, isTeacher } from "../util/login"
-import { listClasses } from "../util/api"
+import { listClasses } from "../util/api_client/classes"
 
 type ClassRouteGuardProps = {
   children: ReactNode

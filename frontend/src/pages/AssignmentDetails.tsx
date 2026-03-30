@@ -15,7 +15,7 @@ import {
   peekAssignmentDetails,
   updateAssignmentDetails,
   uploadMySubmission,
-} from "../util/api";
+} from "../util/api_client/assignments";
 import "./Assignment.css";
 import "./AssignmentDetails.css";
 

@@ -21,19 +21,20 @@ export default function Sidebar() {
           onClick={() => logout()}
           href='#'
           selected={false}
+          iconName="logout"
         >
           Logout
         </SidebarRow>
 
-        <SidebarRow selected={location === '/home'} href="/home">
+        <SidebarRow selected={location === '/home'} href="/home" iconName="home">
           {dashboardLabel}
         </SidebarRow>
 
-        <SidebarRow selected={location.includes('/profile')} href="/profile">
+        <SidebarRow selected={location.includes('/profile')} href="/profile" iconName="user">
           My Info
         </SidebarRow>
 
-        <SidebarRow selected={location === '/change-password'} href="/change-password">
+        <SidebarRow selected={location === '/change-password'} href="/change-password" iconName="lock">
           Change Password
         </SidebarRow>
       </div>
@@ -60,12 +61,16 @@ interface SidebarRowProps {
   href: string
   children: React.ReactNode
   onClick?: () => void
+  iconName?: 'logout' | 'home' | 'user' | 'lock'
 }
 
 function SidebarRow(props: SidebarRowProps) {
   return (
     <div className={`SidebarRow ${props.selected ? 'selected' : ''}`} onClick={props.onClick}>
-      <a href={props.selected ? '#' : props.href}>{props.children}</a>
+      <a href={props.selected ? '#' : props.href}>
+        {props.iconName ? <span className={`SidebarRowIcon ${props.iconName}`} aria-hidden="true" /> : null}
+        <span>{props.children}</span>
+      </a>
     </div>
   )
 }

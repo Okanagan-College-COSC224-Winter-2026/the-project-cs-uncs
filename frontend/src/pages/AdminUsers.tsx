@@ -171,7 +171,7 @@ export default function AdminUsers() {
   return (
     <div className="AdminUsers Page">
       <BackArrow />
-      <h1>Admin — Manage Users</h1>
+      <h1>Manage Users</h1>
 
       {error ? (
         <StatusMessage type="error">

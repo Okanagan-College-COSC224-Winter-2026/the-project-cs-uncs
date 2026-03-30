@@ -1,3 +1,24 @@
 .BackArrow {
   margin-bottom: 0;
 }
+
+.BackArrowButtonContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.BackArrowIcon {
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  -webkit-mask-image: url('../../public/icons/chevron-left.svg');
+  mask-image: url('../../public/icons/chevron-left.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+

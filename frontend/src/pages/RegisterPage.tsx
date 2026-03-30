@@ -235,7 +235,7 @@ export default function RegisterPage() {
               <Button
                 htmlType="button"
                 type="secondary"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/login')}
               >
                 Login
               </Button>

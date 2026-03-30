@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
+import LandingPage from "./pages/LandingPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ClassRouteGuard from "./components/ClassRouteGuard";
 import AssignmentRouteGuard from "./components/AssignmentRouteGuard";
@@ -37,7 +38,8 @@ function AppContent() {
       {!noSidebarPaths.includes(location.pathname) && <Sidebar />}
       <div className="inner">
         <Routes>
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/change-password" element={
             <ProtectedRoute>

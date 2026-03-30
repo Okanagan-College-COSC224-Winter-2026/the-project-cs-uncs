@@ -30,7 +30,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
             } catch (error) {
                 if (cancelled) return;
                 console.error("Error checking authentication:", error);
-                navigate("/");
+                navigate("/login");
             }
         })();
 

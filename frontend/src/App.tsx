@@ -32,15 +32,22 @@ import MyGroup from "./pages/MyGroup";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "./util/api_client/users";
 
+const NO_SIDEBAR_PATHS = ["/", "/login", "/register"];
+
 function AppContent() {
   const location = useLocation();
-  const noSidebarPaths = ["/", "/login", "/register"];
+  const isPublicPath = NO_SIDEBAR_PATHS.includes(location.pathname);
 
   // Block rendering until user info is synced from backend
   const [userSyncDone, setUserSyncDone] = useState(false);
 
   useEffect(() => {
     (async () => {
+      if (isPublicPath) {
+        setUserSyncDone(true);
+        return;
+      }
+
       try {
         const user = await getCurrentUser();
         if (user && typeof user === "object") {
@@ -52,7 +59,7 @@ function AppContent() {
         setUserSyncDone(true);
       }
     })();
-  }, []);
+  }, [isPublicPath, location.pathname]);
 
   if (!userSyncDone) {
     return <div className="Page"><p>Loading...</p></div>;
@@ -60,7 +67,7 @@ function AppContent() {
 
   return (
     <div className="App">
-      {!noSidebarPaths.includes(location.pathname) && <Sidebar />}
+      {!isPublicPath && <Sidebar />}
       <div className="inner">
         <Routes>
           <Route path="/" element={<LandingPage />} />

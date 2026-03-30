@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
-
+import {useEffect } from "react";
 const howSteps = [
   {
     title: "Design your rubric",
@@ -39,6 +39,7 @@ const featureItems = [
 ];
 
 export default function LandingPage() {
+
   const navigate = useNavigate();
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });

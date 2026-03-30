@@ -77,6 +77,8 @@ export default function PeerReviews() {
   }, [id]);
 
   useEffect(() => {
+                  document.title = 'Reviews';
+
     const fetchData = async () => {
       if (!id) return;
 

@@ -81,6 +81,8 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   }, [criteriaDescriptions]);
 
   useEffect(() => {
+                  document.title = 'Review';
+
     if (!assignmentId) return;
     // This route only exists for peer-eval flows. Seed a hint so other tabs
     // (especially Details) can render the full student tab set immediately.

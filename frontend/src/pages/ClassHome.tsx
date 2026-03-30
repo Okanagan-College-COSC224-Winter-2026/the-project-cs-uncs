@@ -57,6 +57,7 @@ export default function ClassHome() {
         }
       }
     };
+    document.title = currentClass?.name;
 
     void load();
 

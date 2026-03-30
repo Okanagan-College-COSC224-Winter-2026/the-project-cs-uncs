@@ -49,6 +49,9 @@ type GroupPeerEvalEvaluation = GroupPeerEvalSubmission["evaluations"][number];
 type GroupPeerEvalCriterion = GroupPeerEvalEvaluation["criteria"][number];
 
 export default function Submissions() {
+    useEffect(()=>{
+                    document.title = 'Submissions';
+})
   const { id } = useParams<{ id: string }>();
 
   const [assignmentName, setAssignmentName] = useState<string | null>(null);

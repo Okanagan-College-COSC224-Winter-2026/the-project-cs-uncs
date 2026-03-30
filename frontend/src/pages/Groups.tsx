@@ -66,6 +66,8 @@ export default function Groups() {
     const effectiveAssignmentType = assignmentType ?? assignmentTypeHint;
 
     useEffect(() => {
+                    document.title = 'Groups';
+
         if (!canManage) return
         let cancelled = false;
         (async () => {

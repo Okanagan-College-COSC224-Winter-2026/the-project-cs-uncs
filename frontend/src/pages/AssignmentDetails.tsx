@@ -166,6 +166,7 @@ export default function AssignmentDetails() {
   useEffect(() => {
     const fetchDetails = async () => {
       if (!id) return;
+      document.title = 'Details';
 
       try {
         setLoading(true);

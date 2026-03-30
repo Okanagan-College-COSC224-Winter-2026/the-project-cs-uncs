@@ -30,13 +30,14 @@ export default function Home() {
     classesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     searchInputRef.current?.focus();
   };
-
   useEffect(() => {
+      document.title = 'Dashboard';
+
     ;(async () => {
       try {
         setErrorMessage("");
         const coursesResp = await listClasses();
-        
+
         // Fetch assignments for each course
         const coursesWithAssignments = await Promise.all(
           coursesResp.map(async (course: Course) => {

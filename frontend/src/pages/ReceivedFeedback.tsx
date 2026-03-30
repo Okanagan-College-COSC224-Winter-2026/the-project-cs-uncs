@@ -36,6 +36,8 @@ export default function ReceivedFeedback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+                  document.title = 'Feedback';
+
     if (!assignmentId) return;
     // This route only exists for peer-eval flows. Seed a hint so other tabs
     // (especially Details) can render the full student tab set immediately.

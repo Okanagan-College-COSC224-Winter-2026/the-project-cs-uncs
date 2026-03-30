@@ -26,6 +26,8 @@ export default function AdminUsers() {
   const [newRole, setNewRole] = useState<'student'|'teacher'|'admin'>('student');
 
   useEffect(() => {
+              document.title = 'Admin';
+
     fetchUsers();
   }, []);
 

@@ -69,6 +69,9 @@ interface DashboardData {
 }
 
 export default function TeacherReviewDashboard() {
+    useEffect(()=>{
+                    document.title = 'Review';
+})
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<DashboardData | null>(null);
   const [assignmentType, setAssignmentType] = useState<string | null>(() => {

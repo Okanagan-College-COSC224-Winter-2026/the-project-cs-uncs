@@ -17,6 +17,8 @@ export default function ChangePassword() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+                      document.title = 'Change Password';
+
     getCurrentUser()
       .then((user) => {
         setIsForced(user.must_change_password === true);

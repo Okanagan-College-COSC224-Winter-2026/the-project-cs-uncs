@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import './LoginPage.css';
 import Textbox from '../components/Textbox';
 import Button from '../components/Button';
@@ -16,7 +17,9 @@ export default function LoginPage() {
     // Intentionally simple: just enough to catch obvious typos.
     return /^\S+@\S+\.\S+$/.test(value)
   }
-
+    useEffect(() => {
+        document.title = 'Login';
+    }, []);
   const attemptLogin = async () => {
     try {
       setError('')
@@ -56,6 +59,7 @@ export default function LoginPage() {
   }
 
   return (
+
     <div className="LoginPage">
       {error && <StatusMessage message={error} type="error" className="LoginError" />}
       <div className="InputBlock">

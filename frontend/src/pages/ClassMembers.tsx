@@ -30,6 +30,8 @@ export default function ClassMembers() {
   const [statusType, setStatusType] = useState<'error' | 'success'>('error');
 
   useEffect(() => {
+      document.title = 'Members';
+
     if (!teacherOrAdmin) return
     if (!id) {
       setLoadingHeader(false)

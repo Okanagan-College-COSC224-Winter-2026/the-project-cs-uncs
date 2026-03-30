@@ -44,6 +44,8 @@ export default function Assignment() {
   const isTeacherOrAdmin = hasRole("teacher", "admin");
 
   useEffect(() => {
+      document.title = 'Assignment';
+
       (async () => {
         try {
           if (id) {

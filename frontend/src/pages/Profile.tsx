@@ -25,6 +25,8 @@ export default function Profile() {
   const [statusType, setStatusType] = useState<'error' | 'success'>('error')
 
   useEffect(() => {
+      document.title = 'Profile';
+
     ;(async () => {
       try {
         const user = await getCurrentUser()

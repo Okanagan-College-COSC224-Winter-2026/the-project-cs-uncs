@@ -6,7 +6,7 @@ import StatusMessage from '../components/StatusMessage';
 import { tryRegister } from '../util/api_client/auth';
 import { joinRosterCourse } from '../util/api_client/classes';
 import { useNavigate } from 'react-router-dom';
-
+import { useEffect } from 'react';
 interface AvailableCourse {
   id: number;
   name: string;
@@ -14,6 +14,10 @@ interface AvailableCourse {
 }
 
 export default function RegisterPage() {
+    useEffect(()=>{
+                    document.title = 'Register';
+
+        })
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

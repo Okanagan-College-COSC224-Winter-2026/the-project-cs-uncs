@@ -34,11 +34,62 @@
   background-color: var(--card-background);
   box-shadow: var(--shadow-sm);
   transition: var(--transition-base);
-  cursor: pointer;
+  cursor: default;
 }
 
 .MemberName {
   flex: 1;
+}
+
+.MemberNameButton {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.MemberNameButton:hover,
+.MemberNameButton:focus-visible {
+  text-decoration: underline;
+}
+
+.MembersPanel {
+  width: 100%;
+  max-width: 800px;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.MembersInfoRow {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--border-color);
+  background-color: var(--card-background);
+}
+
+.MembersInfoLabel {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 180px;
+}
+
+.MembersInfoValue {
+  color: var(--text-primary);
+  word-break: break-word;
 }
 
 .MemberGroup {

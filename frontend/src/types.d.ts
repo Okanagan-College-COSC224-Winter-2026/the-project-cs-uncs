@@ -8,8 +8,11 @@ interface Course {
 interface User {
   id: number;
   name: string;
+  preferred_name?: string;
+  preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them';
   email: string;
   role: 'student' | 'teacher' | 'admin';
+  must_change_password?: boolean;
 }
 
 interface StudentGroups {

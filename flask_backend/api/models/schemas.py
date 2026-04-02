@@ -31,11 +31,24 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
     # Explicit fields for clarity and validation
     id = fields.Int(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    preferred_name = fields.Method("get_preferred_name", dump_only=True)
     email = fields.Email(required=True)
     role = fields.Str(
         dump_default="student", validate=validate.OneOf(["student", "teacher", "admin"])
     )
     must_change_password = fields.Bool(dump_default=False)
+    preferred_pronouns = fields.Str(
+        dump_default="Not specified",
+        validate=validate.OneOf(["Not specified", "he/him", "she/her", "they/them"]),
+    )
+
+    def get_preferred_name(self, obj):
+        # preferred_name is stored as nullable; treat null/empty as "use name"
+        preferred = getattr(obj, "preferred_name", None)
+        if preferred is None:
+            return obj.name
+        preferred = str(preferred).strip()
+        return preferred or obj.name
 
 
 class UserRegistrationSchema(ma.Schema):

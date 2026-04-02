@@ -43,7 +43,27 @@ export const getCurrentUser = async (opts?: { forceRefresh?: boolean }) => {
   return await currentUserInFlight
 }
 
-export const updateCurrentUser = async (payload: { name?: string; email?: string }) => {
+export const getUserById = async (userId: number) => {
+  const response = await safeFetch(`${BASE_URL}/user/${userId}`, {
+    method: 'GET',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessageFromResponse(response, 'Unable to load user'))
+  }
+
+  return await response.json()
+}
+
+export const updateCurrentUser = async (payload: {
+  name?: string
+  email?: string
+  preferred_name?: string | null
+  preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them'
+}) => {
   const response = await safeFetch(`${BASE_URL}/user/`, {
     method: 'PUT',
     headers: {

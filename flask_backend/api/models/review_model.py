@@ -2,7 +2,7 @@
 Review model for the peer evaluation app.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import joinedload
 
@@ -91,7 +91,8 @@ class Review(db.Model):
     def mark_complete(self):
         """Mark the review as completed"""
         self.completed = True
-        self.completed_at = datetime.utcnow()
+        # Store naive UTC timestamp (matches prior utcnow() behavior).
+        self.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
     def mark_incomplete(self):

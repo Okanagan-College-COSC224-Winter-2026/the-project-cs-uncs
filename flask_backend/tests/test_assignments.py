@@ -29,7 +29,10 @@ def test_teacher_can_create_assignment(test_client, make_admin):
     )
 
     class_id = class_response.json["class"]["id"]
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=10)
+    ).isoformat()
 
     # Now, create the assignment
     assignment_response = test_client.post(
@@ -62,7 +65,10 @@ def test_teacher_cannot_create_assignment_with_raw_html_description(test_client,
         headers={"Content-Type": "application/json"},
     )
     class_id = class_response.json["class"]["id"]
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=5)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=5)
+    ).isoformat()
 
     assignment_response = test_client.post(
         "/assignment/create_assignment",
@@ -97,7 +103,10 @@ def test_teacher_cannot_create_assignment_with_past_due_date(test_client, make_a
     )
 
     class_id = class_response.json["class"]["id"]
-    past_due_date = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat()
+    past_due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(days=1)
+    ).isoformat()
 
     assignment_response = test_client.post(
         "/assignment/create_assignment",
@@ -365,7 +374,10 @@ def test_teacher_cannot_edit_assignment_details_with_raw_html_description(test_c
     )
     class_id = class_response.json["class"]["id"]
 
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=14)
+    ).isoformat()
     assignment_response = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps(
@@ -514,7 +526,10 @@ def test_teacher_can_edit_assignment_after_due_date(test_client, make_admin, dbs
                 "courseID": class_id,
                 "name": "Painting 1",
                 "rubric": "Creativity",
-                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=1)).isoformat(),
+                "due_date": (
+                    datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    + datetime.timedelta(days=1)
+                ).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -523,7 +538,10 @@ def test_teacher_can_edit_assignment_after_due_date(test_client, make_admin, dbs
 
     # Simulate overdue by moving due_date into the past
     assignment = dbsession.get(Assignment, assignment_id)
-    assignment.due_date = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    assignment.due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(days=1)
+    )
     dbsession.commit()
     # Now, attempt to edit the assignment
     edit_response = test_client.patch(
@@ -571,7 +589,10 @@ def test_non_assigned_teacher_cannot_edit_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Composition 1",
                 "rubric": "Harmony",
-                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=5)).isoformat(),
+                "due_date": (
+                    datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    + datetime.timedelta(days=5)
+                ).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -673,7 +694,10 @@ def test_delete_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Essay on Ethics",
                 "rubric": "Argumentation",
-                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat(),
+                "due_date": (
+                    datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    + datetime.timedelta(days=7)
+                ).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -716,7 +740,10 @@ def test_delete_assignment_after_due_date(test_client, make_admin, dbsession):
                 "courseID": class_id,
                 "name": "Market Analysis",
                 "rubric": "Data Interpretation",
-                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=1)).isoformat(),
+                "due_date": (
+                    datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    + datetime.timedelta(days=1)
+                ).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -725,7 +752,10 @@ def test_delete_assignment_after_due_date(test_client, make_admin, dbsession):
 
     # Simulate overdue by moving due_date into the past
     assignment = dbsession.get(Assignment, assignment_id)
-    assignment.due_date = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    assignment.due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(days=1)
+    )
     dbsession.commit()
     # Now, attempt to delete the assignment
     delete_response = test_client.delete(
@@ -765,7 +795,10 @@ def test_non_assigned_teacher_cannot_delete_assignment(test_client, make_admin):
                 "courseID": class_id,
                 "name": "Geography Assignment",
                 "rubric": "Map Skills",
-                "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat(),
+                "due_date": (
+                    datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    + datetime.timedelta(days=7)
+                ).isoformat(),
             }
         ),
         headers={"Content-Type": "application/json"},
@@ -852,7 +885,10 @@ def test_get_assignments_by_class_id(test_client, make_admin):
                     "courseID": class_id,
                     "name": name,
                     "rubric": "Content Quality",
-                    "due_date": (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat(),
+                    "due_date": (
+                        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                        + datetime.timedelta(days=10)
+                    ).isoformat(),
                 }
             ),
             headers={"Content-Type": "application/json"},
@@ -942,7 +978,10 @@ def test_teacher_can_create_assignment_with_due_date(test_client, make_admin):
         headers={"Content-Type": "application/json"},
     )
     class_id = class_response.json["class"]["id"]
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=14)
+    ).isoformat()
 
     # ACT - Create assignment with due date
     response = test_client.post(

@@ -47,7 +47,7 @@ def test_non_attached_teacher_cannot_access_other_course_assignments(test_client
         courseID=course.id,
         name="Confidential Assignment",
         rubric_text="Rubric",
-        due_date=datetime.datetime.utcnow() + datetime.timedelta(days=7),
+        due_date=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(days=7),
     )
     _db.session.add(assignment)
     _db.session.commit()
@@ -85,7 +85,7 @@ def test_enrolled_student_can_access_course_assignments(test_client):
             courseID=course.id,
             name="Visible Assignment",
             rubric_text="Rubric",
-            due_date=datetime.datetime.utcnow() + datetime.timedelta(days=7),
+            due_date=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(days=7),
         )
     )
     _db.session.commit()
@@ -119,7 +119,7 @@ def test_attached_teacher_and_admin_can_download_assignment_attachment(test_clie
         courseID=course.id,
         name="Attachment Assignment",
         rubric_text="Rubric",
-        due_date=datetime.datetime.utcnow() + datetime.timedelta(days=7),
+        due_date=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(days=7),
         attachment_original_name="syllabus.txt",
         attachment_storage_name=storage_name,
     )

@@ -48,7 +48,10 @@ def test_student_can_upload_and_download_own_submission(test_client, make_user, 
     enroll_user_in_course(student.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
@@ -104,7 +107,10 @@ def test_teacher_can_list_and_download_submissions(test_client, make_user, make_
     enroll_user_in_course(student.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
@@ -149,7 +155,10 @@ def test_assignment_list_student_done_updates_after_submission(
     enroll_user_in_course(student.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
@@ -188,7 +197,10 @@ def test_student_can_delete_own_submission_and_done_flips_back(
     enroll_user_in_course(student.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
@@ -240,7 +252,10 @@ def test_other_student_cannot_download_someone_elses_submission(test_client, mak
     enroll_user_in_course(student2.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
@@ -280,7 +295,10 @@ def test_groupmate_cannot_view_or_download_other_students_submission(
     GroupMember.add_member(group_id=group.id, user_id=student2.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
         data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),

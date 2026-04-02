@@ -1,7 +1,8 @@
 interface Course {
   id: number;
-  teacherID: number;
   name: string;
+  teacherID?: number;
+  assignmentCount?: number;
 }
 
 interface User {

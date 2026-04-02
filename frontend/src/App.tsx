@@ -59,7 +59,7 @@ function AppContent() {
         setUserSyncDone(true);
       }
     })();
-  }, [isPublicPath, location.pathname]);
+  }, [isPublicPath]);
 
   if (!userSyncDone) {
     return <div className="Page"><p>Loading...</p></div>;

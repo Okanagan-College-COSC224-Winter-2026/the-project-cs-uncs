@@ -17,6 +17,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         ;(async () => {
             try {
                 const user = await getCurrentUser();
+                    localStorage.setItem('user', JSON.stringify(user));
                 if (cancelled) return;
 
                 // If user must change password, redirect to /change-password

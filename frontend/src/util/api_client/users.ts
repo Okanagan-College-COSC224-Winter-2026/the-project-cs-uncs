@@ -1,18 +1,46 @@
 import { BASE_URL, getErrorMessageFromResponse, maybeHandleExpire, safeFetch } from './core'
 
-export const getCurrentUser = async () => {
-  const response = await safeFetch(`${BASE_URL}/user/`, {
-    method: 'GET',
-    credentials: 'include'
-  })
+const CURRENT_USER_TTL_MS = 2_000
 
-  maybeHandleExpire(response)
+let currentUserCache: { expiresAt: number; value: unknown } | null = null
+let currentUserInFlight: Promise<unknown> | null = null
 
-  if (!response.ok) {
-    throw new Error(await getErrorMessageFromResponse(response, 'Unable to load your account'))
+const invalidateCurrentUserCache = () => {
+  currentUserCache = null
+}
+
+export const getCurrentUser = async (opts?: { forceRefresh?: boolean }) => {
+  if (!opts?.forceRefresh) {
+    if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
+      return currentUserCache.value
+    }
+
+    if (currentUserInFlight) {
+      return await currentUserInFlight
+    }
   }
 
-  return await response.json()
+  currentUserInFlight = (async () => {
+    const response = await safeFetch(`${BASE_URL}/user/`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+
+    maybeHandleExpire(response)
+
+    if (!response.ok) {
+      invalidateCurrentUserCache()
+      throw new Error(await getErrorMessageFromResponse(response, 'Unable to load your account'))
+    }
+
+    const user = await response.json()
+    currentUserCache = { value: user, expiresAt: Date.now() + CURRENT_USER_TTL_MS }
+    return user
+  })().finally(() => {
+    currentUserInFlight = null
+  })
+
+  return await currentUserInFlight
 }
 
 export const updateCurrentUser = async (payload: { name?: string; email?: string }) => {
@@ -31,6 +59,7 @@ export const updateCurrentUser = async (payload: { name?: string; email?: string
     throw new Error(await getErrorMessageFromResponse(response, 'Unable to update your account'))
   }
 
+  invalidateCurrentUserCache()
   return await response.json()
 }
 

@@ -30,9 +30,6 @@ export const listAssignments = async (classId: string) => {
   const request = (async () => {
     const resp = await safeFetch(`${BASE_URL}/assignment/` + classId, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       credentials: 'include',
     })
 

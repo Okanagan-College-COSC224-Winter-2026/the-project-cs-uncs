@@ -4,7 +4,6 @@ import ClassCard from "../components/ClassCard";
 import StatusMessage from "../components/StatusMessage";
 
 import './Home.css'
-import { listAssignments } from "../util/api_client/assignments";
 import { listClasses, searchClasses } from "../util/api_client/classes";
 import { isTeacher, isAdmin } from "../util/login";
 
@@ -43,29 +42,16 @@ export default function Home() {
         setErrorMessage("");
         const coursesResp = await listClasses();
 
-        // Fetch assignments for each course
-        const coursesWithAssignments = await Promise.all(
-          coursesResp.map(async (course: Course) => {
-            try {
-              const assignments = await listAssignments(String(course.id));
-              return {
-                ...course,
-                assignments: assignments || [],
-                assignmentCount: assignments?.length || 0
-              };
-            } catch (error) {
-              console.error(`Error fetching assignments for course ${course.id}:`, error);
-              return {
-                ...course,
-                assignments: [],
-                assignmentCount: 0
-              };
-            }
-          })
-        );
-        
-        setCourses(coursesWithAssignments);
-        setAllCourses(coursesWithAssignments);
+        const mapped = (coursesResp || []).map((course: Course) => {
+          const assignmentCount = Number((course as unknown as { assignmentCount?: number }).assignmentCount || 0);
+          return {
+            ...course,
+            assignmentCount,
+          };
+        });
+
+        setCourses(mapped);
+        setAllCourses(mapped);
       } catch (error) {
         console.error("Error fetching courses:", error);
         setErrorMessage(error instanceof Error ? error.message : "Failed to load courses.");
@@ -88,26 +74,15 @@ export default function Home() {
       // Fallback if cache wasn't populated for some reason.
       try {
         const coursesResp = await listClasses();
-        const coursesWithAssignments = await Promise.all(
-          coursesResp.map(async (course: Course) => {
-            try {
-              const assignments = await listAssignments(String(course.id));
-              return {
-                ...course,
-                assignments: assignments || [],
-                assignmentCount: assignments?.length || 0,
-              };
-            } catch {
-              return {
-                ...course,
-                assignments: [],
-                assignmentCount: 0,
-              };
-            }
-          })
-        );
-        setCourses(coursesWithAssignments);
-        setAllCourses(coursesWithAssignments);
+        const mapped = (coursesResp || []).map((course: Course) => {
+          const assignmentCount = Number((course as unknown as { assignmentCount?: number }).assignmentCount || 0);
+          return {
+            ...course,
+            assignmentCount,
+          };
+        });
+        setCourses(mapped);
+        setAllCourses(mapped);
       } catch (e) {
         console.error(e);
         setErrorMessage(e instanceof Error ? e.message : "Failed to load courses.");
@@ -119,17 +94,26 @@ export default function Home() {
       const results = resp.results || [];
 
       // Defense-in-depth: only render classes the current user is authorized to see.
-      let allowedIds: Set<number>;
+      let allowedCourses: CourseWithAssignments[];
       if (allCourses) {
-        allowedIds = new Set(allCourses.map((c) => Number(c.id)));
+        allowedCourses = allCourses;
       } else {
-        const allowedCourses = await listClasses();
-        allowedIds = new Set(allowedCourses.map((c: Course) => Number(c.id)));
+        const fresh = await listClasses();
+        allowedCourses = (fresh || []).map((course: Course) => {
+          const assignmentCount = Number((course as unknown as { assignmentCount?: number }).assignmentCount || 0);
+          return {
+            ...course,
+            assignmentCount,
+          };
+        });
+        setAllCourses(allowedCourses);
       }
+
+      const allowedIds = new Set(allowedCourses.map((c) => Number(c.id)));
 
       const visibleResults = results.filter((r: { id: number }) => allowedIds.has(Number(r.id)));
 
-      const cachedById = new Map((allCourses || []).map((c) => [Number(c.id), c]));
+      const cachedById = new Map((allowedCourses || []).map((c) => [Number(c.id), c]));
 
       const mapped = await Promise.all(
         visibleResults.map(async (r: { id: number; name: string }) => {
@@ -142,23 +126,11 @@ export default function Home() {
             };
           }
 
-          // Fallback for cases where the initial course cache is unavailable.
-          try {
-            const assignments = await listAssignments(String(r.id));
-            return {
-              id: r.id,
-              name: r.name,
-              assignments: assignments || [],
-              assignmentCount: assignments?.length || 0,
-            };
-          } catch {
-            return {
-              id: r.id,
-              name: r.name,
-              assignments: [],
-              assignmentCount: 0,
-            };
-          }
+          return {
+            id: r.id,
+            name: r.name,
+            assignmentCount: 0,
+          };
         })
       );
       setCourses(mapped);

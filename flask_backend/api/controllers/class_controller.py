@@ -2,6 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from sqlalchemy import func
 from werkzeug.security import generate_password_hash
 
 import csv
@@ -107,17 +108,49 @@ def get_user_classes():
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
+    course_rows: list[tuple[int, str]]
     if user.is_teacher():
-        courses = Course.get_courses_by_teacher(user.id)
+        course_rows = (
+            Course.query.filter(Course.teacherID == user.id)
+            .with_entities(Course.id, Course.name)
+            .all()
+        )
     elif user.is_admin():
-        courses = Course.get_all_courses()
+        course_rows = Course.query.with_entities(Course.id, Course.name).all()
     elif user.is_student():
-        user_courses = User_Course.get_courses_by_student(user.id)
-        courses = [Course.get_by_id(uc.courseID) for uc in user_courses]
+        course_rows = (
+            Course.query.join(User_Course, User_Course.courseID == Course.id)
+            .filter(User_Course.userID == user.id)
+            .with_entities(Course.id, Course.name)
+            .all()
+        )
     else:
-        courses = []
+        course_rows = []
 
-    return jsonify([{"id": c.id, "name": c.name} for c in courses]), 200
+    course_ids = [int(cid) for (cid, _name) in course_rows]
+    counts_by_course_id: dict[int, int] = {}
+    if course_ids:
+        counts = (
+            db.session.query(Assignment.courseID, func.count(Assignment.id))
+            .filter(Assignment.courseID.in_(course_ids))
+            .group_by(Assignment.courseID)
+            .all()
+        )
+        counts_by_course_id = {int(course_id): int(cnt) for (course_id, cnt) in counts}
+
+    return (
+        jsonify(
+            [
+                {
+                    "id": int(course_id),
+                    "name": name,
+                    "assignmentCount": int(counts_by_course_id.get(int(course_id), 0)),
+                }
+                for (course_id, name) in course_rows
+            ]
+        ),
+        200,
+    )
 
 
 @bp.route("/members", methods=["POST"])

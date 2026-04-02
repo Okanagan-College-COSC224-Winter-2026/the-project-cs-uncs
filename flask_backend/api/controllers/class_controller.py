@@ -9,7 +9,7 @@ import io
 import re
 from typing import List, Dict
 
-from ..models import Course, User, User_Course
+from ..models import Assignment, Course, Group, GroupMember, Review, User, User_Course, db
 from ..services import generate_temp_password, send_new_account_email
 from .auth_controller import jwt_teacher_required
 
@@ -204,7 +204,48 @@ def remove_course_member():
     if not enrollment:
         return jsonify({"msg": "User is not enrolled in this class"}), 404
 
-    enrollment.delete()
+    # Remove the student from any group(s) for this course.
+    group_id_rows = db.session.query(Group.id).filter(Group.course_id == course.id).all()
+    group_ids = [int(gid) for (gid,) in group_id_rows]
+    if group_ids:
+        (
+            GroupMember.query.filter(
+                GroupMember.user_id == student.id,
+                GroupMember.group_id.in_(group_ids),
+            ).delete(synchronize_session=False)
+        )
+
+    # Delete any *incomplete* individual peer-eval reviews involving this student.
+    # Otherwise remaining students can end up with reviews that can never be submitted
+    # (eligibility checks depend on current group membership).
+    assignment_id_rows = (
+        db.session.query(Assignment.id)
+        .filter(
+            Assignment.courseID == course.id,
+            Assignment.assignment_type == "peer_eval_individual",
+        )
+        .all()
+    )
+    assignment_ids = [int(aid) for (aid,) in assignment_id_rows]
+    if assignment_ids:
+        # Remove feedback authored by the removed student so it no longer appears
+        # in other students' "My Feedback" view.
+        # Also remove any *incomplete* reviews targeting the removed student to
+        # prevent other students from being stuck with un-submittable tasks.
+        reviews_to_delete = (
+            Review.query.filter(
+                Review.assignmentID.in_(assignment_ids),
+                (Review.reviewerID == student.id)
+                | ((Review.revieweeID == student.id) & (Review.completed.is_(False))),
+            ).all()
+        )
+        for r in reviews_to_delete:
+            db.session.delete(r)
+
+    # Remove enrollment last, then commit once for atomic cleanup.
+    db.session.delete(enrollment)
+    db.session.commit()
+
     return jsonify({"msg": f"Removed {student.email} from course {course.name}"}), 200
 
 FULL_HEADERS = {"id", "name", "email"}

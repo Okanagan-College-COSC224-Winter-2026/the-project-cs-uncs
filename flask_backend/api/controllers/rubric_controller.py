@@ -1,11 +1,36 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from ..models import Assignment, Course, CriteriaDescription, Rubric, User
+from ..models import Assignment, Course, CriteriaDescription, GroupEvaluationSubmission, Review, Rubric, User
 from ..models.db import db
 from .auth_controller import jwt_teacher_required
 
 bp = Blueprint("rubric", __name__)
+
+
+def _wipe_peer_eval_submissions_if_needed(assignment: Assignment) -> None:
+    """If a peer-eval rubric changes, wipe existing peer-eval submissions.
+
+    This ensures students must re-submit using the updated rubric.
+    """
+
+    if not assignment or not assignment.assignment_type:
+        return
+
+    if assignment.assignment_type == "peer_eval_individual":
+        reviews = Review.query.filter_by(assignmentID=assignment.id).all()
+        for r in reviews:
+            for crit in r.criteria.all():
+                db.session.delete(crit)
+            r.completed = False
+            r.completed_at = None
+        return
+
+    if assignment.assignment_type == "peer_eval_group":
+        submissions = GroupEvaluationSubmission.query.filter_by(assignment_id=assignment.id).all()
+        for s in submissions:
+            db.session.delete(s)
+        return
 
 
 @bp.route("/get_rubric/<int:assignment_id>", methods=["GET"])
@@ -50,15 +75,17 @@ def create_rubric():
     if not user.is_admin() and course.teacherID != user.id:
         return jsonify({"msg": "Unauthorized: You are not the teacher of this class"}), 403
 
-    # Check existing rubric and delete
-    existing_rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
-    if existing_rubric:
-        # Cascade delete criteria via model relationship
-        existing_rubric.delete()
-
-    new_rubric = Rubric(assignmentID=assignment_id, canComment=can_comment)
     try:
-        Rubric.create_rubric(new_rubric)
+        existing_rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+        if existing_rubric:
+            db.session.delete(existing_rubric)
+
+        new_rubric = Rubric(assignmentID=assignment_id, canComment=can_comment)
+        db.session.add(new_rubric)
+
+        _wipe_peer_eval_submissions_if_needed(assignment)
+        db.session.commit()
+
         return jsonify({"message": "Rubric created", "id": new_rubric.id}), 201
     except Exception as e:
         return jsonify({"msg": str(e)}), 500
@@ -143,10 +170,9 @@ def create_criteria():
     )
     
     try:
-        # CriteriaDescription has create_criteria_description method?
-        # Let's check model again or assume similar pattern
-        # checked model: create_criteria_description(cls, criteria_description)
-        CriteriaDescription.create_criteria_description(new_criterion)
+        db.session.add(new_criterion)
+        _wipe_peer_eval_submissions_if_needed(assignment)
+        db.session.commit()
         return jsonify({"message": "Criteria created", "id": new_criterion.id}), 201
     except Exception as e:
         return jsonify({"msg": str(e)}), 500
@@ -201,7 +227,8 @@ def update_criteria(criteria_id):
         criterion.scoreMax = next_score_max
 
     try:
-        criterion.update()
+        _wipe_peer_eval_submissions_if_needed(assignment)
+        db.session.commit()
         return (
             jsonify(
                 {
@@ -247,6 +274,7 @@ def delete_criteria(criteria_id):
 
     try:
         db.session.delete(criterion)
+        _wipe_peer_eval_submissions_if_needed(assignment)
         db.session.commit()
         return jsonify({"message": "Criteria deleted"}), 200
     except Exception as e:

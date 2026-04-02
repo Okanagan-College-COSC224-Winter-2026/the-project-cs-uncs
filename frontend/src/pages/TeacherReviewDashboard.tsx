@@ -303,6 +303,15 @@ export default function TeacherReviewDashboard() {
     return total
   }
 
+  const maxPerIndividualReview = (() => {
+    let total = 0
+    for (const meta of Object.values(criteriaByRowId)) {
+      const scoreMax = Number(meta?.scoreMax ?? 0)
+      total += Number.isFinite(scoreMax) ? scoreMax : 0
+    }
+    return total
+  })()
+
   const renderGroupPeerEval = () => {
     if (!groupSummary) {
       return (
@@ -493,13 +502,16 @@ export default function TeacherReviewDashboard() {
     if (!selectedStudent) {
       const memberIds = new Set(selectedGroup.members.map((m) => m.id))
       const totals: Record<number, number> = {}
+      const receivedCounts: Record<number, number> = {}
       for (const m of selectedGroup.members) totals[m.id] = 0
+      for (const m of selectedGroup.members) receivedCounts[m.id] = 0
 
       for (const r of reviews) {
         if (!r.completed) continue
         if (!memberIds.has(r.reviewer.id)) continue
         if (!memberIds.has(r.reviewee.id)) continue
         totals[r.reviewee.id] = (totals[r.reviewee.id] ?? 0) + scoreForReview(r)
+        receivedCounts[r.reviewee.id] = (receivedCounts[r.reviewee.id] ?? 0) + 1
       }
 
       return (
@@ -514,7 +526,14 @@ export default function TeacherReviewDashboard() {
                 onClick={() => setSelectedStudentId(m.id)}
               >
                 <span className="teacher-memberName">{m.name}</span>
-                <span className="teacher-memberScore">{totals[m.id] ?? 0}</span>
+                  <span className="teacher-memberScore">
+                    {totals[m.id] ?? 0}
+                    {(() => {
+                      const count = receivedCounts[m.id] ?? 0
+                      const maxPossible = maxPerIndividualReview > 0 ? maxPerIndividualReview * count : 0
+                      return maxPossible > 0 ? `/${maxPossible}` : ''
+                    })()}
+                  </span>
               </button>
             ))}
           </div>
@@ -550,7 +569,9 @@ export default function TeacherReviewDashboard() {
                     </div>
                   </div>
                   <div className="dashboard-review-status">
-                    <span className="criteria-count">Total: {total}</span>
+                    <span className="criteria-count">
+                      Total: {total}{maxPerIndividualReview > 0 ? `/${maxPerIndividualReview}` : ''}
+                    </span>
                     {typeof review.on_time === 'boolean' ? (
                       <span className="criteria-count">{review.on_time ? 'On time' : 'Late'}</span>
                     ) : null}

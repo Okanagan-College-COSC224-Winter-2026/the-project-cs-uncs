@@ -19,6 +19,11 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const adminMode = isAdmin();
+  const dashboardTitle = adminMode
+    ? "Admin Dashboard"
+    : isTeacher()
+      ? "Teacher Dashboard"
+      : "Student Dashboard";
   const totalAssignments = courses.reduce((sum, course) => sum + Number(course.assignmentCount || 0), 0);
 
   const handleBrowseClasses = () => {
@@ -167,7 +172,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="Home Page">
-        <h1>{adminMode ? "Admin Dashboard" : "Peer Review Dashboard"}</h1>
+        <h1>{dashboardTitle}</h1>
         <p className="PageStatusText">Loading…</p>
       </div>
     );
@@ -175,7 +180,7 @@ export default function Home() {
 
   return (
     <div className="Home Page">
-      <h1>{adminMode ? "Admin Dashboard" : "Peer Review Dashboard"}</h1>
+      <h1>{dashboardTitle}</h1>
 
       <StatusMessage message={errorMessage} type="error" />
 

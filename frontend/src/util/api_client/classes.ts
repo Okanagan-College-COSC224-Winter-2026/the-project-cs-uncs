@@ -200,6 +200,22 @@ export const joinRosterCourse = async (courseId: number) => {
   return await resp.json()
 }
 
+export const deleteClass = async (classId: number): Promise<{ msg?: string }> => {
+  const resp = await safeFetch(`${BASE_URL}/class/delete_class/${classId}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(await getErrorMessageFromResponse(resp))
+  }
+
+  clearClassesCache()
+  return await resp.json().catch(() => ({}))
+}
+
 export const getAvailableCourses = async () => {
   const resp = await safeFetch(`${BASE_URL}/class/available_courses`, {
     method: 'GET',

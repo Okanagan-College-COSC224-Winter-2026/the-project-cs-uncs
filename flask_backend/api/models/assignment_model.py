@@ -28,6 +28,9 @@ class Assignment(db.Model):
     # Assignment type determines peer-eval workflows.
     assignment_type = db.Column(db.String(50), nullable=False, default="standard", index=True)
 
+    # Teachers/admins can close assignments to prevent new submissions.
+    is_closed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("0"), index=True)
+
     # relationships
     course = db.relationship("Course", back_populates="assignments", lazy="joined")
     rubrics = db.relationship(
@@ -50,6 +53,7 @@ class Assignment(db.Model):
         attachment_original_name=None,
         attachment_storage_name=None,
         assignment_type="standard",
+        is_closed: bool = False,
     ):
         self.courseID = courseID
         self.name = name
@@ -59,6 +63,7 @@ class Assignment(db.Model):
         self.attachment_original_name = attachment_original_name
         self.attachment_storage_name = attachment_storage_name
         self.assignment_type = assignment_type
+        self.is_closed = bool(is_closed)
 
     def __repr__(self):
         return f"<Assignment id={self.id} name={self.name}>"

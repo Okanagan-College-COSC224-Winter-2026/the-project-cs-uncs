@@ -71,8 +71,25 @@ class UserListSchema(ma.SQLAlchemyAutoSchema):
 
     class Meta:
         model = User
-        fields = ("id", "name", "email", "role")
+        fields = (
+            "id",
+            "name",
+            "preferred_name",
+            "preferred_pronouns",
+            "email",
+            "role",
+        )
         dump_only = ("id",)
+
+    preferred_name = fields.Method("get_preferred_name", dump_only=True)
+    preferred_pronouns = fields.Str(dump_default="Not specified")
+
+    def get_preferred_name(self, obj):
+        preferred = getattr(obj, "preferred_name", None)
+        if preferred is None:
+            return obj.name
+        preferred = str(preferred).strip()
+        return preferred or obj.name
 
 
 # ============================================================

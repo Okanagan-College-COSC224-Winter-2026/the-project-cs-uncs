@@ -60,6 +60,7 @@ interface Assignment {
   course_name: string;
   due_date: string | null;
   is_open: boolean;
+  is_closed?: boolean;
 }
 
 interface DashboardData {
@@ -679,9 +680,11 @@ export default function TeacherReviewDashboard() {
             {assignment.due_date && (
               <p className="dashboard-due-date">
                 Due: {formatDate(assignment.due_date)}
-                {!assignment.is_open && (
+                {assignment.is_closed ? (
                   <span className="dashboard-deadline-passed"> (Closed)</span>
-                )}
+                ) : !assignment.is_open ? (
+                  <span className="dashboard-deadline-passed"> (Past due)</span>
+                ) : null}
               </p>
             )}
           </div>

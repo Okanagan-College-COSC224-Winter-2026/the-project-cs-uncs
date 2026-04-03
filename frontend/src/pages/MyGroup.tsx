@@ -10,6 +10,8 @@ import "./MyGroup.css";
 type Member = {
   id: number;
   name: string;
+  preferred_name?: string;
+  preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them';
   email?: string;
 };
 
@@ -184,7 +186,14 @@ export default function MyGroup() {
                   <div className="MyGroupList">
                     {otherMembers.map((m) => (
                       <div key={m.id} className="MyGroupRow">
-                        <div className="MyGroupRowName">{m.name}</div>
+                        <div className="MyGroupRowName">
+                          {(() => {
+                            const displayName = String(m.preferred_name || '').trim() || m.name
+                            const pronouns = String(m.preferred_pronouns || '').trim()
+                            const showPronouns = pronouns.length > 0 && pronouns !== 'Not specified'
+                            return `${displayName}${showPronouns ? ` (${pronouns})` : ''}`
+                          })()}
+                        </div>
                         <div className="MyGroupRowEmail">{m.email}</div>
                       </div>
                     ))}

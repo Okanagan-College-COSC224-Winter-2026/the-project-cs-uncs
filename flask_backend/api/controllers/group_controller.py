@@ -154,7 +154,13 @@ def get_my_group_for_course(course_id):
 
     group = groups[0]
     members = [
-        {"id": m.user.id, "name": m.user.name, "email": m.user.email}
+        {
+            "id": m.user.id,
+            "name": m.user.name,
+            "preferred_name": (m.user.preferred_name or "").strip() or m.user.name,
+            "preferred_pronouns": m.user.preferred_pronouns or "Not specified",
+            "email": m.user.email,
+        }
         for m in group.members
         if m.user is not None
     ]

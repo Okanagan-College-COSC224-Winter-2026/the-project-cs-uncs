@@ -8,6 +8,9 @@ interface Props {
   name: string
   due_date?: string
   assignment_type?: string
+  is_closed?: boolean
+  onSetClosed?: (id: number, isClosed: boolean) => void
+  setClosedDisabled?: boolean
   onDelete?: (id: number | string) => void;
   hideDueStatus?: boolean
 }
@@ -74,12 +77,23 @@ export default function AssignmentCard(props: Props) {
   const showStatusBubble = !(isTeacher() || isAdmin()) && !props.hideDueStatus;
   const assignmentIcon = getAssignmentTypeIcon(props.assignment_type)
 
+  const closed = !!props.is_closed
+  const dueTag = closed ? 'Closed' : null
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent the card's onClick from firing
     if (props.onDelete) {
       props.onDelete(props.id);
     }
   };
+
+  const handleToggleClosed = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (props.setClosedDisabled) return
+    const assignmentId = Number(props.id)
+    if (!Number.isFinite(assignmentId)) return
+    props.onSetClosed?.(assignmentId, !closed)
+  }
 
   return (
     <div
@@ -108,7 +122,10 @@ export default function AssignmentCard(props: Props) {
       />
 
       <div className="A_Card_Content">
-        <div className="A_Card_Name">{props.name}</div>
+        <div className="A_Card_Name">
+          {props.name}
+          {dueTag ? <span className="A_Card_Tag"> ({dueTag})</span> : null}
+        </div>
         <div className="A_Card_Info">
           <span className="A_Card_DueDate">{formatDate(props.due_date)}</span>
           {showStatusBubble ? (
@@ -118,16 +135,31 @@ export default function AssignmentCard(props: Props) {
           ) : null}
         </div>
       </div>
-      {props.onDelete && (
-        <Button
-          type="secondary"
-          className="delete-assignment-btn"
-          onClick={handleDelete}
-          htmlType="button"
-        >
-          Delete
-        </Button>
-      )}
+
+      {(props.onDelete || ((isTeacher() || isAdmin()) && props.onSetClosed)) ? (
+        <div className="A_Card_Actions">
+          {(isTeacher() || isAdmin()) && props.onSetClosed ? (
+            <Button
+              type="secondary"
+              onClick={handleToggleClosed}
+              htmlType="button"
+              disabled={props.setClosedDisabled}
+            >
+              {closed ? 'Reopen' : 'Close'}
+            </Button>
+          ) : null}
+          {props.onDelete ? (
+            <Button
+              type="secondary"
+              className="delete-assignment-btn"
+              onClick={handleDelete}
+              htmlType="button"
+            >
+              Delete
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

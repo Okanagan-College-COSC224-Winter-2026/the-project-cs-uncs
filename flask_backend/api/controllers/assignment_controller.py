@@ -1148,17 +1148,21 @@ def get_assignments(class_id):
             # Individual peer eval: done when all assigned reviews are completed.
             individual_ids = [a.id for a in assignments if (a.assignment_type or "standard") == "peer_eval_individual"]
             if individual_ids:
-                reviews = Review.query.filter(
-                    Review.reviewerID == user.id,
-                    Review.assignmentID.in_(individual_ids),
-                ).all()
+                reviews = (
+                    Review.query.filter(
+                        Review.reviewerID == user.id,
+                        Review.assignmentID.in_(individual_ids),
+                    )
+                    .with_entities(Review.assignmentID, Review.completed)
+                    .all()
+                )
                 counts = {aid: {"total": 0, "completed": 0} for aid in individual_ids}
-                for r in reviews:
-                    entry = counts.get(int(r.assignmentID))
+                for assignment_id, completed in reviews:
+                    entry = counts.get(int(assignment_id))
                     if entry is None:
                         continue
                     entry["total"] += 1
-                    if r.completed:
+                    if completed:
                         entry["completed"] += 1
 
                 for aid, entry in counts.items():

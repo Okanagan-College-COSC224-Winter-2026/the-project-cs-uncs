@@ -283,7 +283,7 @@ def add_users_command():
 
     if not assignment:
         # Use naive datetimes consistently (the app stores naive timestamps)
-        due_date = datetime.utcnow() + timedelta(days=37)
+        due_date = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=37)
         assignment = Assignment(
             courseID=course.id,
             name=assignment_name,
@@ -355,7 +355,7 @@ def add_users_command():
                 path=f"/submissions/student{i}_essay.pdf",
                 studentID=student.id,
                 assignmentID=assignment.id,
-                submitted_at=datetime.utcnow() - timedelta(days=10 - i),
+                submitted_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=10 - i),
             )
             Submission.create_submission(submission)
             submissions_created += 1
@@ -491,7 +491,7 @@ def add_users_command():
                 db.session.add(criterion)
             review1.completed = True
             if not review1.completed_at:
-                review1.completed_at = datetime.utcnow() - timedelta(days=7)
+                review1.completed_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
             db.session.commit()
             click.echo(f"✓ Completed review: {students[0].name} → {students[1].name}")
 
@@ -509,7 +509,7 @@ def add_users_command():
                 db.session.add(criterion)
             review3.completed = True
             if not review3.completed_at:
-                review3.completed_at = datetime.utcnow() - timedelta(days=6)
+                review3.completed_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=6)
             db.session.commit()
             click.echo(f"✓ Completed review: {students[1].name} → {students[2].name}")
 
@@ -527,7 +527,7 @@ def add_users_command():
                 db.session.add(criterion)
             review4.completed = True
             if not review4.completed_at:
-                review4.completed_at = datetime.utcnow() - timedelta(days=5)
+                review4.completed_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=5)
             db.session.commit()
             click.echo(f"✓ Completed review: {students[2].name} → {students[3].name}")
 
@@ -545,7 +545,7 @@ def add_users_command():
                 db.session.add(criterion)
             review6.completed = True
             if not review6.completed_at:
-                review6.completed_at = datetime.utcnow() - timedelta(days=4)
+                review6.completed_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=4)
             db.session.commit()
             click.echo(f"✓ Completed review: {students[3].name} → {students[0].name}")
 
@@ -887,7 +887,7 @@ def add_users_command():
             if not assignment.due_date:
                 continue
 
-            is_past = assignment.due_date < datetime.utcnow()
+            is_past = assignment.due_date < _utc_now_naive()
             for s_idx, student in enumerate(students):
                 # Ensure we have a mix of done and todo.
                 if is_past:
@@ -951,7 +951,7 @@ def add_users_command():
             db.session.delete(old)
             db.session.commit()
 
-    today = datetime.utcnow().date()
+    today = _utc_now_naive().date()
     current_monday = today - timedelta(days=today.weekday())
     cosc_224_week_offsets = [-1, 0, 1, 2]  # 1 past week + current + 2 upcoming weeks
 
@@ -1024,7 +1024,7 @@ def add_users_command():
         if not rubric or not assignment.due_date:
             continue
 
-        week_is_past = assignment.due_date < datetime.utcnow()
+        week_is_past = assignment.due_date < _utc_now_naive()
         for group_idx, group in enumerate(course_groups):
             members = _get_group_members(group.id)
             if len(members) < 2:
@@ -1079,7 +1079,7 @@ def add_users_command():
         rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
         if not rubric or not assignment.due_date:
             continue
-        week_is_past = assignment.due_date < datetime.utcnow()
+        week_is_past = assignment.due_date < _utc_now_naive()
         if not week_is_past:
             continue
 
@@ -1154,7 +1154,7 @@ def add_users_command():
         path_prefix: str,
     ) -> list[Assignment]:
         due_dates: list[datetime] = []
-        base_date = datetime.utcnow().date()
+        base_date = _utc_now_naive().date()
         # A couple past due for demo, the rest in the future.
         due_dates.append(_date_only_end_of_day(base_date - timedelta(days=10)))
         due_dates.append(_date_only_end_of_day(base_date - timedelta(days=3)))
@@ -1248,7 +1248,7 @@ def add_users_command():
                     score=5,
                     comment_prefix="Great teammate:",
                     completed_at=(
-                        (cosc_205_ind.due_date or datetime.utcnow()) - timedelta(hours=2)
+                        (cosc_205_ind.due_date or _utc_now_naive()) - timedelta(hours=2)
                     ),
                 )
                 if did:

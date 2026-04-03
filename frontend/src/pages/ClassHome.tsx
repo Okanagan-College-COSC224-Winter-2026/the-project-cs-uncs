@@ -151,8 +151,9 @@ export default function ClassHome() {
     try {
       setSavingClosedId(assignmentId);
       const resp = await setAssignmentClosed(assignmentId, isClosed);
-      const updated = (resp as any)?.assignment
-      const nextClosed = typeof updated?.is_closed === 'boolean' ? updated.is_closed : isClosed
+      const updated = resp?.assignment
+      const updatedRecord = typeof updated === 'object' && updated !== null ? (updated as Record<string, unknown>) : null
+      const nextClosed = typeof updatedRecord?.is_closed === 'boolean' ? Boolean(updatedRecord.is_closed) : isClosed
 
       setAssignments((prev) =>
         prev.map((a) => (a.id === assignmentId ? { ...a, is_closed: nextClosed } : a))
@@ -265,6 +266,9 @@ export default function ClassHome() {
                       onSetClosed={handleSetClosed}
                       setClosedDisabled={savingClosedId === assignment.id}
                       onDelete={handleDeleteAssignment}
+                      deleteButtonText={
+                        confirmDeleteAssignmentId === Number(assignment.id) ? 'Confirm delete' : 'Delete'
+                      }
                     />
                   </li>
                 ))}
@@ -283,6 +287,9 @@ export default function ClassHome() {
                       onSetClosed={handleSetClosed}
                       setClosedDisabled={savingClosedId === assignment.id}
                       onDelete={handleDeleteAssignment}
+                      deleteButtonText={
+                        confirmDeleteAssignmentId === Number(assignment.id) ? 'Confirm delete' : 'Delete'
+                      }
                     />
                   </li>
                 ))}

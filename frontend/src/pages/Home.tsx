@@ -279,7 +279,7 @@ export default function Home() {
                           void handleDeleteCourse(courseId);
                         }}
                       >
-                        {isConfirmingDelete ? 'Confirm Delete' : 'Delete'}
+                        {isConfirmingDelete ? 'Confirm delete' : 'Delete'}
                       </Button>
                     ) : null
                   }

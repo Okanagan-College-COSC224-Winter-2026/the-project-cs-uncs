@@ -412,7 +412,7 @@ export default function Groups() {
                                                 onClick={() => handleDeleteGroup(group.id)}
                                                 disabled={deletingGroupId === group.id}
                                             >
-                                                {confirmDeleteGroupId === group.id ? "Confirm Delete" : "Delete"}
+                                                {confirmDeleteGroupId === group.id ? "Confirm delete" : "Delete"}
                                             </Button>
                                         </div>
                                     ))}

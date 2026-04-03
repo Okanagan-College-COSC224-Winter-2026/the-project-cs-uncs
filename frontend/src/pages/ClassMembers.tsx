@@ -91,12 +91,22 @@ export default function ClassMembers() {
     }
   }, [id, teacherOrAdmin])  
 
-  if (!teacherOrAdmin) {
-    return <Navigate to={`/classes/${id}/my-group`} replace />;
-  }
-
   useEffect(() => {
     if (!isDrillInOpen) {
+      setSelectedMemberInfo(null)
+      setSelectedMemberError(null)
+      setLoadingSelectedMember(false)
+      return
+    }
+
+    if (!teacherOrAdmin) {
+      setSelectedMemberInfo(null)
+      setSelectedMemberError(null)
+      setLoadingSelectedMember(false)
+      return
+    }
+
+    if (selectedMemberId == null || !Number.isFinite(selectedMemberId)) {
       setSelectedMemberInfo(null)
       setSelectedMemberError(null)
       setLoadingSelectedMember(false)
@@ -125,7 +135,11 @@ export default function ClassMembers() {
     return () => {
       cancelled = true
     }
-  }, [isDrillInOpen, selectedMemberId])
+  }, [isDrillInOpen, selectedMemberId, teacherOrAdmin])
+
+  if (!teacherOrAdmin) {
+    return <Navigate to={`/classes/${id}/my-group`} replace />;
+  }
 
   const openMemberInfo = (memberId: number) => {
     setSearchParams({ member: String(memberId) })

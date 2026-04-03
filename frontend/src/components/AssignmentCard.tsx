@@ -12,6 +12,7 @@ interface Props {
   onSetClosed?: (id: number, isClosed: boolean) => void
   setClosedDisabled?: boolean
   onDelete?: (id: number | string) => void;
+  deleteButtonText?: string
   hideDueStatus?: boolean
 }
 
@@ -155,7 +156,7 @@ export default function AssignmentCard(props: Props) {
               onClick={handleDelete}
               htmlType="button"
             >
-              Delete
+              {props.deleteButtonText ?? 'Delete'}
             </Button>
           ) : null}
         </div>

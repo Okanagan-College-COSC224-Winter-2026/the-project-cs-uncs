@@ -232,12 +232,15 @@ def submit_review_feedback(review_id):
     if not review:
         return jsonify({"msg": "Review not found"}), 404
 
+    assignment = review.assignment
+    if assignment and getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
+
     # Check permission: must be the reviewer
     if review.reviewerID != user.id:
         return jsonify({"msg": "You are not authorized to submit this review"}), 403
 
     # For individual peer evaluation assignments, enforce current-team eligibility.
-    assignment = review.assignment
     if assignment and assignment.assignment_type == "peer_eval_individual":
         reviewer_group = (
             Group.query.join(GroupMember, GroupMember.group_id == Group.id)
@@ -331,10 +334,13 @@ def update_review_feedback(review_id):
     if not review:
         return jsonify({"msg": "Review not found"}), 404
 
+    assignment = review.assignment
+    if assignment and getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
+
     if review.reviewerID != user.id:
         return jsonify({"msg": "You are not authorized to update this review"}), 403
 
-    assignment = review.assignment
     if assignment and assignment.assignment_type == "peer_eval_individual":
         reviewer_group = (
             Group.query.join(GroupMember, GroupMember.group_id == Group.id)
@@ -406,10 +412,13 @@ def unsubmit_review_feedback(review_id):
     if not review:
         return jsonify({"msg": "Review not found"}), 404
 
+    assignment = review.assignment
+    if assignment and getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
+
     if review.reviewerID != user.id:
         return jsonify({"msg": "You are not authorized to unsubmit this review"}), 403
 
-    assignment = review.assignment
     if assignment and assignment.assignment_type == "peer_eval_individual":
         reviewer_group = (
             Group.query.join(GroupMember, GroupMember.group_id == Group.id)
@@ -758,7 +767,8 @@ def get_all_reviews_for_assignment(assignment_id):
                 "course_id": assignment.courseID,
                 "course_name": assignment.course.name,
                 "due_date": assignment.due_date.isoformat() if assignment.due_date else None,
-                "is_open": assignment.can_modify()
+                "is_open": assignment.can_modify(),
+                "is_closed": bool(getattr(assignment, "is_closed", False)),
             },
             "statistics": {
                 "total_reviews": total_reviews,

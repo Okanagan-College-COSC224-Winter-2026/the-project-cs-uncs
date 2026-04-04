@@ -37,6 +37,8 @@ interface Review {
   reviewee?: {
     id: number;
     name: string;
+    preferred_name?: string;
+    preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them';
     email: string;
   };
   assignment: {
@@ -79,6 +81,11 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   const commentCriterionId = useMemo(() => {
     return criteriaDescriptions[0]?.id ?? null;
   }, [criteriaDescriptions]);
+
+  const formatStudentName = (person?: Review['reviewee']) => {
+    if (!person) return ''
+    return String(person.preferred_name || '').trim() || String(person.name || '').trim()
+  }
 
   useEffect(() => {
                   document.title = 'Review';
@@ -327,7 +334,7 @@ export function ReviewSubmissionPanel(props: ReviewSubmissionPanelProps) {
   const content = (
     <div className="review-submission-content">
         <div className="review-header">
-          <h2>{review?.reviewee?.name ? `Review: ${review.reviewee.name}` : 'Submit Peer Review'}</h2>
+          <h2>{review?.reviewee ? `Review: ${formatStudentName(review.reviewee)}` : 'Submit Peer Review'}</h2>
         </div>
 
         {successMessage && (

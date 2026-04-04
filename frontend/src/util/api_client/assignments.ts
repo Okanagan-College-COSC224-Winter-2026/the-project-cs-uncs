@@ -21,6 +21,47 @@ export const deleteAssignment = async (assignmentId: number) => {
   return await response.json()
 }
 
+export type SetAssignmentClosedResponse = {
+  msg?: string
+  assignment?: unknown
+}
+
+export const setAssignmentClosed = async (
+  assignmentId: number,
+  isClosed: boolean
+): Promise<SetAssignmentClosedResponse> => {
+  const response = await safeFetch(`${BASE_URL}/assignment/closed/${assignmentId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ is_closed: isClosed }),
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessageFromResponse(response, 'Failed to update assignment status'))
+  }
+
+  const json: unknown = await response.json()
+  if (!isRecord(json)) return {}
+
+  const updated = json.assignment
+  if (isRecord(updated)) {
+    const updatedId = toNumberOrNull(updated.id)
+    if (updatedId != null) {
+      cacheAssignmentDetails(updatedId, updated)
+    }
+  }
+
+  return {
+    msg: typeof json.msg === 'string' ? json.msg : undefined,
+    assignment: updated,
+  }
+}
+
 const assignmentsListInFlight = new Map()
 
 export const listAssignments = async (classId: string) => {
@@ -83,6 +124,7 @@ function cacheAssignmentDetails(assignmentId: number, details: unknown) {
       name: typeof details.name === 'string' ? details.name : null,
       assignment_type: typeof details.assignment_type === 'string' ? details.assignment_type : null,
       due_date: typeof details.due_date === 'string' ? details.due_date : null,
+      is_closed: typeof details.is_closed === 'boolean' ? details.is_closed : undefined,
       courseID: courseId ?? undefined,
       course: courseId != null ? { id: courseId } : undefined,
     }

@@ -26,6 +26,8 @@ interface Review {
   reviewee: {
     id: number;
     name: string;
+    preferred_name?: string;
+    preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them';
     email: string;
   };
   completed: boolean;
@@ -130,6 +132,10 @@ export default function PeerReviews() {
   const handleReviewClick = (reviewId: number) => {
     setActiveReviewId(reviewId);
   };
+
+  const formatStudentName = (person: Review['reviewee']) => {
+    return String(person?.preferred_name || '').trim() || String(person?.name || '').trim()
+  }
 
   const groupCriteriaMeta = useMemo(() => {
     const criteria = groupStatus?.criteria ?? [];
@@ -526,7 +532,7 @@ export default function PeerReviews() {
                 onClick={() => handleReviewClick(review.id)}
               >
                 <div className="review-info">
-                  <h4>{review.reviewee.name}</h4>
+                  <h4>{formatStudentName(review.reviewee)}</h4>
                   {assignmentType !== 'peer_eval_individual' ? (
                     review.submission ? (
                       <p className="submission-status">

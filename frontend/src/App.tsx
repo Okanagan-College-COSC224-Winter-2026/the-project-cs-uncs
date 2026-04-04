@@ -113,12 +113,6 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/profile/:id" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-
           <Route path="/classes/:id/home" element={
             <ProtectedRoute>
               <ClassRouteGuard>

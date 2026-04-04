@@ -606,6 +606,42 @@ def delete_assignment(assignment_id):
     return jsonify({"msg": "Assignment deleted"}), 200
 
 
+@bp.route("/closed/<int:assignment_id>", methods=["PATCH"])
+@jwt_role_required("teacher", "admin")
+def set_assignment_closed(assignment_id):
+    """Close or reopen an assignment (teacher/admin only).
+
+    Body (optional): {"is_closed": true|false}
+    If omitted, toggles the current state.
+    """
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course:
+        return jsonify({"msg": "Course not found"}), 404
+
+    if not user.is_admin() and course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized: You are not the teacher of this class or an admin"}), 403
+
+    data = request.get_json(silent=True) or {}
+    if "is_closed" in data:
+        assignment.is_closed = bool(data.get("is_closed"))
+    else:
+        assignment.is_closed = not bool(getattr(assignment, "is_closed", False))
+
+    db.session.commit()
+
+    msg = "Assignment closed" if assignment.is_closed else "Assignment reopened"
+    return jsonify({"msg": msg, "assignment": AssignmentSchema().dump(assignment)}), 200
+
+
 @bp.route("/details/<int:assignment_id>", methods=["GET"])
 @jwt_required()
 def get_assignment_details(assignment_id):
@@ -713,6 +749,8 @@ def get_my_submission(assignment_id):
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
 
+    is_closed = bool(getattr(assignment, "is_closed", False))
+
     email = get_jwt_identity()
     user = User.get_by_email(email)
     if not user:
@@ -725,7 +763,10 @@ def get_my_submission(assignment_id):
     submission = Submission.query.filter_by(studentID=user.id, assignmentID=assignment.id).first()
 
     if not submission:
-        return jsonify({"submission": None, "locked": False}), 200
+        payload = {"submission": None, "locked": is_closed}
+        if is_closed:
+            payload["msg"] = "Assignment is closed."
+        return jsonify(payload), 200
 
     attachments = list(getattr(submission, "attachments", []) or [])
 
@@ -747,6 +788,9 @@ def get_my_submission(assignment_id):
     first_file_name = attachments_payload[0]["file_name"] if attachments_payload else None
     submitted_by = {"id": user.id, "name": user.name}
 
+    locked = is_closed
+    payload_msg = "Assignment is closed." if locked else None
+
     return (
         jsonify(
             {
@@ -757,7 +801,8 @@ def get_my_submission(assignment_id):
                     "attachments": attachments_payload,
                 },
                 "submitted_by": submitted_by,
-                "locked": False,
+                "locked": locked,
+                "msg": payload_msg,
             }
         ),
         200,
@@ -771,6 +816,9 @@ def delete_my_submission(assignment_id):
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
+
+    if getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
 
     assignment_type = getattr(assignment, "assignment_type", None) or "standard"
     if assignment_type != "standard":
@@ -819,6 +867,9 @@ def upload_submission(assignment_id):
     assignment = Assignment.get_by_id(assignment_id)
     if not assignment:
         return jsonify({"msg": "Assignment not found"}), 404
+
+    if getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
 
     assignment_type = getattr(assignment, "assignment_type", None) or "standard"
     if assignment_type != "standard":

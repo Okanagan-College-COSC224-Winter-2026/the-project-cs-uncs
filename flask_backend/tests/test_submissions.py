@@ -338,3 +338,64 @@ def test_groupmate_cannot_view_or_download_other_students_submission(
 
     download_resp2 = test_client.get(f"/assignment/submission/attachment/download/{attachment_id}")
     assert download_resp2.status_code == 403
+
+
+def test_closed_assignment_blocks_student_standard_submissions_and_reopen_allows_again(
+    test_client, make_user, make_course, enroll_user_in_course
+):
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    student = make_user(role="student", email="s@example.com", password="spass", name="Student")
+    course = make_course(teacher_id=teacher.id)
+    enroll_user_in_course(student.id, course.id)
+
+    login_as(test_client, "t@example.com", "tpass")
+    due_date = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
+    create_resp = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert create_resp.status_code == 201
+    assignment_id = create_resp.json["assignment"]["id"]
+
+    close_resp = test_client.patch(
+        f"/assignment/closed/{assignment_id}",
+        json={"is_closed": True},
+    )
+    assert close_resp.status_code == 200
+    assert close_resp.json["assignment"]["is_closed"] is True
+
+    login_as(test_client, "s@example.com", "spass")
+
+    my_resp = test_client.get(f"/assignment/my_submission/{assignment_id}")
+    assert my_resp.status_code == 200
+    assert my_resp.json["locked"] is True
+
+    upload_resp = test_client.post(
+        f"/assignment/submit/{assignment_id}",
+        data={"files": [(io.BytesIO(b"hello"), "hello.txt")]},
+        content_type="multipart/form-data",
+    )
+    assert upload_resp.status_code == 403
+
+    delete_resp = test_client.delete(f"/assignment/my_submission/{assignment_id}")
+    assert delete_resp.status_code == 403
+
+    login_as(test_client, "t@example.com", "tpass")
+    reopen_resp = test_client.patch(
+        f"/assignment/closed/{assignment_id}",
+        json={"is_closed": False},
+    )
+    assert reopen_resp.status_code == 200
+    assert reopen_resp.json["assignment"]["is_closed"] is False
+
+    login_as(test_client, "s@example.com", "spass")
+    upload2_resp = test_client.post(
+        f"/assignment/submit/{assignment_id}",
+        data={"files": [(io.BytesIO(b"hello"), "hello.txt")]},
+        content_type="multipart/form-data",
+    )
+    assert upload2_resp.status_code == 200

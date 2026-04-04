@@ -1,4 +1,4 @@
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import BackArrow from "../components/BackArrow";
 import TabNavigation from "../components/TabNavigation";
 import { useEffect, useState } from "react";
@@ -7,12 +7,14 @@ import { importCSV } from "../util/csv";
 import { enrollStudentsByEmail, listCourseGroups, listCourseMembers, listClasses, removeCourseMember, type CourseGroup } from "../util/api";
 import HeaderTitle from "../components/HeaderTitle";
 import StatusMessage from "../components/StatusMessage";
+import { getUserById } from "../util/api_client/users";
 
 import './ClassMembers.css'
 import { isAdmin, isTeacher } from "../util/login";
 
 export default function ClassMembers() {
   const { id } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const teacherOrAdmin = isTeacher() || isAdmin()
 
@@ -28,6 +30,14 @@ export default function ClassMembers() {
 
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'error' | 'success'>('error');
+
+  const [selectedMemberInfo, setSelectedMemberInfo] = useState<User | null>(null)
+  const [loadingSelectedMember, setLoadingSelectedMember] = useState(false)
+  const [selectedMemberError, setSelectedMemberError] = useState<string | null>(null)
+
+  const selectedMemberIdRaw = searchParams.get('member')
+  const selectedMemberId = selectedMemberIdRaw ? Number(selectedMemberIdRaw) : null
+  const isDrillInOpen = selectedMemberId != null && Number.isFinite(selectedMemberId)
 
   useEffect(() => {
       document.title = 'Members';
@@ -81,8 +91,58 @@ export default function ClassMembers() {
     }
   }, [id, teacherOrAdmin])  
 
+  useEffect(() => {
+    if (!isDrillInOpen) {
+      setSelectedMemberInfo(null)
+      setSelectedMemberError(null)
+      setLoadingSelectedMember(false)
+      return
+    }
+
+    if (!teacherOrAdmin) {
+      setSelectedMemberInfo(null)
+      setSelectedMemberError(null)
+      setLoadingSelectedMember(false)
+      return
+    }
+
+    if (selectedMemberId == null || !Number.isFinite(selectedMemberId)) {
+      setSelectedMemberInfo(null)
+      setSelectedMemberError(null)
+      setLoadingSelectedMember(false)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      setSelectedMemberInfo(null)
+      setSelectedMemberError(null)
+      setStatusMessage('')
+      setLoadingSelectedMember(true)
+      try {
+        const info = await getUserById(selectedMemberId)
+        if (cancelled) return
+        setSelectedMemberInfo(info as User)
+      } catch (e) {
+        if (cancelled) return
+        console.error('Failed to load member info:', e)
+        setSelectedMemberError(e instanceof Error ? e.message : 'Failed to load student info.')
+      } finally {
+        if (!cancelled) setLoadingSelectedMember(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isDrillInOpen, selectedMemberId, teacherOrAdmin])
+
   if (!teacherOrAdmin) {
     return <Navigate to={`/classes/${id}/my-group`} replace />;
+  }
+
+  const openMemberInfo = (memberId: number) => {
+    setSearchParams({ member: String(memberId) })
   }
 
   const handleAddStudents = async () => {
@@ -138,7 +198,7 @@ export default function ClassMembers() {
 
   return (
     <div className="Page">
-      <BackArrow />
+      <BackArrow to={isDrillInOpen && id ? `/classes/${id}/members` : undefined} />
       <div className="ClassHeader">
         <div className="ClassHeaderLeft">
           <h2>
@@ -219,16 +279,69 @@ export default function ClassMembers() {
         ]}
       />
 
-      <div className="ClassMemberList">
-        {
-          members.map(member => {
+      {isDrillInOpen ? (
+        <>
+          <div className="MembersPanel">
+            <h3 style={{ margin: 0 }}>Student Info</h3>
+            {selectedMemberError ? <StatusMessage message={selectedMemberError} type="error" /> : null}
+
+            <div className="MembersInfoRow">
+              <div className="MembersInfoLabel">Full Name</div>
+              <div className="MembersInfoValue">
+                {loadingSelectedMember ? 'Loading…' : String(selectedMemberInfo?.name || '—')}
+              </div>
+            </div>
+
+            <div className="MembersInfoRow">
+              <div className="MembersInfoLabel">Preferred Name</div>
+              <div className="MembersInfoValue">
+                {loadingSelectedMember
+                  ? 'Loading…'
+                  : String(selectedMemberInfo?.preferred_name || selectedMemberInfo?.name || '—')}
+              </div>
+            </div>
+
+            <div className="MembersInfoRow">
+              <div className="MembersInfoLabel">Preferred Pronouns</div>
+              <div className="MembersInfoValue">
+                {loadingSelectedMember
+                  ? 'Loading…'
+                  : String(selectedMemberInfo?.preferred_pronouns || 'Not specified')}
+              </div>
+            </div>
+
+            <div className="MembersInfoRow">
+              <div className="MembersInfoLabel">Email</div>
+              <div className="MembersInfoValue">
+                {loadingSelectedMember ? 'Loading…' : String(selectedMemberInfo?.email || '—')}
+              </div>
+            </div>
+
+            <div className="MembersInfoRow">
+              <div className="MembersInfoLabel">Group</div>
+              <div className="MembersInfoValue">
+                {(() => {
+                  const groupName = groupNameByUserId[selectedMemberId]
+                  return groupName ? groupName : '—'
+                })()}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="ClassMemberList">
+          {members.map((member) => {
             const groupName = groupNameByUserId[member.id]
             return (
               <div key={member.id} className="Member">
-                <div className="MemberName">
+                <button
+                  type="button"
+                  className="MemberName MemberNameButton"
+                  onClick={() => openMemberInfo(member.id)}
+                >
                   {member.name}
                   {groupName ? <span className="MemberGroup"> [{groupName}]</span> : null}
-                </div>
+                </button>
                 {isTeacher() ? (
                   <Button
                     type="secondary"
@@ -241,9 +354,9 @@ export default function ClassMembers() {
                 ) : null}
               </div>
             )
-          })
-        }
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }

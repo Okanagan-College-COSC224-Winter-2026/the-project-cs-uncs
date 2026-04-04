@@ -75,6 +75,14 @@
   gap: var(--spacing-md);
 }
 
+.ClassHeaderRight {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
 .AssignmentHeader {
   display: flex;
   flex-direction: row;

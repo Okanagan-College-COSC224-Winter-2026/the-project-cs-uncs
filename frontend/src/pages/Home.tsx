@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ClassCard from "../components/ClassCard";
+import Button from "../components/Button";
 import StatusMessage from "../components/StatusMessage";
 
 import './Home.css'
-import { listClasses, searchClasses } from "../util/api_client/classes";
+import { deleteClass, listClasses, searchClasses } from "../util/api_client/classes";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const classesSectionRef = useRef<HTMLDivElement | null>(null);
   const [courses, setCourses] = useState<CourseWithAssignments[]>([]);
@@ -16,14 +18,44 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [statusMessage, setStatusMessage] = useState<string>("");
+  const [statusType, setStatusType] = useState<'error' | 'success'>('success');
+  const [confirmDeleteCourseId, setConfirmDeleteCourseId] = useState<number | null>(null);
+  const [deletingCourseId, setDeletingCourseId] = useState<number | null>(null);
 
   const adminMode = isAdmin();
+  const canDeleteCourses = adminMode || isTeacher();
   const dashboardTitle = adminMode
     ? "Admin Dashboard"
     : isTeacher()
       ? "Teacher Dashboard"
       : "Student Dashboard";
   const totalAssignments = courses.reduce((sum, course) => sum + Number(course.assignmentCount || 0), 0);
+
+  const handleDeleteCourse = async (courseId: number) => {
+    if (confirmDeleteCourseId !== courseId) {
+      setConfirmDeleteCourseId(courseId);
+      setStatusType('error');
+      setStatusMessage('Click delete again to confirm.');
+      return;
+    }
+
+    try {
+      setDeletingCourseId(courseId);
+      await deleteClass(courseId);
+      setCourses((prev) => prev.filter((c) => Number(c.id) !== Number(courseId)));
+      setAllCourses((prev) => (prev ? prev.filter((c) => Number(c.id) !== Number(courseId)) : prev));
+      setStatusType('success');
+      setStatusMessage('Class deleted successfully!');
+    } catch (e) {
+      console.error('Error deleting class:', e);
+      setStatusType('error');
+      setStatusMessage(e instanceof Error ? e.message : 'Error deleting class.');
+    } finally {
+      setDeletingCourseId(null);
+      setConfirmDeleteCourseId(null);
+    }
+  };
 
   const handleBrowseClasses = () => {
     if (allCourses) {
@@ -34,6 +66,23 @@ export default function Home() {
     classesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     searchInputRef.current?.focus();
   };
+
+  useEffect(() => {
+    const state = location.state as unknown;
+    if (!state || typeof state !== 'object') return;
+    const record = state as Record<string, unknown>;
+
+    const maybeMsg = record.statusMessage;
+    const maybeType = record.statusType;
+
+    if (typeof maybeMsg !== 'string' || !maybeMsg.trim()) return;
+    if (maybeType !== 'success' && maybeType !== 'error') return;
+
+    setStatusMessage(maybeMsg);
+    setStatusType(maybeType);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
+
   useEffect(() => {
       document.title = 'Dashboard';
 
@@ -154,6 +203,7 @@ export default function Home() {
     <div className="Home Page">
       <h1>{dashboardTitle}</h1>
 
+      <StatusMessage message={statusMessage} type={statusType} />
       <StatusMessage message={errorMessage} type="error" />
 
       {adminMode ? (
@@ -209,6 +259,9 @@ export default function Home() {
           ) : (
             courses.map((course) => {
               const assignmentText = `${course.assignmentCount || 0} assignments`;
+              const courseId = Number(course.id);
+              const isConfirmingDelete = confirmDeleteCourseId === courseId;
+              const isDeleting = deletingCourseId === courseId;
 
               return (
                 <ClassCard
@@ -216,6 +269,20 @@ export default function Home() {
                   image="https://crc.losrios.edu//shared/img/social-1200-630/programs/general-science-social.jpg"
                   name={course.name}
                   subtitle={assignmentText}
+                  actions={
+                    canDeleteCourses ? (
+                      <Button
+                        type="secondary"
+                        disabled={isDeleting}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDeleteCourse(courseId);
+                        }}
+                      >
+                        {isConfirmingDelete ? 'Confirm delete' : 'Delete'}
+                      </Button>
+                    ) : null
+                  }
                   onclick={() => {
                     navigate(`/classes/${course.id}/home`);
                   }}

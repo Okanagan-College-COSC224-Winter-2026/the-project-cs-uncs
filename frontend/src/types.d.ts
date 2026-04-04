@@ -8,8 +8,11 @@ interface Course {
 interface User {
   id: number;
   name: string;
+  preferred_name?: string;
+  preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them';
   email: string;
   role: 'student' | 'teacher' | 'admin';
+  must_change_password?: boolean;
 }
 
 interface StudentGroups {
@@ -47,6 +50,7 @@ interface Assignment {
   rubric?: string;
   due_date?: string;
   assignment_type?: 'standard' | 'peer_eval_group' | 'peer_eval_individual' | string;
+  is_closed?: boolean;
   student_done?: boolean;
 }
 

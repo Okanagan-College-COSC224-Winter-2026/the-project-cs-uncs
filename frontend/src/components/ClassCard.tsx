@@ -5,6 +5,7 @@ interface Props {
   name: string
   subtitle: string
   onclick?: () => void
+  actions?: React.ReactNode
 }
 
 export default function ClassCard(props: Props) {
@@ -14,6 +15,7 @@ export default function ClassCard(props: Props) {
       <div className="ClassInfo">
         <h2>{props.name}</h2>
         <p>{props.subtitle}</p>
+        {props.actions ? <div className="ClassCardActions">{props.actions}</div> : null}
       </div>
     </div>
   )

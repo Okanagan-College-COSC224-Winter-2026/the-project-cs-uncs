@@ -47,7 +47,6 @@ New terminal in the directory the-project-cs-uncs.
 cd flask_backend
 source venv/bin/activate
 export FLASK_APP=api
-export FLASK_APP=api
 export SMTP_HOST=smtp.gmail.com
 export SMTP_PORT=587
 export SMTP_USER=your_email@gmail.com

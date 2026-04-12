@@ -37,6 +37,10 @@ export default function Sidebar() {
         <SidebarRow selected={location === '/change-password'} href="/change-password" iconName="lock">
           Change Password
         </SidebarRow>
+
+        <SidebarRow selected={location === '/help'} href="/help" iconName="help">
+          Help
+        </SidebarRow>
       </div>
 
       <div className="SidebarBottom">
@@ -61,7 +65,7 @@ interface SidebarRowProps {
   href: string
   children: React.ReactNode
   onClick?: () => void
-  iconName?: 'logout' | 'home' | 'user' | 'lock'
+  iconName?: 'logout' | 'home' | 'user' | 'lock' | 'help'
 }
 
 function SidebarRow(props: SidebarRowProps) {

@@ -21,8 +21,8 @@
   box-shadow: 0 0 0 3px rgba(68, 68, 68, 0.1);
 }
 
-.reviewedCell {
-  background-color: var(--success);
-  color: var(--background-primary);
+td.reviewedCell {
+  background-color: var(--success) !important;
+  color: var(--background-primary) !important;
   font-weight: 600;
 }

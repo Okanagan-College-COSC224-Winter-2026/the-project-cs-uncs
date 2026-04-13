@@ -332,3 +332,58 @@ export async function createAssignment(
   return await response.json()
 }
 
+
+export type TeacherCriterionGrade = {
+  criterionRowID: number
+  question: string
+  scoreMax: number
+  grade: number | null
+  comments: string | null
+}
+
+export type TeacherCriterionGradesResponse = {
+  criteria: TeacherCriterionGrade[]
+  total: number | null
+}
+
+export const getTeacherCriterionGrades = async (
+  assignmentId: number,
+  studentId: number
+): Promise<TeacherCriterionGradesResponse> => {
+  const resp = await safeFetch(
+    `${BASE_URL}/assignment/${assignmentId}/teacher_grade/${studentId}`,
+    { credentials: 'include' }
+  )
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(await getErrorMessageFromResponse(resp, 'Failed to load teacher grades'))
+  }
+
+  return await resp.json()
+}
+
+export const saveTeacherCriterionGrades = async (
+  assignmentId: number,
+  studentId: number,
+  grades: Array<{ criterionRowID: number; grade: number | null; comments?: string | null }>
+): Promise<{ total: number; grade: number }> => {
+  const resp = await safeFetch(
+    `${BASE_URL}/assignment/${assignmentId}/teacher_grade/${studentId}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grades }),
+      credentials: 'include',
+    }
+  )
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(await getErrorMessageFromResponse(resp, 'Failed to save teacher grades'))
+  }
+
+  return await resp.json()
+}

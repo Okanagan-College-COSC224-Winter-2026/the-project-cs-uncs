@@ -15,6 +15,7 @@ class Submission(db.Model):
     studentID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
     assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
     submitted_at = db.Column(db.DateTime, nullable=False, default=datetime.now, index=True)
+    grade = db.Column(db.Float, nullable=True)
 
     # relationships
     student = db.relationship("User", back_populates="submissions")

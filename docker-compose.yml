@@ -58,7 +58,7 @@ services:
     environment:
       # Flask configuration
       FLASK_APP: api
-      FLASK_ENV: ${FLASK_ENV:-production}
+      FLASK_ENV: ${FLASK_ENV:-development}
       # To enable development mode, set FLASK_ENV=development in your .env file or environment.
       
       # Security secrets (override via .env file or environment)
@@ -66,10 +66,10 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-prod}
       
       # Database connection (uses environment variables to avoid hardcoded credentials)
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-peereval_user}:${POSTGRES_PASSWORD:-dev_password_change_in_prod}@postgres:5432/${POSTGRES_DB:-peereval}}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-peereval_user}:${POSTGRES_PASSWORD:-dev_password_change_in_prod}@postgres:5432/${POSTGRES_DB:-peereval}
       
       # CORS configuration (allow frontend origin)
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
       
       # Optional: JWT cookie domain for cross-subdomain authentication (production)
       # Set to .yourdomain.com in production for subdomain cookie sharing

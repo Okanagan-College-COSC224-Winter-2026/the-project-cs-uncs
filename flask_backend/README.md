@@ -215,7 +215,7 @@ For local development, the app works out-of-the-box with sensible defaults. **Yo
 If you want to customize settings, create a `.env` file in the `flask_backend/` directory:
 
 ```bash
-# Example .env file for local development (all optional)
+# Example .env.d file for local development (all optional)
 
 # Secret Keys (defaults are generated if not set)
 SECRET_KEY=your-secret-key-here

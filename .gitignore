@@ -72,14 +72,14 @@ flask_backend/instance/uploads/
 # Environment secrets  #
 ########################
 # Generic env files at repo or package level
-.env
-.env.*
+.env.d
+.env.d
 *.env
 *.env.*
 
 # Keep example envs tracked
 !**/example.env
-!.env.example
+!.env.d
 
 ############
 # Databases #

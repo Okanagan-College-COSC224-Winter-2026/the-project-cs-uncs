@@ -18,7 +18,7 @@
 #   Current setup: Frontend makes direct HTTP requests to backend via CORS
 # Security Notes:
 #   - Never commit real secrets to this file
-#   - Use .env file (git-ignored) for local overrides
+#   - Use .env.d file (git-ignored) for local overrides
 #   - For production, use cloud provider's secret management
 
 services:
@@ -59,9 +59,9 @@ services:
       # Flask configuration
       FLASK_APP: api
       FLASK_ENV: ${FLASK_ENV:-development}
-      # To enable development mode, set FLASK_ENV=development in your .env file or environment.
+      # To enable development mode, set FLASK_ENV=development in your .env.d file or environment.
       
-      # Security secrets (override via .env file or environment)
+      # Security secrets (override via .env.d file or environment)
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-prod}
       

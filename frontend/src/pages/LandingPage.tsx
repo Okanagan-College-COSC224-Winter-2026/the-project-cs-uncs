@@ -40,6 +40,16 @@ const featureItems = [
 export default function LandingPage() {
 
   const navigate = useNavigate();
+  const scrollToTop = () => {
+    const appScroller = document.querySelector('.inner') as HTMLElement | null;
+    if (appScroller) {
+      appScroller.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -48,7 +58,7 @@ export default function LandingPage() {
     <main className="LandingPage">
       <nav className="LandingNav">
         <div className="LandingNavInner">
-          <button className="LandingBrand" onClick={() => scrollToSection("top")}>Toodle</button>
+          <button className="LandingBrand" onClick={scrollToTop}>Toodle</button>
           <div className="LandingNavLinks">
             <button onClick={() => scrollToSection("how")}>How it works</button>
             <button onClick={() => scrollToSection("features")}>Features</button>

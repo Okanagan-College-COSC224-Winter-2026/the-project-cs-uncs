@@ -280,7 +280,7 @@ export default function Groups() {
                     </h2>
                 </div>
                 <div className="ClassHeaderRight">
-                    {isTeacher() && courseId ? (
+                    {canManage && courseId ? (
                         <Button type="secondary" onClick={() => setShowCreateGroup((v) => !v)}>
                             {showCreateGroup ? "Cancel" : "Create New Group"}
                         </Button>
@@ -295,7 +295,7 @@ export default function Groups() {
             <div className="GroupsPage">
                 {loading ? <div className="PageStatusText">Loading…</div> : null}
 
-                {showCreateGroup && isTeacher() ? (
+                {showCreateGroup && canManage ? (
                     <div className="GroupsPanel">
                         <h3>Create Group</h3>
 

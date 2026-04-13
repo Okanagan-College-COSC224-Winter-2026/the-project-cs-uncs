@@ -4,8 +4,8 @@ import Button from "../components/Button";
 import "./ClassHome.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { listAssignments, deleteAssignment } from "../util/api_client/assignments";
-import { listClasses, enrollStudentsByEmail } from "../util/api_client/classes";
+import { listAssignments, deleteAssignment } from "../util/api_client";
+import { listClasses, enrollStudentsByEmail } from "../util/api_client";
 import TabNavigation from "../components/TabNavigation";
 import { importCSV } from "../util/csv";
 import StatusMessage from "../components/StatusMessage";
@@ -157,7 +157,7 @@ export default function ClassHome() {
           </div>
 
         <div className="ClassHeaderRight">
-          {isTeacher() ? (
+          {isTeacherOrAdmin ? (
             <>
               <Button
                 onClick={() =>
@@ -187,7 +187,7 @@ export default function ClassHome() {
         </div>
       </div>
 
-      {isTeacher() && showAddStudents ? (
+      {isTeacherOrAdmin && showAddStudents ? (
         <div className="AddStudentsPanel">
           <label className="AddStudentsLabel">
             Student emails (comma / space / newline separated)

@@ -56,7 +56,6 @@ export default function ClassMembers() {
           const map: Record<number, string> = {}
           for (const g of groups) {
             for (const m of g.members || []) {
-              if (typeof m.id !== 'number') continue
               // If a student somehow appears in multiple groups, keep the first name.
               if (!map[m.id]) {
                 map[m.id] = g.name
@@ -147,7 +146,7 @@ export default function ClassMembers() {
         </div>
 
         <div className="ClassHeaderRight">
-          {isTeacher() ? (
+          {teacherOrAdmin ? (
             <>
               <Button
                 onClick={() =>
@@ -180,7 +179,7 @@ export default function ClassMembers() {
 
       <StatusMessage message={statusMessage} type={statusType} />
 
-      {isTeacher() && showAddStudents ? (
+      {teacherOrAdmin && showAddStudents ? (
         <div className="AddStudentsPanel">
           <label className="AddStudentsLabel">
             Student emails (comma / space / newline separated)
@@ -229,7 +228,7 @@ export default function ClassMembers() {
                   {member.name}
                   {groupName ? <span className="MemberGroup"> [{groupName}]</span> : null}
                 </div>
-                {isTeacher() ? (
+                {teacherOrAdmin ? (
                   <Button
                     type="secondary"
                     className="MemberRemoveBtn"

@@ -394,8 +394,8 @@ def create_assignment():
     elif assignment_type == "standard" and rubric_criteria:
         try:
             rubric_template_override = _normalize_rubric_criteria_payload(rubric_criteria)
-        except ValueError as e:
-            return jsonify({"msg": str(e)}), 400
+        except ValueError:
+            return jsonify({"msg": "Invalid rubric_criteria for standard assignment"}), 400
 
     max_points = None
     if max_points_raw is not None and str(max_points_raw).strip() != "":

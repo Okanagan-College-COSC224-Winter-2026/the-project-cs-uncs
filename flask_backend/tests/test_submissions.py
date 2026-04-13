@@ -19,6 +19,13 @@ def login_as(client, email, password):
     )
 
 
+def future_due_date():
+    return (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
+
+
 @pytest.fixture
 def make_user():
     def _make_user(role="student", email="user@example.com", password="pass", name="User"):
@@ -399,3 +406,85 @@ def test_closed_assignment_blocks_student_standard_submissions_and_reopen_allows
         content_type="multipart/form-data",
     )
     assert upload2_resp.status_code == 200
+
+
+def test_list_submissions_includes_grade(test_client, make_user, make_course, enroll_user_in_course):
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    student = make_user(role="student", email="s@example.com", password="spass", name="Student")
+    course = make_course(teacher_id=teacher.id)
+    enroll_user_in_course(student.id, course.id)
+
+    login_as(test_client, "t@example.com", "tpass")
+    create_resp = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": future_due_date()}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert create_resp.status_code == 201
+    assignment_id = create_resp.json["assignment"]["id"]
+
+    login_as(test_client, "s@example.com", "spass")
+    test_client.post(
+        f"/assignment/submit/{assignment_id}",
+        data={"files": [(io.BytesIO(b"hello"), "hello.txt")]},
+        content_type="multipart/form-data",
+    )
+
+    # Grade is null initially
+    login_as(test_client, "t@example.com", "tpass")
+    list_resp = test_client.get(f"/assignment/submissions/{assignment_id}")
+    assert list_resp.status_code == 200
+    assert list_resp.json["submissions"][0]["grade"] is None
+
+    # Set grade via gradebook endpoint
+    test_client.patch(
+        f"/class/{course.id}/gradebook/{student.id}/{assignment_id}",
+        data=json.dumps({"grade": 88.0}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    list_resp2 = test_client.get(f"/assignment/submissions/{assignment_id}")
+    assert list_resp2.status_code == 200
+    assert list_resp2.json["submissions"][0]["grade"] == 88.0
+
+
+def test_get_my_submission_includes_grade(test_client, make_user, make_course, enroll_user_in_course):
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    student = make_user(role="student", email="s@example.com", password="spass", name="Student")
+    course = make_course(teacher_id=teacher.id)
+    enroll_user_in_course(student.id, course.id)
+
+    login_as(test_client, "t@example.com", "tpass")
+    create_resp = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": future_due_date()}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert create_resp.status_code == 201
+    assignment_id = create_resp.json["assignment"]["id"]
+
+    login_as(test_client, "s@example.com", "spass")
+    test_client.post(
+        f"/assignment/submit/{assignment_id}",
+        data={"files": [(io.BytesIO(b"hello"), "hello.txt")]},
+        content_type="multipart/form-data",
+    )
+
+    # Grade is null before grading
+    my_resp = test_client.get(f"/assignment/my_submission/{assignment_id}")
+    assert my_resp.status_code == 200
+    assert my_resp.json["submission"]["grade"] is None
+
+    # Teacher sets grade
+    login_as(test_client, "t@example.com", "tpass")
+    test_client.patch(
+        f"/class/{course.id}/gradebook/{student.id}/{assignment_id}",
+        data=json.dumps({"grade": 75.5}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    # Student can now see their grade
+    login_as(test_client, "s@example.com", "spass")
+    my_resp2 = test_client.get(f"/assignment/my_submission/{assignment_id}")
+    assert my_resp2.status_code == 200
+    assert my_resp2.json["submission"]["grade"] == 75.5

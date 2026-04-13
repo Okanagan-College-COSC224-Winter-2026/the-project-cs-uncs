@@ -15,9 +15,14 @@ import {
   getAssignmentDetails,
   getSubmissionAttachmentDownloadUrl,
   getSubmissionDownloadUrl,
+  getRubricCriteria,
   type TeacherGroupPeerEvalOverviewResponse,
   peekAssignmentDetails,
+  getTeacherCriterionGrades,
+  saveTeacherCriterionGrades,
+  type TeacherCriterionGrade,
 } from "../util/api";
+import { updateGrade } from "../util/api_client/classes";
 import "./Groups.css";
 
 type CourseMember = {
@@ -34,6 +39,7 @@ type Submission = {
   attachments?: Array<{ id: number; file_name?: string | null }>;
   submitted_at?: string | null;
   on_time?: boolean | null;
+  grade?: number | null;
 };
 
 type AssignmentDetails = {
@@ -42,6 +48,7 @@ type AssignmentDetails = {
   courseID?: number;
   course?: { id: number };
   assignment_type?: string | null;
+  max_points?: number | null;
 };
 
 type GroupPeerEvalSubmission = TeacherGroupPeerEvalOverviewResponse["submissions"][number];
@@ -57,6 +64,7 @@ export default function Submissions() {
   const [assignmentName, setAssignmentName] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<number | null>(null);
   const [assignmentType, setAssignmentType] = useState<string | null>(null);
+  const [assignmentMaxPoints, setAssignmentMaxPoints] = useState<number | null>(null);
 
   const [groups, setGroups] = useState<CourseGroup[]>([]);
   const [students, setStudents] = useState<CourseMember[]>([]);
@@ -67,6 +75,23 @@ export default function Submissions() {
   const [loading, setLoading] = useState(true);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Grade editing state (for standard assignments)
+  const [editingGradeStudentId, setEditingGradeStudentId] = useState<number | null>(null);
+  const [editGradeValue, setEditGradeValue] = useState<string>("");
+  const [savingGradeStudentId, setSavingGradeStudentId] = useState<number | null>(null);
+  const [gradeError, setGradeError] = useState<string | null>(null);
+
+  // Rubric criteria for standard assignments (teacher criterion grading)
+  const [rubricCriteria, setRubricCriteria] = useState<TeacherCriterionGrade[]>([]);
+  // Criterion grading state: studentId → {grades, editing, saving, error}
+  const [criterionGradesByStudent, setCriterionGradesByStudent] = useState<
+    Record<number, TeacherCriterionGrade[]>
+  >({});
+  const [editingCriterionStudentId, setEditingCriterionStudentId] = useState<number | null>(null);
+  const [editCriterionValues, setEditCriterionValues] = useState<Record<number, string>>({});
+  const [savingCriterionStudentId, setSavingCriterionStudentId] = useState<number | null>(null);
+  const [criterionError, setCriterionError] = useState<string | null>(null);
 
   const isTeacherOrAdmin = hasRole("teacher", "admin");
 
@@ -117,9 +142,33 @@ export default function Submissions() {
 
         setAssignmentName(details?.name ?? null);
         setAssignmentType(details?.assignment_type ?? null);
+        setAssignmentMaxPoints(details?.max_points ?? null);
 
         const resolvedCourseId = Number(details?.course?.id ?? details?.courseID);
         setCourseId(Number.isFinite(resolvedCourseId) ? resolvedCourseId : null);
+
+        // Fetch rubric criteria for standard assignments so teacher can grade per-criterion.
+        if (details?.assignment_type === "standard") {
+          try {
+            const criteria = await getRubricCriteria(Number(id));
+            if (!cancelled && Array.isArray(criteria)) {
+              // getRubricCriteria returns {id, question, scoreMax}; normalize to TeacherCriterionGrade shape.
+              setRubricCriteria(
+                criteria.map((c: Record<string, unknown>) => ({
+                  criterionRowID: c.id as number,
+                  question: c.question as string,
+                  scoreMax: c.scoreMax as number,
+                  grade: null,
+                  comments: null,
+                }))
+              );
+            }
+          } catch {
+            // Rubric criteria are optional; ignore fetch errors silently.
+          }
+        } else {
+          setRubricCriteria([]);
+        }
 
         setSelectedGroup(null);
       } catch (e: unknown) {
@@ -243,6 +292,129 @@ export default function Submissions() {
     return groupPeerEvalByGroupId[group.id] ?? null;
   };
 
+  const startGradeEdit = (studentId: number, currentGrade: number | null | undefined) => {
+    setEditingGradeStudentId(studentId);
+    setEditGradeValue(currentGrade != null ? String(currentGrade) : "");
+    setGradeError(null);
+  };
+
+  const cancelGradeEdit = () => {
+    setEditingGradeStudentId(null);
+    setEditGradeValue("");
+    setGradeError(null);
+  };
+
+  const saveGrade = async (studentId: number) => {
+    if (!id || !courseId) return;
+    const gradeNum = editGradeValue.trim() === "" ? null : Number(editGradeValue);
+    if (gradeNum !== null && (isNaN(gradeNum) || gradeNum < 0)) {
+      setGradeError("Grade must be a non-negative number or empty to clear.");
+      return;
+    }
+    setSavingGradeStudentId(studentId);
+    setGradeError(null);
+    try {
+      const result = await updateGrade(courseId, studentId, Number(id), gradeNum);
+      setSubmissionsByStudentId((prev) => {
+        const sub = prev[studentId];
+        if (!sub) return prev;
+        return { ...prev, [studentId]: { ...sub, grade: result.grade } };
+      });
+      setEditingGradeStudentId(null);
+      setEditGradeValue("");
+    } catch (e) {
+      setGradeError(e instanceof Error ? e.message : "Failed to save grade.");
+    } finally {
+      setSavingGradeStudentId(null);
+    }
+  };
+
+  const startCriterionEdit = async (studentId: number) => {
+    setCriterionError(null);
+    setEditingCriterionStudentId(studentId);
+
+    // Load existing teacher grades if not already cached.
+    if (!criterionGradesByStudent[studentId]) {
+      try {
+        const result = await getTeacherCriterionGrades(Number(id), studentId);
+        // Merge saved grades into rubric criteria (both use criterionRowID).
+        const merged = rubricCriteria.map((c) => {
+          const saved = result.criteria.find((r) => r.criterionRowID === c.criterionRowID);
+          return { ...c, grade: saved?.grade ?? null, comments: saved?.comments ?? null };
+        });
+        const displayCriteria = merged.length ? merged : result.criteria;
+        setCriterionGradesByStudent((prev) => ({ ...prev, [studentId]: displayCriteria }));
+        const initValues: Record<number, string> = {};
+        for (const c of displayCriteria) {
+          initValues[c.criterionRowID] = c.grade != null ? String(c.grade) : "";
+        }
+        setEditCriterionValues(initValues);
+      } catch {
+        // Fall back to empty values using rubric criteria.
+        const initValues: Record<number, string> = {};
+        for (const c of rubricCriteria) {
+          initValues[c.criterionRowID] = "";
+        }
+        setEditCriterionValues(initValues);
+      }
+    } else {
+      const initValues: Record<number, string> = {};
+      for (const c of criterionGradesByStudent[studentId]) {
+        initValues[c.criterionRowID] = c.grade != null ? String(c.grade) : "";
+      }
+      setEditCriterionValues(initValues);
+    }
+  };
+
+  const cancelCriterionEdit = () => {
+    setEditingCriterionStudentId(null);
+    setEditCriterionValues({});
+    setCriterionError(null);
+  };
+
+  const saveCriterionGrades = async (studentId: number) => {
+    if (!id) return;
+    const criteria = criterionGradesByStudent[studentId] ?? rubricCriteria;
+    const grades = criteria.map((c) => {
+      const raw = editCriterionValues[c.criterionRowID];
+      const grade = raw == null || raw.trim() === "" ? null : Number(raw);
+      return { criterionRowID: c.criterionRowID, grade: Number.isFinite(grade) ? grade : null };
+    });
+
+    // Validate each grade against its scoreMax.
+    for (const c of criteria) {
+      const g = grades.find((x) => x.criterionRowID === c.criterionRowID);
+      if (g?.grade != null && (g.grade < 0 || g.grade > c.scoreMax)) {
+        setCriterionError(`Grade for "${c.question}" must be between 0 and ${c.scoreMax}.`);
+        return;
+      }
+    }
+
+    setSavingCriterionStudentId(studentId);
+    setCriterionError(null);
+    try {
+      const result = await saveTeacherCriterionGrades(Number(id), studentId, grades);
+      // Update submission grade display.
+      setSubmissionsByStudentId((prev) => {
+        const sub = prev[studentId];
+        if (!sub) return prev;
+        return { ...prev, [studentId]: { ...sub, grade: result.grade } };
+      });
+      // Cache the saved grades.
+      const updated = criteria.map((c) => {
+        const g = grades.find((x) => x.criterionRowID === c.criterionRowID);
+        return { ...c, grade: g?.grade ?? null };
+      });
+      setCriterionGradesByStudent((prev) => ({ ...prev, [studentId]: updated }));
+      setEditingCriterionStudentId(null);
+      setEditCriterionValues({});
+    } catch (e) {
+      setCriterionError(e instanceof Error ? e.message : "Failed to save criterion grades.");
+    } finally {
+      setSavingCriterionStudentId(null);
+    }
+  };
+
   return (
     <div className="Page">
       {selectedGroup ? (
@@ -272,6 +444,9 @@ export default function Submissions() {
             <div className="GroupsPanel">
               <>
                 <h3>Student Submissions</h3>
+                {(gradeError || criterionError) ? (
+                  <div className="GroupsError" style={{ marginBottom: 8 }}>{gradeError || criterionError}</div>
+                ) : null}
                 {students.length === 0 ? (
                   <div className="GroupsMuted">No students found.</div>
                 ) : (
@@ -279,6 +454,11 @@ export default function Submissions() {
                     {students.map((s) => {
                       const sub = submissionsByStudentId[s.id];
                       const displayName = (s.name ?? "").trim() || s.email || `Student #${s.id}`;
+                      const isEditingGrade = editingGradeStudentId === s.id;
+                      const isSavingGrade = savingGradeStudentId === s.id;
+                      const isEditingCriterion = editingCriterionStudentId === s.id;
+                      const isSavingCriterion = savingCriterionStudentId === s.id;
+                      const hasCriteria = rubricCriteria.length > 0;
 
                       return (
                         <div key={s.id} className="GroupsDetailRow">
@@ -329,6 +509,149 @@ export default function Submissions() {
                               "No submission"
                             )}
                           </div>
+
+                          {/* Criterion-based grading (when assignment has a rubric) */}
+                          {hasCriteria ? (
+                            <div style={{ marginTop: 8 }}>
+                              {isEditingCriterion ? (
+                                <div>
+                                  {criterionError ? (
+                                    <div className="GroupsError" style={{ marginBottom: 6 }}>{criterionError}</div>
+                                  ) : null}
+                                  <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 8 }}>
+                                    <tbody>
+                                      {rubricCriteria.map((c) => (
+                                        <tr key={c.criterionRowID}>
+                                          <td style={{ paddingRight: 12, paddingBottom: 6 }}>{c.question}</td>
+                                          <td style={{ whiteSpace: "nowrap" }}>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max={c.scoreMax}
+                                              step="1"
+                                              value={editCriterionValues[c.criterionRowID] ?? ""}
+                                              onChange={(e) =>
+                                                setEditCriterionValues((prev) => ({
+                                                  ...prev,
+                                                  [c.criterionRowID]: e.target.value,
+                                                }))
+                                              }
+                                              disabled={isSavingCriterion}
+                                              style={{ width: 60 }}
+                                            />
+                                            <span className="GroupsMuted"> / {c.scoreMax}</span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                  <div style={{ display: "flex", gap: 6 }}>
+                                    <Button
+                                      type="primary"
+                                      onClick={() => void saveCriterionGrades(s.id)}
+                                      disabled={isSavingCriterion}
+                                    >
+                                      {isSavingCriterion ? "Saving…" : "Save"}
+                                    </Button>
+                                    <Button type="secondary" onClick={cancelCriterionEdit} disabled={isSavingCriterion}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div style={{ marginBottom: 4 }}>
+                                    Grade:{" "}
+                                    {sub?.grade != null ? (
+                                      <strong>
+                                        {sub.grade}
+                                        {assignmentMaxPoints != null ? ` / ${assignmentMaxPoints}` : ""}
+                                      </strong>
+                                    ) : (
+                                      <span className="GroupsMuted">—</span>
+                                    )}
+                                  </div>
+                                  {criterionGradesByStudent[s.id] ? (
+                                    <table style={{ borderCollapse: "collapse", fontSize: "0.9em", marginBottom: 6 }}>
+                                      <tbody>
+                                        {criterionGradesByStudent[s.id].map((c) => (
+                                          <tr key={c.criterionRowID}>
+                                            <td style={{ paddingRight: 8, paddingBottom: 2 }} className="GroupsMuted">{c.question}</td>
+                                            <td style={{ whiteSpace: "nowrap" }}>
+                                              {c.grade != null ? (
+                                                <strong>{c.grade} / {c.scoreMax}</strong>
+                                              ) : (
+                                                <span className="GroupsMuted">—</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  ) : null}
+                                  <Button
+                                    type="secondary"
+                                    onClick={() => void startCriterionEdit(s.id)}
+                                  >
+                                    {sub?.grade != null ? "Edit criteria grades" : "Grade by criteria"}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            /* Simple single-number grading when no rubric criteria */
+                            <div style={{ marginTop: 8 }}>
+                              {isEditingGrade ? (
+                                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    placeholder="Grade"
+                                    value={editGradeValue}
+                                    onChange={(e) => setEditGradeValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") void saveGrade(s.id);
+                                      if (e.key === "Escape") cancelGradeEdit();
+                                    }}
+                                    disabled={isSavingGrade}
+                                    style={{ width: 90 }}
+                                    autoFocus
+                                  />
+                                  <Button
+                                    type="primary"
+                                    onClick={() => void saveGrade(s.id)}
+                                    disabled={isSavingGrade}
+                                  >
+                                    {isSavingGrade ? "Saving…" : "Save"}
+                                  </Button>
+                                  <Button type="secondary" onClick={cancelGradeEdit} disabled={isSavingGrade}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                  <span>
+                                    Grade:{" "}
+                                    {sub?.grade != null ? (
+                                      <strong>
+                                        {sub.grade}
+                                        {assignmentMaxPoints != null ? ` / ${assignmentMaxPoints}` : ""}
+                                      </strong>
+                                    ) : (
+                                      <span className="GroupsMuted">—</span>
+                                    )}
+                                  </span>
+                                  <Button
+                                    type="secondary"
+                                    onClick={() => startGradeEdit(s.id, sub?.grade)}
+                                  >
+                                    {sub?.grade != null ? "Edit grade" : "Add grade"}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

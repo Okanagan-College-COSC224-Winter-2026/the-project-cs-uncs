@@ -772,7 +772,15 @@ def get_gradebook(class_id: int):
             .all()
         )
         for assignment_id, max_points in max_rows:
-            assignment_max_points[int(assignment_id)] = int(max_points)
+            criteria_total = int(max_points)
+            if criteria_total > 0:
+                assignment_max_points[int(assignment_id)] = criteria_total
+            # else: no criteria — fall through to assignment.max_points below
+
+    # For assignments without rubric criteria, use the assignment's max_points field as fallback.
+    for a in assignments:
+        if assignment_max_points[a.id] is None and a.max_points:
+            assignment_max_points[a.id] = a.max_points
 
     # Build lookups keyed by (student_id, assignment_id)
     grade_lookup: dict[tuple[int, int], float | None] = {}

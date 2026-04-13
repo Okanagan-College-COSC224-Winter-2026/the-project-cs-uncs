@@ -14,6 +14,7 @@ from ..models import (
     AssignmentIncludedGroup,
     AssignmentSchema,
     Course,
+    Criterion,
     CriteriaDescription,
     Group,
     GroupEvaluationSubmission,
@@ -160,7 +161,11 @@ def _normalize_rubric_criteria_payload(rubric_criteria):
 
 
 def _ensure_default_rubric_for_assignment(assignment: Assignment, *, template_override=None):
-    if assignment.assignment_type not in {"peer_eval_group", "peer_eval_individual"}:
+    if assignment.assignment_type not in {"peer_eval_group", "peer_eval_individual", "standard"}:
+        return
+
+    # For standard assignments, only create a rubric when criteria are explicitly supplied.
+    if assignment.assignment_type == "standard" and not template_override:
         return
 
     # Create or replace rubric for this assignment.
@@ -382,6 +387,11 @@ def create_assignment():
 
     rubric_template_override = None
     if assignment_type in {"peer_eval_group", "peer_eval_individual"}:
+        try:
+            rubric_template_override = _normalize_rubric_criteria_payload(rubric_criteria)
+        except ValueError as e:
+            return jsonify({"msg": str(e)}), 400
+    elif assignment_type == "standard" and rubric_criteria:
         try:
             rubric_template_override = _normalize_rubric_criteria_payload(rubric_criteria)
         except ValueError as e:
@@ -1268,3 +1278,135 @@ def get_assignments(class_id):
             row["student_done"] = bool(done_by_assignment_id.get(aid, False))
 
     return jsonify(assignments_data), 200
+
+
+@bp.route("/<int:assignment_id>/teacher_grade/<int:student_id>", methods=["GET"])
+@jwt_teacher_required
+def get_teacher_criterion_grades(assignment_id, student_id):
+    """Return teacher criterion grades for a student on a standard assignment."""
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course or (not user.is_admin() and course.teacherID != user.id):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+    if not rubric:
+        return jsonify({"criteria": [], "total": None}), 200
+
+    review = Review.get_by_reviewer_reviewee_assignment(user.id, student_id, assignment_id)
+    criteria_descriptions = (
+        CriteriaDescription.query.filter_by(rubricID=rubric.id)
+        .order_by(CriteriaDescription.id.asc())
+        .all()
+    )
+
+    grade_by_desc_id = {}
+    if review:
+        for c in review.criteria.all():
+            grade_by_desc_id[c.criterionRowID] = {"grade": c.grade, "comments": c.comments}
+
+    result = []
+    for desc in criteria_descriptions:
+        saved = grade_by_desc_id.get(desc.id, {})
+        result.append(
+            {
+                "criterionRowID": desc.id,
+                "question": desc.question,
+                "scoreMax": desc.scoreMax,
+                "grade": saved.get("grade"),
+                "comments": saved.get("comments"),
+            }
+        )
+
+    total = sum(r["grade"] for r in result if r["grade"] is not None)
+    return jsonify({"criteria": result, "total": total if result else None}), 200
+
+
+@bp.route("/<int:assignment_id>/teacher_grade/<int:student_id>", methods=["POST"])
+@jwt_teacher_required
+def save_teacher_criterion_grades(assignment_id, student_id):
+    """Save teacher criterion grades for a student; updates submission grade to sum of criteria."""
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(assignment.courseID)
+    if not course or (not user.is_admin() and course.teacherID != user.id):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    student = User.get_by_id(student_id)
+    if not student:
+        return jsonify({"msg": "Student not found"}), 404
+
+    rubric = Rubric.query.filter_by(assignmentID=assignment_id).first()
+    if not rubric:
+        return jsonify({"msg": "No rubric found for this assignment"}), 404
+
+    data = request.get_json() or {}
+    grades_input = data.get("grades", [])
+
+    criteria_descriptions = (
+        CriteriaDescription.query.filter_by(rubricID=rubric.id)
+        .order_by(CriteriaDescription.id.asc())
+        .all()
+    )
+    valid_desc_ids = {desc.id for desc in criteria_descriptions}
+
+    # Get or create teacher review record for this student.
+    review = Review.get_by_reviewer_reviewee_assignment(user.id, student_id, assignment_id)
+    if not review:
+        review = Review(assignmentID=assignment_id, reviewerID=user.id, revieweeID=student_id)
+        Review.create_review(review)
+
+    # Replace existing criterion grades.
+    for c in review.criteria.all():
+        db.session.delete(c)
+
+    total = 0
+    for item in grades_input:
+        criterion_row_id = item.get("criterionRowID")
+        if criterion_row_id not in valid_desc_ids:
+            continue
+        grade_val = item.get("grade")
+        if grade_val is not None:
+            try:
+                grade_val = int(grade_val)
+            except (TypeError, ValueError):
+                grade_val = None
+        comments = item.get("comments") or None
+        db.session.add(
+            Criterion(
+                reviewID=review.id,
+                criterionRowID=criterion_row_id,
+                grade=grade_val,
+                comments=comments,
+            )
+        )
+        if grade_val is not None:
+            total += grade_val
+
+    review.completed = True
+    review.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    # Update submission grade with the criteria total.
+    submission = Submission.query.filter_by(
+        studentID=student_id, assignmentID=assignment_id
+    ).first()
+    if submission:
+        submission.grade = total
+
+    db.session.commit()
+    return jsonify({"msg": "Grades saved", "total": total, "grade": total}), 200

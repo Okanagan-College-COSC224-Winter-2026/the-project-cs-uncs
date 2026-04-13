@@ -547,7 +547,7 @@ export default function Submissions() {
                                   </table>
                                   <div style={{ display: "flex", gap: 6 }}>
                                     <Button
-                                      type="primary"
+                                      type="regular"
                                       onClick={() => void saveCriterionGrades(s.id)}
                                       disabled={isSavingCriterion}
                                     >
@@ -619,7 +619,7 @@ export default function Submissions() {
                                     autoFocus
                                   />
                                   <Button
-                                    type="primary"
+                                    type="regular"
                                     onClick={() => void saveGrade(s.id)}
                                     disabled={isSavingGrade}
                                   >

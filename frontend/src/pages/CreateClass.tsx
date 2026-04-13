@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import BackArrow from '../components/BackArrow'
 import Button from '../components/Button'
 import Textbox from '../components/Textbox'
 import StatusMessage from '../components/StatusMessage'
 import './CreateClass.css'
-import { createClass } from '../util/api_client/classes'
+import { createClass } from '../util/api_client'
 
 export default function CreateClass() {
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
   const [statusType, setStatusType] = useState<'error' | 'success'>('error')
@@ -20,7 +22,12 @@ export default function CreateClass() {
 
     try {
       setStatusMessage('');
-      await createClass(name.trim());
+      const created = await createClass(name.trim()) as { class?: { id?: number } }
+
+      if (typeof created?.class?.id === 'number') {
+        navigate(`/classes/${created.class.id}/home`)
+        return
+      }
 
       setStatusType('success');
       setStatusMessage('Class created successfully!');

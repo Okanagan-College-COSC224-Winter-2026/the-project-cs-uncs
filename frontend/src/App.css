@@ -21,6 +21,23 @@
   transition: var(--transition-base);
 }
 
+.MobileMenuButton {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  align-self: flex-start;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+}
+
+.MobileMenuButton:hover {
+  background-color: var(--background-secondary);
+}
+
 /* Page-level wrapper: use this on every page root to keep
    BackArrow/header/tabs spacing consistent regardless of page markup. */
 .Page {
@@ -81,7 +98,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-sm);
-}
+  flex-wrap: wrap;
+
 
 .AssignmentHeader {
   display: flex;
@@ -144,4 +162,24 @@ a {
   color: var(--accent-secondary);
   text-decoration: none;
   transition: var(--transition-base);
+}
+
+@media (max-width: 768px) {
+  .MobileMenuButton {
+    display: block;
+  }
+
+  .ClassHeader {
+    align-items: flex-start;
+  }
+
+  .ClassHeaderLeft {
+    width: 100%;
+  }
+
+  .ClassHeaderRight {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
 }

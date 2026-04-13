@@ -27,8 +27,8 @@ See [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) for detailed explanat
 git clone https://github.com/COSC470Fall2025/Peer-Evaluation-App-V1.git
 cd Peer-Evaluation-App-V1
 
-# 2. Create a root-level .env (docker compose reads this automatically)
-cp flask_backend/.env.example .env   # or copy the template in docs/GETTING_STARTED.md
+# 2. Create a root-level .env.d (docker compose reads this automatically)
+cp flask_backend/.env.d .env.d   # or copy the template in docs/GETTING_STARTED.md
 
 #    Minimum values required:
 #    SECRET_KEY=<random-string>
@@ -44,7 +44,7 @@ docker compose up --build -d
 # 4. Access the app
 # Frontend: http://localhost
 # Backend API: http://localhost:5000
-# Default admin credentials are sourced from DEFAULT_ADMIN_* in .env
+# Default admin credentials are sourced from DEFAULT_ADMIN_* in .env.d
 ```
 
 **What's included:**

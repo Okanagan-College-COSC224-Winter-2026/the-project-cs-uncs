@@ -224,8 +224,14 @@
 
 .LandingFeatures {
   background: #0f172a;
-  margin-top: 1rem;
+  margin-top: 0;
   padding: 4.5rem 2rem;
+}
+
+@media (min-width: 761px) {
+  .LandingFeatures {
+    padding-bottom: 8rem;
+  }
 }
 
 .LandingFeatures .SectionLabel {
@@ -322,6 +328,10 @@
     padding-top: 64px;
   }
 
+  .LandingHero {
+    min-height: calc(100dvh - 64px);
+  }
+
   .LandingNav {
     padding: 0.7rem 0.9rem;
   }
@@ -340,6 +350,12 @@
   .LandingFinalCta {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  #how,
+  #features {
+    scroll-margin-top: 64px;
+    min-height: calc(100dvh - 64px);
   }
 
   .LandingHero h1 {

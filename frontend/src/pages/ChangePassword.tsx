@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Textbox from '../components/Textbox';
 import StatusMessage from '../components/StatusMessage';
-import { changePassword, getCurrentUser } from '../util/api_client/users';
+import { changePassword, getCurrentUser } from '../util/api_client';
 import './LoginPage.css';
 
 export default function ChangePassword() {
@@ -21,7 +21,8 @@ export default function ChangePassword() {
 
     getCurrentUser()
       .then((user) => {
-        setIsForced(user.must_change_password === true);
+        const currentUser = user as { must_change_password?: boolean };
+        setIsForced(currentUser.must_change_password === true);
       })
       .catch(() => {
         // If we can't fetch user state, default to voluntary flow

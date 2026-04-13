@@ -31,7 +31,7 @@ import Submissions from "./pages/Submissions";
 import MyGroup from "./pages/MyGroup";
 
 import { useEffect, useState } from "react";
-import { getCurrentUser } from "./util/api_client/users";
+import { getCurrentUser } from "./util/api_client";
 
 const NO_SIDEBAR_PATHS = ["/", "/login", "/register"];
 
@@ -41,6 +41,7 @@ function AppContent() {
 
   // Block rendering until user info is synced from backend
   const [userSyncDone, setUserSyncDone] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -68,8 +69,17 @@ function AppContent() {
 
   return (
     <div className="App">
-      {!isPublicPath && <Sidebar />}
+      {!isPublicPath && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       <div className="inner">
+        {!isPublicPath && (
+          <button
+            className="MobileMenuButton"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open Menu"
+          >
+            ☰
+          </button>
+        )}
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />

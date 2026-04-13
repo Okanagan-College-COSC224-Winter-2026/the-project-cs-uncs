@@ -27,13 +27,13 @@
   border-right: none;
 }
 
-.criteriaTable tr:first-child .criterionHead,
-.criteriaTable tr:first-child td {
+.criteriaTable tbody tr:first-child .criterionHead,
+.criteriaTable tbody tr:first-child td {
   border-top: none;
 }
 
-.criteriaTable tr:last-child .criterionHead,
-.criteriaTable tr:last-child td {
+.criteriaTable tbody tr:last-child .criterionHead,
+.criteriaTable tbody tr:last-child td {
   border-bottom: none;
 }
 
@@ -48,7 +48,7 @@
   width: 50%;
 }
 
-td {
+.criteriaTable td {
   flex-grow: 1;
   text-align: center;
   padding: var(--spacing-md);
@@ -87,7 +87,32 @@ td {
 }
 
 .clickedCell {
-  background-color: var(--accent-primary);
+  background-color: var(--success);
   color: var(--background-primary);
   font-weight: 600;
 }
+
+@media (max-width: 768px) {
+  .criterionRow {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .criterionHead {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .criteriaTable td {
+    flex-basis: 0;
+    flex-grow: 1;
+    padding: var(--spacing-sm) 0;
+    border-top: none;
+  }
+
+  .criteriaTable tbody tr:not(:last-child) td {
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+

@@ -122,6 +122,19 @@ def create_app(test_config=None):
         if os.environ.get("CORS_ORIGINS")
         else ["http://localhost:3000", "http://localhost:5173"]
     )
+    cors_origins = [origin.strip() for origin in cors_origins if origin.strip()]
+
+    # In local/dev Docker runs, always allow loopback browser origins.
+    if not is_production:
+        dev_origins = [
+            "http://localhost",
+            "http://localhost:80",
+            "http://127.0.0.1",
+            "http://127.0.0.1:80",
+        ]
+        for origin in dev_origins:
+            if origin not in cors_origins:
+                cors_origins.append(origin)
     CORS(
         app,
         origins=cors_origins,

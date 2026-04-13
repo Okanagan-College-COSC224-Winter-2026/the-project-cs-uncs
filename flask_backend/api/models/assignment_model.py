@@ -29,7 +29,7 @@ class Assignment(db.Model):
     assignment_type = db.Column(db.String(50), nullable=False, default="standard", index=True)
 
     # Teachers/admins can close assignments to prevent new submissions.
-    is_closed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("0"), index=True)
+    is_closed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("false"), index=True)
 
     # relationships
     course = db.relationship("Course", back_populates="assignments", lazy="joined")

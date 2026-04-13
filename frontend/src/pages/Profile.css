@@ -154,3 +154,47 @@
   border-color: #0a0a0a;
   box-shadow: 0 0 0 1px #1a1a1a, var(--shadow-lg);
 }
+
+@media (max-width: 768px) {
+  .Profile .profile-hero {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--spacing-lg);
+  }
+
+  .Profile .profile-imageColumn {
+    align-items: center;
+  }
+
+  .Profile .profile-imageColumn .ProfilePhotoActions {
+    margin-top: var(--spacing-lg);
+  }
+
+  .Profile .profile-image {
+    width: 150px;
+    height: 150px;
+  }
+
+  .Profile .profile-info {
+    width: 100%;
+    margin-left: 0;
+    gap: var(--spacing-sm);
+  }
+
+  .Profile .profile-info h1 {
+    font-size: 1.5rem;
+  }
+
+  .Profile .ProfileFieldRow {
+    width: 100%;
+  }
+
+  .Profile .ProfileFieldRow span {
+    overflow-wrap: anywhere;
+  }
+
+  .Profile .ProfileEditInput {
+    width: 100%;
+    max-width: 100%;
+  }
+}

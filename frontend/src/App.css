@@ -92,6 +92,15 @@
   gap: var(--spacing-md);
 }
 
+.ClassHeaderRight {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .AssignmentHeader {
   display: flex;
   flex-direction: row;
@@ -158,5 +167,18 @@ a {
 @media (max-width: 768px) {
   .MobileMenuButton {
     display: block;
+  }
+
+  .ClassHeader {
+    align-items: flex-start;
+  }
+
+  .ClassHeaderLeft {
+    width: 100%;
+  }
+
+  .ClassHeaderRight {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

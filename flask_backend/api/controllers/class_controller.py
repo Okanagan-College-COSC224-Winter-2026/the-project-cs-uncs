@@ -1,6 +1,8 @@
 """Class controller - handles class and enrollment operations."""
 
-from flask import Blueprint, jsonify, request
+from pathlib import Path
+
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash
@@ -38,6 +40,49 @@ def create_class():
     new_class = Course(teacherID=user.id, name=class_name)
     Course.create_course(new_class)
     return jsonify({"msg": "Class created", "class": {"id": new_class.id}}), 201
+
+
+@bp.route("/delete_class/<int:class_id>", methods=["DELETE"])
+@jwt_teacher_required
+def delete_class(class_id: int):
+    """Delete a course.
+
+    Allowed for:
+      - Admin
+      - The course's teacher
+    """
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not user.is_admin() and course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized: You are not the teacher of this class or an admin"}), 403
+
+    # Clean up any assignment attachment files stored on disk. (The DB rows are
+    # removed via cascades when deleting the course.)
+    uploads_dir = Path(current_app.instance_path) / "uploads"
+    attachment_rows = (
+        Assignment.query.with_entities(Assignment.attachment_storage_name)
+        .filter(Assignment.courseID == course.id, Assignment.attachment_storage_name.isnot(None))
+        .all()
+    )
+    for (storage_name,) in attachment_rows:
+        if not storage_name:
+            continue
+        try:
+            (uploads_dir / storage_name).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    db.session.delete(course)
+    db.session.commit()
+
+    return jsonify({"msg": "Class deleted"}), 200
 
 
 @bp.route("/browse_classes", methods=["GET"])

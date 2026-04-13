@@ -33,6 +33,8 @@ def test_get_current_user(test_client):
     assert response.json["email"] == "test@example.com"
     assert response.json["id"] is not None
     assert response.json["role"] == "student"  # Default role
+    assert response.json["preferred_name"] == "testuser"  # Defaults to name
+    assert response.json["preferred_pronouns"] == "Not specified"
     assert "password" not in response.json  # Password should not be exposed
 
 
@@ -73,6 +75,35 @@ def test_update_current_user(test_client):
 
     assert response.status_code == 200
     assert response.json["name"] == "Updated"
+
+
+def test_update_current_user_preferred_fields(test_client):
+    """Users can update preferred name and preferred pronouns."""
+    test_client.post(
+        "/auth/register",
+        data=json.dumps({"name": "testuser", "password": "123456", "email": "test@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "test@example.com", "password": "123456"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.put(
+        "/user/",
+        data=json.dumps({"preferred_name": "Alex", "preferred_pronouns": "they/them"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["preferred_name"] == "Alex"
+    assert response.json["preferred_pronouns"] == "they/them"
+
+    verify = test_client.get("/user/")
+    assert verify.status_code == 200
+    assert verify.json["preferred_name"] == "Alex"
+    assert verify.json["preferred_pronouns"] == "they/them"
 
 
 def test_update_current_user_email_reissues_jwt(test_client):

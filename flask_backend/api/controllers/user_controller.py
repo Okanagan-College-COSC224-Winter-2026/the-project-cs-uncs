@@ -23,6 +23,10 @@ class UserUpdateSchema(Schema):
 
     name = fields.Str(validate=validate.Length(min=1, max=255))
     email = fields.Email(validate=validate.Length(max=255))
+    preferred_name = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    preferred_pronouns = fields.Str(
+        validate=validate.OneOf(["Not specified", "he/him", "she/her", "they/them"])
+    )
 
 
 user_update_schema = UserUpdateSchema()
@@ -137,8 +141,10 @@ def update_current_user():
         return jsonify({"msg": "User not found"}), 404
 
     # Update allowed fields
+    next_name = user.name
     if "name" in data:
-        user.name = data["name"]
+        next_name = data["name"]
+        user.name = next_name
 
     email_changed = False
     if "email" in data:
@@ -149,6 +155,18 @@ def update_current_user():
                 return jsonify({"msg": "Email already in use"}), 400
             user.email = new_email
             email_changed = True
+
+    if "preferred_name" in data:
+        raw = data["preferred_name"]
+        if raw is None:
+            user.preferred_name = None
+        else:
+            cleaned = str(raw).strip()
+            # Treat empty or identical-to-name as "use name"
+            user.preferred_name = None if not cleaned or cleaned == next_name else cleaned
+
+    if "preferred_pronouns" in data:
+        user.preferred_pronouns = data["preferred_pronouns"]
 
     user.update()
 

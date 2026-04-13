@@ -19,8 +19,17 @@ class User(db.Model):
     role = db.Column(db.String(50), default="student", nullable=False)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
 
+    # Profile preferences
+    # preferred_name is nullable; API/UI treat null/empty as "use name"
+    preferred_name = db.Column(db.String(255), nullable=True)
+    preferred_pronouns = db.Column(db.String(20), default="Not specified", nullable=False)
+
     __table_args__ = (
         CheckConstraint("role IN ('student', 'teacher', 'admin')", name="check_valid_role"),
+        CheckConstraint(
+            "preferred_pronouns IN ('Not specified', 'he/him', 'she/her', 'they/them')",
+            name="check_valid_pronouns",
+        ),
     )
 
     # relationships
@@ -50,7 +59,16 @@ class User(db.Model):
         "GroupMember", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
     )
 
-    def __init__(self, name, email, hash_pass, role="student", must_change_password=False):
+    def __init__(
+        self,
+        name,
+        email,
+        hash_pass,
+        role="student",
+        must_change_password=False,
+        preferred_name=None,
+        preferred_pronouns="Not specified",
+    ):
         valid_roles = ["student", "teacher", "admin"]
         if role not in valid_roles:
             raise ValueError(f"Invalid role '{role}'. Must be one of: {', '.join(valid_roles)}")
@@ -59,6 +77,8 @@ class User(db.Model):
         self.hash_pass = hash_pass
         self.role = role
         self.must_change_password = must_change_password
+        self.preferred_name = preferred_name
+        self.preferred_pronouns = preferred_pronouns
 
     def __repr__(self):
         return f"<User id={self.id} email={self.email}>"

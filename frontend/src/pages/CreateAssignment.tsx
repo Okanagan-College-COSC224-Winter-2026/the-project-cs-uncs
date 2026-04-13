@@ -47,6 +47,7 @@ export default function CreateAssignment() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [maxPoints, setMaxPoints] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [assignmentType, setAssignmentType] = useState<AssignmentType>('standard')
 
@@ -167,6 +168,15 @@ export default function CreateAssignment() {
       }
     }
 
+    if (maxPoints.trim()) {
+      const mp = Number(maxPoints.trim())
+      if (!Number.isInteger(mp) || mp < 1) {
+        setStatusType('error')
+        setStatusMessage('Max Points must be a positive whole number')
+        return
+      }
+    }
+
     try {
       setStatusMessage('')
 
@@ -177,6 +187,9 @@ export default function CreateAssignment() {
         formData.append('description', description)
         // Send as YYYY-MM-DD to avoid timezone shifting on the frontend.
         formData.append('due_date', dueDate)
+        if (maxPoints.trim()) {
+          formData.append('max_points', maxPoints.trim())
+        }
         if (attachedFile) {
           formData.append('file', attachedFile)
         }
@@ -269,6 +282,21 @@ export default function CreateAssignment() {
           }
         }}
       />
+
+      {showAttachment ? (
+        <>
+          <h2>Max Points <span className="CreateAssignmentHint">(optional)</span></h2>
+          <Textbox
+            type="number"
+            value={maxPoints}
+            placeholder="e.g. 100"
+            onInput={(v) => {
+              setMaxPoints(v)
+              if (statusMessage) setStatusMessage('')
+            }}
+          />
+        </>
+      ) : null}
 
       {showRubricEditor ? (
         <RubricEditorPanel

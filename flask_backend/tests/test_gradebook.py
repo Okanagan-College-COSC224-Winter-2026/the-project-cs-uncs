@@ -334,3 +334,112 @@ def test_gradebook_shows_group_peer_eval_received_total_for_group_members(
     assert rows_by_student[other.id]["grades"][str(assignment.id)] is None
     assert rows_by_student[other.id]["feedback_counts"][str(assignment.id)] is None
 
+
+def test_create_assignment_with_max_points(test_client, make_user, make_course, enroll_user_in_course):
+    """Creating a standard assignment with max_points stores the value and returns it."""
+    import datetime
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    student = make_user(role="student", email="s@example.com", password="spass", name="Student")
+    course = make_course(teacher_id=teacher.id)
+    enroll_user_in_course(student.id, course.id)
+
+    login_as(test_client, "t@example.com", "tpass")
+    due = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    resp = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps({"courseID": course.id, "name": "A1", "due_date": due, "max_points": 50}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert resp.status_code == 201
+    assert resp.json["assignment"]["max_points"] == 50
+
+
+def test_gradebook_uses_assignment_max_points_fallback(test_client, make_user, make_course, enroll_user_in_course):
+    """Gradebook returns max_points from assignment field when no rubric criteria exist."""
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    student = make_user(role="student", email="s@example.com", password="spass", name="Student")
+    course = make_course(teacher_id=teacher.id)
+    enroll_user_in_course(student.id, course.id)
+
+    assignment = Assignment(
+        courseID=course.id, name="A1", rubric_text=None,
+        assignment_type="standard", max_points=100,
+    )
+    _db.session.add(assignment)
+    _db.session.commit()
+
+    login_as(test_client, "t@example.com", "tpass")
+    resp = test_client.get(f"/class/{course.id}/gradebook")
+    assert resp.status_code == 200
+    assignments_by_id = {a["id"]: a for a in resp.json["assignments"]}
+    assert assignments_by_id[assignment.id]["max_points"] == 100
+
+
+def test_edit_details_updates_max_points(test_client, make_user, make_course):
+    """PATCH /assignment/edit_details/<id> can set and clear max_points."""
+    import datetime
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    course = make_course(teacher_id=teacher.id)
+
+    due = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat()
+    login_as(test_client, "t@example.com", "tpass")
+    create_resp = test_client.post(
+        "/assignment/create_assignment",
+        data=json.dumps({"courseID": course.id, "name": "A1", "due_date": due}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert create_resp.status_code == 201
+    assignment_id = create_resp.json["assignment"]["id"]
+
+    # Set max_points
+    patch_resp = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps({"max_points": 75}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json["assignment"]["max_points"] == 75
+
+    # Clear max_points (send null)
+    clear_resp = test_client.patch(
+        f"/assignment/edit_details/{assignment_id}",
+        data=json.dumps({"max_points": None}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert clear_resp.status_code == 200
+    assert clear_resp.json["assignment"]["max_points"] is None
+
+
+def test_get_assignment_details_returns_effective_max_points(test_client, make_user, make_course, enroll_user_in_course):
+    """GET /assignment/details/<id> returns effective max_points (criteria sum or field value)."""
+    import datetime
+    teacher = make_user(role="teacher", email="t@example.com", password="tpass", name="Teacher")
+    student = make_user(role="student", email="s@example.com", password="spass", name="Student")
+    course = make_course(teacher_id=teacher.id)
+    enroll_user_in_course(student.id, course.id)
+
+    # Assignment with max_points field only
+    assignment = Assignment(
+        courseID=course.id, name="A1", rubric_text=None,
+        assignment_type="standard", max_points=40,
+        due_date=datetime.datetime.utcnow() + datetime.timedelta(days=7),
+    )
+    _db.session.add(assignment)
+    _db.session.commit()
+
+    login_as(test_client, "s@example.com", "spass")
+    resp = test_client.get(f"/assignment/details/{assignment.id}")
+    assert resp.status_code == 200
+    assert resp.json["max_points"] == 40
+
+    # Now add rubric criteria — criteria sum should take precedence
+    rubric = Rubric(assignmentID=assignment.id, canComment=True)
+    _db.session.add(rubric)
+    _db.session.commit()
+    _db.session.add(CriteriaDescription(rubricID=rubric.id, question="Q1", scoreMax=8))
+    _db.session.add(CriteriaDescription(rubricID=rubric.id, question="Q2", scoreMax=7))
+    _db.session.commit()
+
+    resp2 = test_client.get(f"/assignment/details/{assignment.id}")
+    assert resp2.status_code == 200
+    assert resp2.json["max_points"] == 15  # 8 + 7

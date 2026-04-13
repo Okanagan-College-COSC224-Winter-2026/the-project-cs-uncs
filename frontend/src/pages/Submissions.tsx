@@ -44,6 +44,7 @@ type AssignmentDetails = {
   courseID?: number;
   course?: { id: number };
   assignment_type?: string | null;
+  max_points?: number | null;
 };
 
 type GroupPeerEvalSubmission = TeacherGroupPeerEvalOverviewResponse["submissions"][number];
@@ -59,6 +60,7 @@ export default function Submissions() {
   const [assignmentName, setAssignmentName] = useState<string | null>(null);
   const [courseId, setCourseId] = useState<number | null>(null);
   const [assignmentType, setAssignmentType] = useState<string | null>(null);
+  const [assignmentMaxPoints, setAssignmentMaxPoints] = useState<number | null>(null);
 
   const [groups, setGroups] = useState<CourseGroup[]>([]);
   const [students, setStudents] = useState<CourseMember[]>([]);
@@ -125,6 +127,7 @@ export default function Submissions() {
 
         setAssignmentName(details?.name ?? null);
         setAssignmentType(details?.assignment_type ?? null);
+        setAssignmentMaxPoints(details?.max_points ?? null);
 
         const resolvedCourseId = Number(details?.course?.id ?? details?.courseID);
         setCourseId(Number.isFinite(resolvedCourseId) ? resolvedCourseId : null);
@@ -412,7 +415,10 @@ export default function Submissions() {
                                 <span>
                                   Grade:{" "}
                                   {sub?.grade != null ? (
-                                    <strong>{sub.grade}</strong>
+                                    <strong>
+                                      {sub.grade}
+                                      {assignmentMaxPoints != null ? ` / ${assignmentMaxPoints}` : ""}
+                                    </strong>
                                   ) : (
                                     <span className="GroupsMuted">—</span>
                                   )}

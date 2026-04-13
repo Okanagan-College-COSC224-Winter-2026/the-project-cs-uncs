@@ -30,6 +30,7 @@ from .auth_controller import jwt_teacher_required, jwt_role_required
 
 bp = Blueprint("assignment", __name__, url_prefix="/assignment")
 
+_SENTINEL = object()  # Used to distinguish "field not provided" from "field set to None"
 
 _ASSIGNMENT_TYPES = {"standard", "peer_eval_group", "peer_eval_individual"}
 _HTML_TAG_PATTERN = re.compile(r"</?[A-Za-z][^>]*>")
@@ -276,6 +277,7 @@ def create_assignment():
         assignment_type = data.get("assignment_type") or "standard"
         included_group_ids = _coerce_int_list(data.get("included_group_ids"))
         rubric_criteria = data.get("rubric_criteria")
+        max_points_raw = data.get("max_points")
         uploaded_file = None
     else:
         course_id = request.form.get("courseID")
@@ -293,6 +295,7 @@ def create_assignment():
                 rubric_criteria = json.loads(rubric_criteria_raw)
             except json.JSONDecodeError:
                 rubric_criteria = None
+        max_points_raw = request.form.get("max_points")
         uploaded_file = request.files.get("file")
 
     attachment_original_name = None
@@ -384,6 +387,15 @@ def create_assignment():
         except ValueError as e:
             return jsonify({"msg": str(e)}), 400
 
+    max_points = None
+    if max_points_raw is not None and str(max_points_raw).strip() != "":
+        try:
+            max_points = int(max_points_raw)
+        except (TypeError, ValueError):
+            return jsonify({"msg": "max_points must be a positive integer"}), 400
+        if max_points < 1:
+            return jsonify({"msg": "max_points must be at least 1"}), 400
+
     new_assignment = Assignment(
         courseID=course_id,
         name=assignment_name,
@@ -393,6 +405,7 @@ def create_assignment():
         attachment_original_name=attachment_original_name,
         attachment_storage_name=attachment_storage_name,
         assignment_type=assignment_type,
+        max_points=max_points,
     )
     Assignment.create(new_assignment)
 
@@ -497,6 +510,7 @@ def edit_assignment_details(assignment_id):
         due_date = data.get("due_date", None) if "due_date" in data else None
         description = data.get("description", None) if "description" in data else None
         remove_attachment = bool(data.get("remove_attachment"))
+        max_points_raw = data.get("max_points", _SENTINEL) if "max_points" in data else _SENTINEL
         uploaded_file = None
     else:
         name = request.form.get("name")
@@ -504,6 +518,7 @@ def edit_assignment_details(assignment_id):
         description = request.form.get("description")
         remove_attachment_value = request.form.get("remove_attachment", "").strip().lower()
         remove_attachment = remove_attachment_value in {"1", "true", "yes", "on"}
+        max_points_raw = request.form.get("max_points", _SENTINEL)
         uploaded_file = request.files.get("file")
 
     tz_offset_minutes = None
@@ -561,6 +576,19 @@ def edit_assignment_details(assignment_id):
         uploaded_file.save(str(uploads_dir / new_storage_name))
         assignment.attachment_original_name = uploaded_file.filename
         assignment.attachment_storage_name = new_storage_name
+
+    if max_points_raw is not _SENTINEL:
+        raw_str = str(max_points_raw).strip() if max_points_raw is not None else ""
+        if raw_str == "" or raw_str == "null":
+            assignment.max_points = None
+        else:
+            try:
+                mp = int(max_points_raw)
+            except (TypeError, ValueError):
+                return jsonify({"msg": "max_points must be a positive integer"}), 400
+            if mp < 1:
+                return jsonify({"msg": "max_points must be at least 1"}), 400
+            assignment.max_points = mp
 
     assignment.update()
     return (
@@ -705,6 +733,16 @@ def get_assignment_details(assignment_id):
 
         payload["student_done"] = done
         payload["student_latest_submission_at"] = latest_at.isoformat() if latest_at else None
+
+    # Compute effective max_points: use criteria sum if criteria exist, otherwise assignment.max_points.
+    rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
+    if rubric:
+        criteria_sum = sum(
+            c.scoreMax or 0 for c in rubric.criteria_descriptions.all()
+        )
+        payload["max_points"] = criteria_sum if criteria_sum > 0 else assignment.max_points
+    else:
+        payload["max_points"] = assignment.max_points
 
     return jsonify(payload), 200
 

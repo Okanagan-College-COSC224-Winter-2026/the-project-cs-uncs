@@ -1,6 +1,6 @@
 import './ClassCard.css'
 
-interface Props {
+export interface ClassCardProps {
   image: string
   name: string
   subtitle: string
@@ -8,7 +8,7 @@ interface Props {
   actions?: React.ReactNode
 }
 
-export default function ClassCard(props: Props) {
+export default function ClassCard(props: ClassCardProps) {
   return (
     <div className="ClassCard" onClick={props.onclick}>
       <img src={props.image} alt={props.name} />

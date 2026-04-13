@@ -5,7 +5,7 @@ import Button from "../components/Button";
 import StatusMessage from "../components/StatusMessage";
 
 import './Home.css'
-import { deleteClass, listClasses, searchClasses } from "../util/api_client/classes";
+import { deleteClass, listClasses, searchClasses } from "../util/api";
 import { isTeacher, isAdmin } from "../util/login";
 
 export default function Home() {

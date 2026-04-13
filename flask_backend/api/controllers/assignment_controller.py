@@ -799,6 +799,7 @@ def get_my_submission(assignment_id):
                     "file_name": first_file_name,
                     "submitted_at": submission.submitted_at.isoformat() if getattr(submission, "submitted_at", None) else None,
                     "attachments": attachments_payload,
+                    "grade": submission.grade,
                 },
                 "submitted_by": submitted_by,
                 "locked": locked,
@@ -1025,6 +1026,7 @@ def list_submissions(assignment_id):
                 "attachments": attachments_payload,
                 "submitted_at": submitted_at.isoformat() if submitted_at else None,
                 "on_time": on_time,
+                "grade": sub.grade,
             }
         )
 

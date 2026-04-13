@@ -18,6 +18,7 @@ import {
   type TeacherGroupPeerEvalOverviewResponse,
   peekAssignmentDetails,
 } from "../util/api";
+import { updateGrade } from "../util/api_client/classes";
 import "./Groups.css";
 
 type CourseMember = {
@@ -34,6 +35,7 @@ type Submission = {
   attachments?: Array<{ id: number; file_name?: string | null }>;
   submitted_at?: string | null;
   on_time?: boolean | null;
+  grade?: number | null;
 };
 
 type AssignmentDetails = {
@@ -67,6 +69,12 @@ export default function Submissions() {
   const [loading, setLoading] = useState(true);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Grade editing state (for standard assignments)
+  const [editingGradeStudentId, setEditingGradeStudentId] = useState<number | null>(null);
+  const [editGradeValue, setEditGradeValue] = useState<string>("");
+  const [savingGradeStudentId, setSavingGradeStudentId] = useState<number | null>(null);
+  const [gradeError, setGradeError] = useState<string | null>(null);
 
   const isTeacherOrAdmin = hasRole("teacher", "admin");
 
@@ -243,6 +251,43 @@ export default function Submissions() {
     return groupPeerEvalByGroupId[group.id] ?? null;
   };
 
+  const startGradeEdit = (studentId: number, currentGrade: number | null | undefined) => {
+    setEditingGradeStudentId(studentId);
+    setEditGradeValue(currentGrade != null ? String(currentGrade) : "");
+    setGradeError(null);
+  };
+
+  const cancelGradeEdit = () => {
+    setEditingGradeStudentId(null);
+    setEditGradeValue("");
+    setGradeError(null);
+  };
+
+  const saveGrade = async (studentId: number) => {
+    if (!id || !courseId) return;
+    const gradeNum = editGradeValue.trim() === "" ? null : Number(editGradeValue);
+    if (gradeNum !== null && (isNaN(gradeNum) || gradeNum < 0)) {
+      setGradeError("Grade must be a non-negative number or empty to clear.");
+      return;
+    }
+    setSavingGradeStudentId(studentId);
+    setGradeError(null);
+    try {
+      const result = await updateGrade(courseId, studentId, Number(id), gradeNum);
+      setSubmissionsByStudentId((prev) => {
+        const sub = prev[studentId];
+        if (!sub) return prev;
+        return { ...prev, [studentId]: { ...sub, grade: result.grade } };
+      });
+      setEditingGradeStudentId(null);
+      setEditGradeValue("");
+    } catch (e) {
+      setGradeError(e instanceof Error ? e.message : "Failed to save grade.");
+    } finally {
+      setSavingGradeStudentId(null);
+    }
+  };
+
   return (
     <div className="Page">
       {selectedGroup ? (
@@ -272,6 +317,7 @@ export default function Submissions() {
             <div className="GroupsPanel">
               <>
                 <h3>Student Submissions</h3>
+                {gradeError ? <div className="GroupsError" style={{ marginBottom: 8 }}>{gradeError}</div> : null}
                 {students.length === 0 ? (
                   <div className="GroupsMuted">No students found.</div>
                 ) : (
@@ -279,6 +325,8 @@ export default function Submissions() {
                     {students.map((s) => {
                       const sub = submissionsByStudentId[s.id];
                       const displayName = (s.name ?? "").trim() || s.email || `Student #${s.id}`;
+                      const isEditingGrade = editingGradeStudentId === s.id;
+                      const isSavingGrade = savingGradeStudentId === s.id;
 
                       return (
                         <div key={s.id} className="GroupsDetailRow">
@@ -327,6 +375,55 @@ export default function Submissions() {
                               </>
                             ) : (
                               "No submission"
+                            )}
+                          </div>
+
+                          <div style={{ marginTop: 8 }}>
+                            {isEditingGrade ? (
+                              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  placeholder="Grade"
+                                  value={editGradeValue}
+                                  onChange={(e) => setEditGradeValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") void saveGrade(s.id);
+                                    if (e.key === "Escape") cancelGradeEdit();
+                                  }}
+                                  disabled={isSavingGrade}
+                                  style={{ width: 90 }}
+                                  autoFocus
+                                />
+                                <Button
+                                  type="primary"
+                                  onClick={() => void saveGrade(s.id)}
+                                  disabled={isSavingGrade}
+                                >
+                                  {isSavingGrade ? "Saving…" : "Save"}
+                                </Button>
+                                <Button type="secondary" onClick={cancelGradeEdit} disabled={isSavingGrade}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <span>
+                                  Grade:{" "}
+                                  {sub?.grade != null ? (
+                                    <strong>{sub.grade}</strong>
+                                  ) : (
+                                    <span className="GroupsMuted">—</span>
+                                  )}
+                                </span>
+                                <Button
+                                  type="secondary"
+                                  onClick={() => startGradeEdit(s.id, sub?.grade)}
+                                >
+                                  {sub?.grade != null ? "Edit grade" : "Add grade"}
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>

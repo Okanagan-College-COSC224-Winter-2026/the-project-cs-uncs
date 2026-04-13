@@ -39,6 +39,7 @@ interface MySubmissionData {
   id: number;
   file_name?: string | null;
   attachments?: Array<{ id: number | null; file_name?: string | null }>;
+  grade?: number | null;
 }
 
 interface MySubmissionResponse {
@@ -556,6 +557,12 @@ export default function AssignmentDetails() {
                         Download
                       </a>
                     </div>
+                  ) : null}
+
+                  {mySubmission.grade != null ? (
+                    <p style={{ marginTop: 8 }}>
+                      <strong>Grade: {mySubmission.grade}</strong>
+                    </p>
                   ) : null}
                 </div>
               ) : (

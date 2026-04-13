@@ -53,6 +53,7 @@
 
   text-align: left;
   padding: var(--spacing-md);
+  padding-bottom: var(--spacing-xl);
   box-sizing: border-box;
 
   display: flex;
@@ -60,8 +61,18 @@
   justify-content: center;
   gap: var(--spacing-xs);
 
+  position: relative;
+
   background-color: var(--card-background);
   transition: background-color var(--transition-base);
+}
+
+.ClassCardActions {
+  position: absolute;
+  right: var(--spacing-md);
+  bottom: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-sm);
 }
 
 .ClassInfo > * {

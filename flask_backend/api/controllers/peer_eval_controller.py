@@ -112,7 +112,11 @@ def group_status(assignment_id: int):
             "id": submission.id,
             "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
             "submitted_by_user_id": submission.submitted_by_user_id,
-            "submitted_by_name": submission.submitted_by.name if submission.submitted_by else None,
+            "submitted_by_name": (
+                ((submission.submitted_by.preferred_name or "").strip() or submission.submitted_by.name)
+                if submission.submitted_by
+                else None
+            ),
             "evaluations": evaluations,
         }
 
@@ -141,6 +145,9 @@ def submit_group_peer_eval(assignment_id: int):
     assignment, err = _assignment_or_404(assignment_id)
     if err:
         return err
+
+    if getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
 
     if assignment.assignment_type != "peer_eval_group":
         return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
@@ -274,6 +281,9 @@ def update_group_peer_eval(assignment_id: int):
     if err:
         return err
 
+    if getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
+
     if assignment.assignment_type != "peer_eval_group":
         return jsonify({"msg": "Not a group peer evaluation assignment"}), 400
 
@@ -406,6 +416,9 @@ def unsubmit_group_peer_eval(assignment_id: int):
     assignment, err = _assignment_or_404(assignment_id)
     if err:
         return err
+
+    if getattr(assignment, "is_closed", False):
+        return jsonify({"msg": "Assignment is closed."}), 403
 
     if assignment.assignment_type != "peer_eval_group":
         return jsonify({"msg": "Not a group peer evaluation assignment"}), 400

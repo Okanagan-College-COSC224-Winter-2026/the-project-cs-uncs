@@ -4,8 +4,8 @@ import Button from "../components/Button";
 import "./ClassHome.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { listAssignments, deleteAssignment } from "../util/api_client";
-import { listClasses, enrollStudentsByEmail } from "../util/api_client";
+import { listAssignments, deleteAssignment, setAssignmentClosed } from "../util/api_client/assignments";
+import { listClasses, enrollStudentsByEmail } from "../util/api_client/classes";
 import TabNavigation from "../components/TabNavigation";
 import { importCSV } from "../util/csv";
 import StatusMessage from "../components/StatusMessage";
@@ -24,6 +24,7 @@ export default function ClassHome() {
   const [emailsText, setEmailsText] = useState("");
   const [adding, setAdding] = useState(false);
   const [confirmDeleteAssignmentId, setConfirmDeleteAssignmentId] = useState<number | null>(null);
+  const [savingClosedId, setSavingClosedId] = useState<number | null>(null);
 
   const isTeacherOrAdmin = isTeacher() || isAdmin();
 
@@ -145,6 +146,28 @@ export default function ClassHome() {
       setAdding(false);
     }
   };
+
+  const handleSetClosed = async (assignmentId: number, isClosed: boolean) => {
+    try {
+      setSavingClosedId(assignmentId);
+      const resp = await setAssignmentClosed(assignmentId, isClosed);
+      const updated = resp?.assignment
+      const updatedRecord = typeof updated === 'object' && updated !== null ? (updated as Record<string, unknown>) : null
+      const nextClosed = typeof updatedRecord?.is_closed === 'boolean' ? Boolean(updatedRecord.is_closed) : isClosed
+
+      setAssignments((prev) =>
+        prev.map((a) => (a.id === assignmentId ? { ...a, is_closed: nextClosed } : a))
+      );
+
+      setStatusType('success');
+      setStatusMessage(nextClosed ? 'Assignment closed.' : 'Assignment reopened.');
+    } catch (error) {
+      setStatusType('error');
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to update assignment status.');
+    } finally {
+      setSavingClosedId(null);
+    }
+  };
     
     return (
       <div className="Page">
@@ -157,7 +180,7 @@ export default function ClassHome() {
           </div>
 
         <div className="ClassHeaderRight">
-          {isTeacherOrAdmin ? (
+          {isTeacher() ? (
             <>
               <Button
                 onClick={() =>
@@ -187,7 +210,7 @@ export default function ClassHome() {
         </div>
       </div>
 
-      {isTeacherOrAdmin && showAddStudents ? (
+      {isTeacher() && showAddStudents ? (
         <div className="AddStudentsPanel">
           <label className="AddStudentsLabel">
             Student emails (comma / space / newline separated)
@@ -239,7 +262,13 @@ export default function ClassHome() {
                       name={assignment.name}
                       due_date={assignment.due_date}
                       assignment_type={assignment.assignment_type}
+                      is_closed={assignment.is_closed}
+                      onSetClosed={handleSetClosed}
+                      setClosedDisabled={savingClosedId === assignment.id}
                       onDelete={handleDeleteAssignment}
+                      deleteButtonText={
+                        confirmDeleteAssignmentId === Number(assignment.id) ? 'Confirm delete' : 'Delete'
+                      }
                     />
                   </li>
                 ))}
@@ -254,7 +283,13 @@ export default function ClassHome() {
                       name={assignment.name}
                       due_date={assignment.due_date}
                       assignment_type={assignment.assignment_type}
+                      is_closed={assignment.is_closed}
+                      onSetClosed={handleSetClosed}
+                      setClosedDisabled={savingClosedId === assignment.id}
                       onDelete={handleDeleteAssignment}
+                      deleteButtonText={
+                        confirmDeleteAssignmentId === Number(assignment.id) ? 'Confirm delete' : 'Delete'
+                      }
                     />
                   </li>
                 ))}
@@ -271,6 +306,7 @@ export default function ClassHome() {
                       name={assignment.name}
                       due_date={assignment.due_date}
                       assignment_type={assignment.assignment_type}
+                      is_closed={assignment.is_closed}
                     />
                   </li>
                 ))}
@@ -285,6 +321,7 @@ export default function ClassHome() {
                       name={assignment.name}
                       due_date={assignment.due_date}
                       assignment_type={assignment.assignment_type}
+                      is_closed={assignment.is_closed}
                       hideDueStatus={true}
                     />
                   </li>

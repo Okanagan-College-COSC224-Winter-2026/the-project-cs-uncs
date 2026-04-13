@@ -13,7 +13,9 @@ from api.models import (
     CriteriaDescription,
     Rubric,
     Group,
+    GroupEvaluationSubmission,
     GroupMember,
+    Criterion,
     Review,
     User,
     db,
@@ -1080,3 +1082,257 @@ class TestRubricAdminPermissions:
 
         deleted = test_client.delete(f"/delete_criteria/{criteria_id}")
         assert deleted.status_code == 200
+
+
+class TestPeerEvalRubricResets:
+    def test_group_peer_eval_rubric_edit_wipes_submission(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "reset_group_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "reset_group_s1@test.com", "student")
+        s2 = _create_user("Student 2", "reset_group_s2@test.com", "student")
+        s3 = _create_user("Student 3", "reset_group_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "RG1")
+        g2 = _create_group(course.id, "RG2")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "reset_group_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Group Peer Eval",
+                "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
+                "included_group_ids": [g1.id, g2.id],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        login_as(test_client, "reset_group_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        status_data = status.get_json()
+        assert status_data["submitted"] is False
+        assert len(status_data["criteria"]) > 0
+
+        criteria_payload = []
+        for c in status_data["criteria"]:
+            criteria_payload.append({"criterionRowID": c["id"], "grade": 0, "comments": "ok"})
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert submit.status_code == 200
+        assert (
+            GroupEvaluationSubmission.query.filter_by(assignment_id=assignment_id).count() == 1
+        )
+
+        # Teacher edits a criterion: should wipe existing group submission.
+        first_row_id = status_data["criteria"][0]["id"]
+        login_as(test_client, "reset_group_teacher@test.com")
+        updated = test_client.patch(
+            f"/update_criteria/{first_row_id}",
+            json={"question": "Updated question"},
+        )
+        assert updated.status_code == 200
+        assert (
+            GroupEvaluationSubmission.query.filter_by(assignment_id=assignment_id).count() == 0
+        )
+
+        # Group should be unlocked and allowed to submit again.
+        login_as(test_client, "reset_group_s2@test.com")
+        status2 = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status2.status_code == 200
+        assert status2.get_json()["submitted"] is False
+
+        resubmit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert resubmit.status_code == 200
+
+    def test_individual_peer_eval_rubric_edit_resets_completed_reviews(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "reset_ind_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "reset_ind_s1@test.com", "student")
+        s2 = _create_user("Student 2", "reset_ind_s2@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "IRG1")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+
+        login_as(test_client, "reset_ind_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Individual Peer Eval",
+                "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        login_as(test_client, "reset_ind_s1@test.com")
+        sync = test_client.post(f"/peer_eval/individual/sync/{assignment_id}")
+        assert sync.status_code == 200
+
+        review = Review.query.filter_by(
+            assignmentID=assignment_id, reviewerID=s1.id, revieweeID=s2.id
+        ).first()
+        assert review is not None
+
+        assignment = Assignment.get_by_id(assignment_id)
+        rubric = assignment.rubrics.first()
+        assert rubric is not None
+        rows = rubric.criteria_descriptions.all()
+        assert len(rows) > 0
+
+        criteria = []
+        for row in rows:
+            criteria.append({"criterionRowID": row.id, "grade": 0, "comments": "ok"})
+
+        submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
+        assert submit.status_code == 200
+
+        refreshed = Review.get_by_id(review.id)
+        assert refreshed is not None
+        assert refreshed.completed is True
+        assert Criterion.query.filter_by(reviewID=review.id).count() > 0
+
+        # Teacher edits rubric criterion: should clear criterion responses and mark incomplete.
+        login_as(test_client, "reset_ind_teacher@test.com")
+        updated = test_client.patch(
+            f"/update_criteria/{rows[0].id}",
+            json={"scoreMax": 6},
+        )
+        assert updated.status_code == 200
+
+        reset_review = Review.get_by_id(review.id)
+        assert reset_review is not None
+        assert reset_review.completed is False
+        assert Criterion.query.filter_by(reviewID=review.id).count() == 0
+
+        # Reviewer can submit again after reset.
+        login_as(test_client, "reset_ind_s1@test.com")
+        resubmit = test_client.post(
+            f"/review/submit/{review.id}",
+            json={"criteria": criteria},
+        )
+        assert resubmit.status_code == 200
+
+
+class TestAssignmentClosedBlocksPeerEvalSubmissions:
+    def test_closed_group_peer_eval_blocks_submit(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "closed_group_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "closed_group_s1@test.com", "student")
+        s2 = _create_user("Student 2", "closed_group_s2@test.com", "student")
+        s3 = _create_user("Student 3", "closed_group_s3@test.com", "student")
+
+        course = _create_course(teacher.id)
+
+        g1 = _create_group(course.id, "CG1")
+        g2 = _create_group(course.id, "CG2")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+        GroupMember.add_member(g2.id, s3.id)
+
+        login_as(test_client, "closed_group_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Closed Group Peer Eval",
+                "assignment_type": "peer_eval_group",
+                "due_date": "2099-12-31",
+                "included_group_ids": [g1.id, g2.id],
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        closed = test_client.patch(f"/assignment/closed/{assignment_id}", json={"is_closed": True})
+        assert closed.status_code == 200
+        assert closed.get_json()["assignment"]["is_closed"] is True
+
+        login_as(test_client, "closed_group_s1@test.com")
+        status = test_client.get(f"/peer_eval/group/status/{assignment_id}")
+        assert status.status_code == 200
+        status_data = status.get_json()
+
+        criteria_payload = []
+        for c in status_data["criteria"]:
+            criteria_payload.append({"criterionRowID": c["id"], "grade": 0, "comments": "ok"})
+
+        submit = test_client.post(
+            f"/peer_eval/group/submit/{assignment_id}",
+            json={
+                "evaluations": [
+                    {"reviewee_group_id": g2.id, "criteria": criteria_payload},
+                ]
+            },
+        )
+        assert submit.status_code == 403
+        assert submit.get_json()["msg"] == "Assignment is closed."
+
+    def test_closed_individual_peer_eval_blocks_review_submit(self, test_client, dbsession):
+        teacher = _create_user("Teacher", "closed_ind_teacher@test.com", "teacher")
+        s1 = _create_user("Student 1", "closed_ind_s1@test.com", "student")
+        s2 = _create_user("Student 2", "closed_ind_s2@test.com", "student")
+
+        course = _create_course(teacher.id)
+        g1 = _create_group(course.id, "CIG1")
+        GroupMember.add_member(g1.id, s1.id)
+        GroupMember.add_member(g1.id, s2.id)
+
+        login_as(test_client, "closed_ind_teacher@test.com")
+        res = test_client.post(
+            "/assignment/create_assignment",
+            json={
+                "courseID": course.id,
+                "name": "Closed Individual Peer Eval",
+                "assignment_type": "peer_eval_individual",
+                "due_date": "2099-12-31",
+            },
+        )
+        assert res.status_code == 201
+        assignment_id = res.get_json()["assignment"]["id"]
+
+        login_as(test_client, "closed_ind_s1@test.com")
+        sync = test_client.post(f"/peer_eval/individual/sync/{assignment_id}")
+        assert sync.status_code == 200
+
+        review = Review.query.filter_by(
+            assignmentID=assignment_id, reviewerID=s1.id, revieweeID=s2.id
+        ).first()
+        assert review is not None
+
+        login_as(test_client, "closed_ind_teacher@test.com")
+        closed = test_client.patch(f"/assignment/closed/{assignment_id}", json={"is_closed": True})
+        assert closed.status_code == 200
+
+        login_as(test_client, "closed_ind_s1@test.com")
+        assignment = Assignment.get_by_id(assignment_id)
+        rubric = assignment.rubrics.first()
+        assert rubric is not None
+        criteria = []
+        for row in rubric.criteria_descriptions.all():
+            criteria.append({"criterionRowID": row.id, "grade": 0, "comments": "ok"})
+
+        submit = test_client.post(f"/review/submit/{review.id}", json={"criteria": criteria})
+        assert submit.status_code == 403
+        assert submit.get_json()["msg"] == "Assignment is closed."

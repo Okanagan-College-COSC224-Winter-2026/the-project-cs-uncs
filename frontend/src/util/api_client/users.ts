@@ -2,14 +2,14 @@ import { BASE_URL, getErrorMessageFromResponse, maybeHandleExpire, safeFetch } f
 
 const CURRENT_USER_TTL_MS = 2_000
 
-let currentUserCache: { expiresAt: number; value: unknown } | null = null
-let currentUserInFlight: Promise<unknown> | null = null
+let currentUserCache: { expiresAt: number; value: User } | null = null
+let currentUserInFlight: Promise<User> | null = null
 
 const invalidateCurrentUserCache = () => {
   currentUserCache = null
 }
 
-export const getCurrentUser = async (opts?: { forceRefresh?: boolean }) => {
+export const getCurrentUser = async (opts?: { forceRefresh?: boolean }): Promise<User> => {
   if (!opts?.forceRefresh) {
     if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
       return currentUserCache.value
@@ -33,7 +33,7 @@ export const getCurrentUser = async (opts?: { forceRefresh?: boolean }) => {
       throw new Error(await getErrorMessageFromResponse(response, 'Unable to load your account'))
     }
 
-    const user = await response.json()
+    const user = (await response.json()) as User
     currentUserCache = { value: user, expiresAt: Date.now() + CURRENT_USER_TTL_MS }
     return user
   })().finally(() => {
@@ -43,7 +43,27 @@ export const getCurrentUser = async (opts?: { forceRefresh?: boolean }) => {
   return await currentUserInFlight
 }
 
-export const updateCurrentUser = async (payload: { name?: string; email?: string }) => {
+export const getUserById = async (userId: number) => {
+  const response = await safeFetch(`${BASE_URL}/user/${userId}`, {
+    method: 'GET',
+    credentials: 'include'
+  })
+
+  maybeHandleExpire(response)
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessageFromResponse(response, 'Unable to load user'))
+  }
+
+  return await response.json()
+}
+
+export const updateCurrentUser = async (payload: {
+  name?: string
+  email?: string
+  preferred_name?: string | null
+  preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them'
+}) => {
   const response = await safeFetch(`${BASE_URL}/user/`, {
     method: 'PUT',
     headers: {

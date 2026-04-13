@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import StatusMessage from '../components/StatusMessage'
 import './Profile.css'
-import { getCurrentUser, getCurrentUserPhotoUrl, updateCurrentUser, uploadCurrentUserPhoto } from '../util/api_client/users'
+import { getCurrentUser, getCurrentUserPhotoUrl, updateCurrentUser, uploadCurrentUserPhoto } from '../util/api_client'
 
 export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -29,7 +29,7 @@ export default function Profile() {
 
     ;(async () => {
       try {
-        const user = await getCurrentUser()
+        const user = await getCurrentUser() as { name?: string; email?: string } | null
         setName(String(user?.name || ''))
         setEmail(String(user?.email || ''))
       } catch (e) {
@@ -66,6 +66,12 @@ export default function Profile() {
       return
     }
 
+    if (next === name.trim()) {
+      setStatusMessage('')
+      setIsEditingName(false)
+      return
+    }
+
     setSavingName(true)
     try {
       setStatusMessage('')
@@ -97,6 +103,12 @@ export default function Profile() {
     if (!isValidEmail(next)) {
       setStatusType('error')
       setStatusMessage('Please enter a valid email address (example: name@example.com).')
+      return
+    }
+
+    if (next === email.trim()) {
+      setStatusMessage('')
+      setIsEditingEmail(false)
       return
     }
 

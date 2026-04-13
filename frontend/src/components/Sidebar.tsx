@@ -89,7 +89,7 @@ interface SidebarRowProps {
   href: string
   children: React.ReactNode
   onClick?: () => void
-  iconName?: 'logout' | 'home' | 'user' | 'lock'
+  iconName?: 'logout' | 'home' | 'user' | 'lock' | 'help'
 }
 
 function SidebarRow(props: SidebarRowProps) {

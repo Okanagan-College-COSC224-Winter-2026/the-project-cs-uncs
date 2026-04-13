@@ -17,6 +17,7 @@ import ClassMembers from "./pages/ClassMembers";
 import Assignment from "./pages/Assignment";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePassword from "./pages/ChangePassword";
+import Help from "./pages/Help";
 // CreateTeacher removed in favor of AdminUsers
 import AdminUsers from "./pages/AdminUsers";
 import PeerReviews from "./pages/PeerReviews";
@@ -86,6 +87,12 @@ function AppContent() {
           <Route path="/change-password" element={
             <ProtectedRoute>
               <ChangePassword />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/help" element={
+            <ProtectedRoute>
+              <Help />
             </ProtectedRoute>
           } />
 

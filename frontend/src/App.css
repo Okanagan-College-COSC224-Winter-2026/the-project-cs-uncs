@@ -99,7 +99,7 @@
   justify-content: flex-end;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
-}
+
 
 .AssignmentHeader {
   display: flex;

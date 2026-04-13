@@ -237,11 +237,14 @@ export const getAvailableCourses = async () => {
 export interface GradebookAssignment {
   id: number
   name: string
+  assignment_type: string
+  max_points: number | null
 }
 
 export interface GradebookRow {
   student: { id: number; name: string }
   grades: Record<string, number | null>
+  feedback_counts: Record<string, number | null>
 }
 
 export interface GradebookData {

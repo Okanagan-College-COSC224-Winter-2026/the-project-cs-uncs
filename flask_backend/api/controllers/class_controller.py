@@ -12,7 +12,23 @@ import io
 import re
 from typing import List, Dict
 
-from ..models import Assignment, Course, Group, GroupMember, Review, Submission, User, User_Course, db
+from ..models import (
+    Assignment,
+    CriteriaDescription,
+    Course,
+    Criterion,
+    Group,
+    GroupEvaluationCriterion,
+    GroupEvaluationSubmission,
+    GroupEvaluationTarget,
+    GroupMember,
+    Review,
+    Rubric,
+    Submission,
+    User,
+    User_Course,
+    db,
+)
 from ..services import generate_temp_password, send_new_account_email
 from .auth_controller import jwt_teacher_required
 
@@ -711,11 +727,12 @@ def get_gradebook(class_id: int):
 
     Response shape:
     {
-      "assignments": [{"id": int, "name": str}, ...],
+      "assignments": [{"id": int, "name": str, "assignment_type": str, "max_points": int | null}, ...],
       "rows": [
         {
           "student": {"id": int, "name": str},
-          "grades": {"<assignment_id>": float | null, ...}
+          "grades": {"<assignment_id>": float | null, ...},
+          "feedback_counts": {"<assignment_id>": int | null, ...}
         },
         ...
       ]
@@ -741,11 +758,27 @@ def get_gradebook(class_id: int):
     )
     students = course.students.all() if hasattr(course.students, "all") else list(course.students)
 
-    # Build a lookup: (student_id, assignment_id) -> grade
+    assignment_ids = [a.id for a in assignments]
+    assignment_max_points: dict[int, int | None] = {a.id: None for a in assignments}
+    if assignment_ids:
+        max_rows = (
+            db.session.query(
+                Rubric.assignmentID,
+                func.coalesce(func.sum(CriteriaDescription.scoreMax), 0),
+            )
+            .outerjoin(CriteriaDescription, CriteriaDescription.rubricID == Rubric.id)
+            .filter(Rubric.assignmentID.in_(assignment_ids))
+            .group_by(Rubric.assignmentID)
+            .all()
+        )
+        for assignment_id, max_points in max_rows:
+            assignment_max_points[int(assignment_id)] = int(max_points)
+
+    # Build lookups keyed by (student_id, assignment_id)
     grade_lookup: dict[tuple[int, int], float | None] = {}
+    feedback_count_lookup: dict[tuple[int, int], int] = {}
+    student_ids = [s.id for s in students]
     if assignments and students:
-        assignment_ids = [a.id for a in assignments]
-        student_ids = [s.id for s in students]
         submissions = (
             Submission.query
             .filter(
@@ -757,19 +790,139 @@ def get_gradebook(class_id: int):
         for sub in submissions:
             grade_lookup[(sub.studentID, sub.assignmentID)] = sub.grade
 
+    # If no manual grade exists, backfill peer-eval assignments from scored criteria.
+    individual_peer_assignments = [a.id for a in assignments if a.assignment_type == "peer_eval_individual"]
+    if individual_peer_assignments and students:
+        completed_count_rows = (
+            db.session.query(
+                Review.assignmentID,
+                Review.revieweeID,
+                func.count(Review.id),
+            )
+            .filter(
+                Review.assignmentID.in_(individual_peer_assignments),
+                Review.revieweeID.in_(student_ids),
+                Review.completed.is_(True),
+            )
+            .group_by(Review.assignmentID, Review.revieweeID)
+            .all()
+        )
+        for assignment_id, reviewee_id, completed_count in completed_count_rows:
+            feedback_count_lookup[(int(reviewee_id), int(assignment_id))] = int(completed_count)
+
+        received_rows = (
+            db.session.query(
+                Review.assignmentID,
+                Review.revieweeID,
+                func.coalesce(func.sum(Criterion.grade), 0),
+            )
+            .outerjoin(Criterion, Criterion.reviewID == Review.id)
+            .filter(
+                Review.assignmentID.in_(individual_peer_assignments),
+                Review.revieweeID.in_(student_ids),
+                Review.completed.is_(True),
+            )
+            .group_by(Review.assignmentID, Review.revieweeID)
+            .all()
+        )
+        for assignment_id, reviewee_id, total_score in received_rows:
+            key = (int(reviewee_id), int(assignment_id))
+            if key not in grade_lookup or grade_lookup[key] is None:
+                grade_lookup[key] = float(total_score)
+
+    group_peer_assignments = [a.id for a in assignments if a.assignment_type == "peer_eval_group"]
+    if group_peer_assignments and students:
+        student_group_rows = (
+            db.session.query(GroupMember.user_id, GroupMember.group_id)
+            .join(Group, Group.id == GroupMember.group_id)
+            .filter(Group.course_id == class_id, GroupMember.user_id.in_(student_ids))
+            .all()
+        )
+        group_id_by_student_id = {int(user_id): int(group_id) for user_id, group_id in student_group_rows}
+
+        group_totals_rows = (
+            db.session.query(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+                func.coalesce(func.sum(GroupEvaluationCriterion.grade), 0),
+            )
+            .join(
+                GroupEvaluationTarget,
+                GroupEvaluationTarget.submission_id == GroupEvaluationSubmission.id,
+            )
+            .outerjoin(
+                GroupEvaluationCriterion,
+                GroupEvaluationCriterion.target_id == GroupEvaluationTarget.id,
+            )
+            .filter(GroupEvaluationSubmission.assignment_id.in_(group_peer_assignments))
+            .group_by(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+            )
+            .all()
+        )
+        group_count_rows = (
+            db.session.query(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+                func.count(GroupEvaluationTarget.id),
+            )
+            .join(
+                GroupEvaluationTarget,
+                GroupEvaluationTarget.submission_id == GroupEvaluationSubmission.id,
+            )
+            .filter(GroupEvaluationSubmission.assignment_id.in_(group_peer_assignments))
+            .group_by(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+            )
+            .all()
+        )
+        total_by_assignment_and_group = {
+            (int(assignment_id), int(group_id)): float(total_score)
+            for assignment_id, group_id, total_score in group_totals_rows
+        }
+        count_by_assignment_and_group = {
+            (int(assignment_id), int(group_id)): int(review_count)
+            for assignment_id, group_id, review_count in group_count_rows
+        }
+
+        for student_id, group_id in group_id_by_student_id.items():
+            for assignment_id in group_peer_assignments:
+                review_count = count_by_assignment_and_group.get((assignment_id, group_id))
+                if review_count is not None:
+                    feedback_count_lookup[(student_id, assignment_id)] = review_count
+                total_score = total_by_assignment_and_group.get((assignment_id, group_id))
+                if total_score is None:
+                    continue
+                key = (student_id, assignment_id)
+                if key not in grade_lookup or grade_lookup[key] is None:
+                    grade_lookup[key] = total_score
+
     rows = []
     for student in sorted(students, key=lambda s: s.name):
         grades = {}
+        feedback_counts = {}
         for assignment in assignments:
             key = (student.id, assignment.id)
             grades[str(assignment.id)] = grade_lookup.get(key)
+            feedback_counts[str(assignment.id)] = feedback_count_lookup.get(key)
         rows.append({
             "student": {"id": student.id, "name": student.name},
             "grades": grades,
+            "feedback_counts": feedback_counts,
         })
 
     return jsonify({
-        "assignments": [{"id": a.id, "name": a.name} for a in assignments],
+        "assignments": [
+            {
+                "id": a.id,
+                "name": a.name,
+                "assignment_type": a.assignment_type,
+                "max_points": assignment_max_points.get(a.id),
+            }
+            for a in assignments
+        ],
         "rows": rows,
     }), 200
 

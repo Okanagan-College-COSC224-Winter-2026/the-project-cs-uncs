@@ -86,9 +86,9 @@
   display: flex;
 }
 
-.criteriaTable td.clickedCell {
-  background-color: var(--success) !important;
-  color: var(--background-primary) !important;
+.clickedCell {
+  background-color: var(--success);
+  color: var(--background-primary);
   font-weight: 600;
 }
 

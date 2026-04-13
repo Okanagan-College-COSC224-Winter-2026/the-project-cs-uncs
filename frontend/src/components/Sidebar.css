@@ -135,6 +135,11 @@
   mask-image: url('../../public/icons/lock.svg');
 }
 
+.SidebarRowIcon.help {
+  -webkit-mask-image: url('../../public/icons/help.svg');
+  mask-image: url('../../public/icons/help.svg');
+}
+
 .SidebarRow.selected {
   background-color: var(--background-tertiary);
   border-left: 3px solid var(--button-primary);

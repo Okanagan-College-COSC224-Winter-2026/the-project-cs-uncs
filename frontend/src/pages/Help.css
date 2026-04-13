@@ -196,19 +196,19 @@
 .callout.info {
   background: rgba(34, 197, 94, 0.08);
   border-left-color: var(--accent-primary);
-  color: #1a5e2a;
+  color: var(--text-primary);
 }
 
 .callout.warn {
   background: rgba(245, 158, 11, 0.08);
   border-left-color: #d97706;
-  color: #7c2d12;
+  color: var(--text-primary);
 }
 
 .callout.tip {
   background: rgba(59, 130, 246, 0.08);
   border-left-color: #3b82f6;
-  color: #3730a3;
+  color: var(--text-primary);
 }
 
 /* ── TYPE CARDS ── */
@@ -246,7 +246,7 @@
 
 .type-card-desc {
   font-size: 0.85rem;
-  color: #3a3a3a;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -397,6 +397,22 @@
 
 .perm-table tr:nth-child(even) td {
   background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .callout.info {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+[data-theme="dark"] .callout.warn {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+[data-theme="dark"] .callout.tip {
+  background: rgba(59, 130, 246, 0.16);
+}
+
+[data-theme="dark"] .perm-table tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .perm-yes {

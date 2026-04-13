@@ -1,0 +1,213 @@
+.GradebookTable {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  background-color: var(--background-secondary);
+}
+
+.GradebookTable th,
+.GradebookTable td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.GradebookTable .GradebookStudentHeader,
+.GradebookTable .GradebookStudentCell {
+  border-left: none;
+}
+
+.GradebookTable td:last-child,
+.GradebookTable th:last-child {
+  border-right: none;
+}
+
+.GradebookTable tr:first-child th {
+  border-top: none;
+}
+
+
+.GradebookTable tr:last-child td {
+  border-bottom: none;
+}
+
+.GradebookWrapper {
+  width: 100%;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  overflow-x: auto;
+}
+
+.GradebookStudentHeader,
+.GradebookStudentCell {
+  text-align: left;
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.GradebookTable thead th {
+  background-color: var(--background-primary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.GradebookTable thead th a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.GradebookTable thead th a:hover {
+  text-decoration: underline;
+}
+
+.GradebookAssignmentHeader {
+  min-width: 120px;
+}
+
+.GradebookGradeCell {
+  padding: 4px var(--spacing-sm);
+}
+
+.GradebookGradeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: inherit;
+  width: 100%;
+  min-width: 60px;
+}
+
+.GradebookGradeBtn:hover {
+  background-color: var(--background-primary);
+  outline: 2px solid var(--border-color);
+}
+
+.GradebookNoGrade {
+  color: var(--text-secondary, #888);
+}
+
+.GradebookEditCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.GradebookInput {
+  width: 70px;
+  padding: 4px 6px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  font-size: inherit;
+}
+
+.GradebookInput:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+.GradebookSaveBtn,
+.GradebookCancelBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--border-radius);
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.GradebookSaveBtn {
+  color: var(--success, #2ecc71);
+}
+
+.GradebookSaveBtn:hover:not(:disabled) {
+  background-color: var(--background-primary);
+}
+
+.GradebookCancelBtn {
+  color: var(--error, #e74c3c);
+}
+
+.GradebookCancelBtn:hover:not(:disabled) {
+  background-color: var(--background-primary);
+}
+
+.GradebookIcon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.GradebookSaveIcon {
+  -webkit-mask-image: url('/icons/check.svg');
+  mask-image: url('/icons/check.svg');
+}
+
+.GradebookCancelIcon {
+  -webkit-mask-image: url('/icons/x.svg');
+  mask-image: url('/icons/x.svg');
+}
+
+.GradebookEmpty {
+  color: var(--text-secondary, #888);
+}
+
+.GradebookDisplayModeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.GradebookDisplayModeLabel {
+  color: var(--text-secondary, #888);
+  font-size: 0.9rem;
+}
+
+.GradebookModeBtn {
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  color: var(--text-primary);
+  border-radius: var(--border-radius);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.GradebookModeBtn.active {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.GradebookModeBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.GradebookEditModeRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+

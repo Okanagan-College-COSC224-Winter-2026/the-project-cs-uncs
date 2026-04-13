@@ -228,6 +228,9 @@ export default function Groups() {
             { label: "Assignments", path: `/classes/${courseId ?? id}/home` },
             { label: "Members", path: `/classes/${courseId ?? id}/members` },
             { label: "Groups", path: `/classes/${courseId ?? id}/groups` },
+            ...(isTeacher() || isAdmin()
+                ? [{ label: "Gradebook", path: `/classes/${courseId ?? id}/gradebook` }]
+                : []),
         ],
         [courseId, id]
     );
@@ -280,7 +283,7 @@ export default function Groups() {
                     </h2>
                 </div>
                 <div className="ClassHeaderRight">
-                    {isTeacher() && courseId ? (
+                    {canManage && courseId ? (
                         <Button type="secondary" onClick={() => setShowCreateGroup((v) => !v)}>
                             {showCreateGroup ? "Cancel" : "Create New Group"}
                         </Button>
@@ -295,7 +298,7 @@ export default function Groups() {
             <div className="GroupsPage">
                 {loading ? <div className="PageStatusText">Loading…</div> : null}
 
-                {showCreateGroup && isTeacher() ? (
+                {showCreateGroup && canManage ? (
                     <div className="GroupsPanel">
                         <h3>Create Group</h3>
 
@@ -412,7 +415,7 @@ export default function Groups() {
                                                 onClick={() => handleDeleteGroup(group.id)}
                                                 disabled={deletingGroupId === group.id}
                                             >
-                                                {confirmDeleteGroupId === group.id ? "Confirm Delete" : "Delete"}
+                                                {confirmDeleteGroupId === group.id ? "Confirm delete" : "Delete"}
                                             </Button>
                                         </div>
                                     ))}

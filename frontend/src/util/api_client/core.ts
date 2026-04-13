@@ -1,6 +1,10 @@
 import { didExpire, removeToken } from '../login'
 
-export const BASE_URL = 'http://localhost:5000'
+const browserHost = typeof window !== 'undefined' && window.location?.hostname
+  ? window.location.hostname
+  : 'localhost'
+
+export const BASE_URL = `http://${browserHost}:5000`
 
 export const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   try {

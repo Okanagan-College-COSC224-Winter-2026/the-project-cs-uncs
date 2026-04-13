@@ -861,6 +861,7 @@ def add_users_command():
         due_date: datetime,
         assignment_type: str,
         description: str,
+        max_points: int | None = None,
     ) -> Assignment:
         assignment = Assignment.query.filter_by(courseID=course_id, name=name).first()
         if not assignment:
@@ -871,6 +872,7 @@ def add_users_command():
                 due_date=due_date,
                 description=description,
                 assignment_type=assignment_type,
+                max_points=max_points,
             )
             Assignment.create(assignment)
             click.echo(f"✓ Created assignment: {name}")
@@ -879,8 +881,94 @@ def add_users_command():
             assignment.due_date = due_date
             assignment.assignment_type = assignment_type
             assignment.description = description
+            if max_points is not None and assignment.max_points is None:
+                assignment.max_points = max_points
             assignment.update()
         return assignment
+
+    _STANDARD_RUBRIC_CRITERIA = [
+        ("Content Quality — Does the work demonstrate understanding of the topic?", 10),
+        ("Organization — Is the work well-structured and logical?", 10),
+        ("Clarity — Is the writing/presentation clear and easy to follow?", 10),
+        ("Completeness — Does the work address all requirements?", 10),
+        ("Overall Impression — What is your overall assessment?", 10),
+    ]
+
+    def _ensure_standard_rubric(assignment: Assignment) -> Rubric | None:
+        """Create a standard rubric for a standard assignment if one does not yet exist."""
+        rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
+        if rubric:
+            return rubric
+        rubric = Rubric(assignmentID=assignment.id, canComment=True)
+        db.session.add(rubric)
+        db.session.commit()
+        for question, score_max in _STANDARD_RUBRIC_CRITERIA:
+            db.session.add(
+                CriteriaDescription(
+                    rubricID=rubric.id,
+                    question=question,
+                    scoreMax=score_max,
+                )
+            )
+        db.session.commit()
+        click.echo(f"  ✓ Created standard rubric with {len(_STANDARD_RUBRIC_CRITERIA)} criteria for: {assignment.name}")
+        return rubric
+
+    def _seed_teacher_criterion_grades(
+        *,
+        teacher: User,
+        assignment: Assignment,
+        rubric: Rubric,
+        students: list[User],
+        completed_at: datetime,
+    ) -> None:
+        """Seed teacher criterion grades for past standard assignments."""
+        criteria_rows = (
+            CriteriaDescription.query.filter_by(rubricID=rubric.id)
+            .order_by(CriteriaDescription.id.asc())
+            .all()
+        )
+        if not criteria_rows:
+            return
+
+        for s_idx, student in enumerate(students):
+            existing = Review.get_by_reviewer_reviewee_assignment(
+                teacher.id, student.id, assignment.id
+            )
+            if existing:
+                continue
+
+            review = Review(
+                assignmentID=assignment.id,
+                reviewerID=teacher.id,
+                revieweeID=student.id,
+                completed=True,
+                completed_at=completed_at,
+            )
+            Review.create_review(review)
+
+            total = 0
+            for i, row in enumerate(criteria_rows):
+                # Deterministic grade pattern per student/criterion.
+                grade = 7 + ((s_idx + i) % 4)  # 7, 8, 9, or 10
+                db.session.add(
+                    Criterion(
+                        reviewID=review.id,
+                        criterionRowID=row.id,
+                        grade=grade,
+                        comments="",
+                    )
+                )
+                total += grade
+
+            # Update submission grade with criteria total.
+            submission = Submission.query.filter_by(
+                studentID=student.id, assignmentID=assignment.id
+            ).first()
+            if submission:
+                submission.grade = total
+
+        db.session.commit()
 
     def _seed_standard_submissions(*, assignments: list[Assignment], students: list[User], path_prefix: str):
         for a_idx, assignment in enumerate(assignments, start=1):
@@ -961,16 +1049,17 @@ def add_users_command():
         due_standard = _date_only_end_of_day(week_monday + timedelta(days=4))
         due_peer = _date_only_end_of_day(week_monday + timedelta(days=6))
 
-        cosc_224_assignments.append(
-            _upsert_assignment(
-                course_id=cosc_224.id,
-                name=f"Week {week_index}: Weekly Update",
-                rubric_text="Submit a short weekly update as a PDF.",
-                due_date=due_standard,
-                assignment_type="standard",
-                description="Weekly check-in: progress, blockers, and next steps.",
-            )
+        standard_a = _upsert_assignment(
+            course_id=cosc_224.id,
+            name=f"Week {week_index}: Weekly Update",
+            rubric_text="Submit a short weekly update as a PDF.",
+            due_date=due_standard,
+            assignment_type="standard",
+            description="Weekly check-in: progress, blockers, and next steps.",
+            max_points=50,
         )
+        _ensure_standard_rubric(standard_a)
+        cosc_224_assignments.append(standard_a)
 
         ind = _upsert_assignment(
             course_id=cosc_224.id,
@@ -1014,6 +1103,31 @@ def add_users_command():
         students=cosc_224_students,
         path_prefix="cosc224",
     )
+
+    # Seed teacher criterion grades for past standard assignments.
+    click.echo("\nSeeding COSC 224 teacher criterion grades for past standard assignments...")
+    group_teacher_user = User.get_by_email("teacher@example.com")
+    if group_teacher_user:
+        for assignment in standard_assignments:
+            if not assignment.due_date or assignment.due_date >= _utc_now_naive():
+                continue
+            rubric = Rubric.query.filter_by(assignmentID=assignment.id).first()
+            if not rubric:
+                continue
+            submitted_students = [
+                s for s in cosc_224_students
+                if Submission.query.filter_by(studentID=s.id, assignmentID=assignment.id).first()
+            ]
+            if not submitted_students:
+                continue
+            _seed_teacher_criterion_grades(
+                teacher=group_teacher_user,
+                assignment=assignment,
+                rubric=rubric,
+                students=submitted_students,
+                completed_at=assignment.due_date + timedelta(days=1),
+            )
+            click.echo(f"  ✓ Seeded teacher grades for: {assignment.name} ({len(submitted_students)} students)")
 
     # Individual peer eval: create teammate review tasks and complete a mix.
     individual_assignments = [

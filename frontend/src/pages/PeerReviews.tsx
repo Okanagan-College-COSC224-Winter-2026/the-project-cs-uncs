@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useParams} from 'react-router-dom';
 import {
-  getAssignedReviews,
-  getAssignmentDetails,
-  getGroupPeerEvalStatus,
-  hintAssignmentType,
-  submitGroupPeerEval,
-  updateGroupPeerEval,
-  unsubmitGroupPeerEval,
-  syncIndividualPeerEvalReviews,
-  type PeerEvalGroupStatusResponse,
-  type PeerEvalGroupEvaluation,
+    getAssignedReviews,
+    getAssignmentDetails,
+    getGroupPeerEvalStatus,
+    hintAssignmentType,
+    type PeerEvalGroupEvaluation,
+    type PeerEvalGroupStatusResponse,
+    submitGroupPeerEval,
+    syncIndividualPeerEvalReviews,
+    unsubmitGroupPeerEval,
+    updateGroupPeerEval,
 } from '../util/api';
 import TabNavigation from '../components/TabNavigation';
 import BackArrow from '../components/BackArrow';
 import Button from '../components/Button';
 import Criteria from '../components/Criteria';
 import HeaderTitle from '../components/HeaderTitle';
-import { ReviewSubmissionPanel } from './ReviewSubmission';
+import {ReviewSubmissionPanel} from './ReviewSubmission';
 import './PeerReviews.css';
 import './Assignment.css';
 
@@ -26,6 +26,8 @@ interface Review {
   reviewee: {
     id: number;
     name: string;
+    preferred_name?: string;
+    preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them';
     email: string;
   };
   completed: boolean;
@@ -131,6 +133,10 @@ export default function PeerReviews() {
     setActiveReviewId(reviewId);
   };
 
+  const formatStudentName = (person: Review['reviewee']) => {
+    return String(person?.preferred_name || '').trim() || String(person?.name || '').trim()
+  }
+
   const groupCriteriaMeta = useMemo(() => {
     const criteria = groupStatus?.criteria ?? [];
     return {
@@ -152,8 +158,7 @@ export default function PeerReviews() {
     setGroupDraft((prev) => {
       const byTarget = prev[targetGroupId] ? { ...prev[targetGroupId] } : {};
       const existing = byTarget[criterionRowID] ?? 0;
-      const nextGrade = existing === column ? 0 : column;
-      byTarget[criterionRowID] = nextGrade;
+        byTarget[criterionRowID] = existing === column ? 0 : column;
       return { ...prev, [targetGroupId]: byTarget };
     });
   };
@@ -210,6 +215,7 @@ export default function PeerReviews() {
 
   const handleEditGroup = () => {
     if (!groupStatus?.submission) return;
+    if (editingGroupSubmission) return;
 
     const nextDraft: Record<number, Record<number, number>> = {};
     const nextAdditional: Record<number, string> = {};
@@ -390,8 +396,12 @@ export default function PeerReviews() {
                       <Button onClick={handleUnsubmitGroup} disabled={unsubmittingGroup || submittingGroup}>
                         {unsubmittingGroup ? 'Unsubmitting...' : 'Unsubmit Peer Evaluation'}
                       </Button>
-                      <Button type="secondary" onClick={handleEditGroup} disabled={submittingGroup || unsubmittingGroup}>
-                        Edit
+                      <Button
+                        type="secondary"
+                        onClick={editingGroupSubmission ? handleSubmitGroup : handleEditGroup}
+                        disabled={submittingGroup || unsubmittingGroup || (editingGroupSubmission && !canSubmitGroup)}
+                      >
+                        {submittingGroup ? 'Saving...' : (editingGroupSubmission ? 'Save Changes' : 'Edit')}
                       </Button>
                     </div>
                   </div>
@@ -496,7 +506,7 @@ export default function PeerReviews() {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                   <Button onClick={handleSubmitGroup} disabled={!canSubmitGroup || submittingGroup}>
-                    {submittingGroup ? 'Submitting...' : 'Submit Peer Evaluation'}
+                    {submittingGroup ? 'Submitting...' : (groupStatus?.submitted ? 'Update Peer Evaluation' : 'Submit Peer Evaluation')}
                   </Button>
                 </div>
               </>
@@ -526,7 +536,7 @@ export default function PeerReviews() {
                 onClick={() => handleReviewClick(review.id)}
               >
                 <div className="review-info">
-                  <h4>{review.reviewee.name}</h4>
+                  <h4>{formatStudentName(review.reviewee)}</h4>
                   {assignmentType !== 'peer_eval_individual' ? (
                     review.submission ? (
                       <p className="submission-status">

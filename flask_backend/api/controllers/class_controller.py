@@ -1,6 +1,8 @@
 """Class controller - handles class and enrollment operations."""
 
-from flask import Blueprint, jsonify, request
+from pathlib import Path
+
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash
@@ -10,7 +12,23 @@ import io
 import re
 from typing import List, Dict
 
-from ..models import Assignment, Course, Group, GroupMember, Review, User, User_Course, db
+from ..models import (
+    Assignment,
+    CriteriaDescription,
+    Course,
+    Criterion,
+    Group,
+    GroupEvaluationCriterion,
+    GroupEvaluationSubmission,
+    GroupEvaluationTarget,
+    GroupMember,
+    Review,
+    Rubric,
+    Submission,
+    User,
+    User_Course,
+    db,
+)
 from ..services import generate_temp_password, send_new_account_email
 from .auth_controller import jwt_teacher_required
 
@@ -38,6 +56,49 @@ def create_class():
     new_class = Course(teacherID=user.id, name=class_name)
     Course.create_course(new_class)
     return jsonify({"msg": "Class created", "class": {"id": new_class.id}}), 201
+
+
+@bp.route("/delete_class/<int:class_id>", methods=["DELETE"])
+@jwt_teacher_required
+def delete_class(class_id: int):
+    """Delete a course.
+
+    Allowed for:
+      - Admin
+      - The course's teacher
+    """
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    if not user.is_admin() and course.teacherID != user.id:
+        return jsonify({"msg": "Unauthorized: You are not the teacher of this class or an admin"}), 403
+
+    # Clean up any assignment attachment files stored on disk. (The DB rows are
+    # removed via cascades when deleting the course.)
+    uploads_dir = Path(current_app.instance_path) / "uploads"
+    attachment_rows = (
+        Assignment.query.with_entities(Assignment.attachment_storage_name)
+        .filter(Assignment.courseID == course.id, Assignment.attachment_storage_name.isnot(None))
+        .all()
+    )
+    for (storage_name,) in attachment_rows:
+        if not storage_name:
+            continue
+        try:
+            (uploads_dir / storage_name).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    db.session.delete(course)
+    db.session.commit()
+
+    return jsonify({"msg": "Class deleted"}), 200
 
 
 @bp.route("/browse_classes", methods=["GET"])
@@ -657,3 +718,278 @@ def join_roster_course():
         return jsonify({"msg": f"Successfully joined course {course.name}"}), 200
     except Exception as e:
         return jsonify({"msg": f"Error joining course: {str(e)}"}), 500
+
+
+@bp.route("/<int:class_id>/gradebook", methods=["GET"])
+@jwt_required()
+def get_gradebook(class_id: int):
+    """Return gradebook data for a course (teacher/admin only).
+
+    Response shape:
+    {
+      "assignments": [{"id": int, "name": str, "assignment_type": str, "max_points": int | null}, ...],
+      "rows": [
+        {
+          "student": {"id": int, "name": str},
+          "grades": {"<assignment_id>": float | null, ...},
+          "feedback_counts": {"<assignment_id>": int | null, ...}
+        },
+        ...
+      ]
+    }
+    """
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+    if not (user.is_admin() or is_course_teacher):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    assignments = (
+        Assignment.query.filter_by(courseID=class_id)
+        .order_by(Assignment.due_date.asc().nullslast(), Assignment.id.asc())
+        .all()
+    )
+    students = course.students.all() if hasattr(course.students, "all") else list(course.students)
+
+    assignment_ids = [a.id for a in assignments]
+    assignment_max_points: dict[int, int | None] = {a.id: None for a in assignments}
+    if assignment_ids:
+        max_rows = (
+            db.session.query(
+                Rubric.assignmentID,
+                func.coalesce(func.sum(CriteriaDescription.scoreMax), 0),
+            )
+            .outerjoin(CriteriaDescription, CriteriaDescription.rubricID == Rubric.id)
+            .filter(Rubric.assignmentID.in_(assignment_ids))
+            .group_by(Rubric.assignmentID)
+            .all()
+        )
+        for assignment_id, max_points in max_rows:
+            criteria_total = int(max_points)
+            if criteria_total > 0:
+                assignment_max_points[int(assignment_id)] = criteria_total
+            # else: no criteria — fall through to assignment.max_points below
+
+    # For assignments without rubric criteria, use the assignment's max_points field as fallback.
+    for a in assignments:
+        if assignment_max_points[a.id] is None and a.max_points:
+            assignment_max_points[a.id] = a.max_points
+
+    # Build lookups keyed by (student_id, assignment_id)
+    grade_lookup: dict[tuple[int, int], float | None] = {}
+    feedback_count_lookup: dict[tuple[int, int], int] = {}
+    student_ids = [s.id for s in students]
+    if assignments and students:
+        submissions = (
+            Submission.query
+            .filter(
+                Submission.assignmentID.in_(assignment_ids),
+                Submission.studentID.in_(student_ids),
+            )
+            .all()
+        )
+        for sub in submissions:
+            grade_lookup[(sub.studentID, sub.assignmentID)] = sub.grade
+
+    # If no manual grade exists, backfill peer-eval assignments from scored criteria.
+    individual_peer_assignments = [a.id for a in assignments if a.assignment_type == "peer_eval_individual"]
+    if individual_peer_assignments and students:
+        completed_count_rows = (
+            db.session.query(
+                Review.assignmentID,
+                Review.revieweeID,
+                func.count(Review.id),
+            )
+            .filter(
+                Review.assignmentID.in_(individual_peer_assignments),
+                Review.revieweeID.in_(student_ids),
+                Review.completed.is_(True),
+            )
+            .group_by(Review.assignmentID, Review.revieweeID)
+            .all()
+        )
+        for assignment_id, reviewee_id, completed_count in completed_count_rows:
+            feedback_count_lookup[(int(reviewee_id), int(assignment_id))] = int(completed_count)
+
+        received_rows = (
+            db.session.query(
+                Review.assignmentID,
+                Review.revieweeID,
+                func.coalesce(func.sum(Criterion.grade), 0),
+            )
+            .outerjoin(Criterion, Criterion.reviewID == Review.id)
+            .filter(
+                Review.assignmentID.in_(individual_peer_assignments),
+                Review.revieweeID.in_(student_ids),
+                Review.completed.is_(True),
+            )
+            .group_by(Review.assignmentID, Review.revieweeID)
+            .all()
+        )
+        for assignment_id, reviewee_id, total_score in received_rows:
+            key = (int(reviewee_id), int(assignment_id))
+            if key not in grade_lookup or grade_lookup[key] is None:
+                grade_lookup[key] = float(total_score)
+
+    group_peer_assignments = [a.id for a in assignments if a.assignment_type == "peer_eval_group"]
+    if group_peer_assignments and students:
+        student_group_rows = (
+            db.session.query(GroupMember.user_id, GroupMember.group_id)
+            .join(Group, Group.id == GroupMember.group_id)
+            .filter(Group.course_id == class_id, GroupMember.user_id.in_(student_ids))
+            .all()
+        )
+        group_id_by_student_id = {int(user_id): int(group_id) for user_id, group_id in student_group_rows}
+
+        group_totals_rows = (
+            db.session.query(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+                func.coalesce(func.sum(GroupEvaluationCriterion.grade), 0),
+            )
+            .join(
+                GroupEvaluationTarget,
+                GroupEvaluationTarget.submission_id == GroupEvaluationSubmission.id,
+            )
+            .outerjoin(
+                GroupEvaluationCriterion,
+                GroupEvaluationCriterion.target_id == GroupEvaluationTarget.id,
+            )
+            .filter(GroupEvaluationSubmission.assignment_id.in_(group_peer_assignments))
+            .group_by(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+            )
+            .all()
+        )
+        group_count_rows = (
+            db.session.query(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+                func.count(GroupEvaluationTarget.id),
+            )
+            .join(
+                GroupEvaluationTarget,
+                GroupEvaluationTarget.submission_id == GroupEvaluationSubmission.id,
+            )
+            .filter(GroupEvaluationSubmission.assignment_id.in_(group_peer_assignments))
+            .group_by(
+                GroupEvaluationSubmission.assignment_id,
+                GroupEvaluationTarget.reviewee_group_id,
+            )
+            .all()
+        )
+        total_by_assignment_and_group = {
+            (int(assignment_id), int(group_id)): float(total_score)
+            for assignment_id, group_id, total_score in group_totals_rows
+        }
+        count_by_assignment_and_group = {
+            (int(assignment_id), int(group_id)): int(review_count)
+            for assignment_id, group_id, review_count in group_count_rows
+        }
+
+        for student_id, group_id in group_id_by_student_id.items():
+            for assignment_id in group_peer_assignments:
+                review_count = count_by_assignment_and_group.get((assignment_id, group_id))
+                if review_count is not None:
+                    feedback_count_lookup[(student_id, assignment_id)] = review_count
+                total_score = total_by_assignment_and_group.get((assignment_id, group_id))
+                if total_score is None:
+                    continue
+                key = (student_id, assignment_id)
+                if key not in grade_lookup or grade_lookup[key] is None:
+                    grade_lookup[key] = total_score
+
+    rows = []
+    for student in sorted(students, key=lambda s: s.name):
+        grades = {}
+        feedback_counts = {}
+        for assignment in assignments:
+            key = (student.id, assignment.id)
+            grades[str(assignment.id)] = grade_lookup.get(key)
+            feedback_counts[str(assignment.id)] = feedback_count_lookup.get(key)
+        rows.append({
+            "student": {"id": student.id, "name": student.name},
+            "grades": grades,
+            "feedback_counts": feedback_counts,
+        })
+
+    return jsonify({
+        "assignments": [
+            {
+                "id": a.id,
+                "name": a.name,
+                "assignment_type": a.assignment_type,
+                "max_points": assignment_max_points.get(a.id),
+            }
+            for a in assignments
+        ],
+        "rows": rows,
+    }), 200
+
+
+@bp.route("/<int:class_id>/gradebook/<int:student_id>/<int:assignment_id>", methods=["PATCH"])
+@jwt_required()
+def update_grade(class_id: int, student_id: int, assignment_id: int):
+    """Update a student's grade for an assignment (teacher/admin only).
+
+    Body: { "grade": number | null }
+    """
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+    if not (user.is_admin() or is_course_teacher):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment or assignment.courseID != class_id:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    student = User.get_by_id(student_id)
+    if not student:
+        return jsonify({"msg": "Student not found"}), 404
+
+    enrollment = User_Course.get(student_id, class_id)
+    if not enrollment:
+        return jsonify({"msg": "Student is not enrolled in this class"}), 404
+
+    data = request.get_json(silent=True) or {}
+    grade_value = data.get("grade")
+
+    if grade_value is not None:
+        try:
+            grade_value = float(grade_value)
+        except (TypeError, ValueError):
+            return jsonify({"msg": "Grade must be a number or null"}), 400
+        if grade_value < 0:
+            return jsonify({"msg": "Grade cannot be negative"}), 400
+
+    submission = Submission.query.filter_by(
+        studentID=student_id, assignmentID=assignment_id
+    ).first()
+
+    if submission is None:
+        if grade_value is None:
+            return jsonify({"grade": None}), 200
+        # Create a grade-only submission (no file)
+        submission = Submission(path=None, studentID=student_id, assignmentID=assignment_id)
+        db.session.add(submission)
+
+    submission.grade = grade_value
+    db.session.commit()
+
+    return jsonify({"grade": submission.grade}), 200

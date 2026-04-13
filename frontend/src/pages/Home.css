@@ -89,17 +89,23 @@
 }
 
 .AdminStats {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-md);
 }
 
 .AdminStatCard {
-  min-width: 180px;
+  min-width: 0;
   padding: var(--spacing-md);
   border-radius: var(--border-radius-md);
   border: 1px solid var(--border-color);
   background: var(--background-primary);
+}
+
+@media (max-width: 768px) {
+  .AdminStats {
+    grid-template-columns: 1fr;
+  }
 }
 
 .AdminStatValue {

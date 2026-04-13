@@ -1,6 +1,12 @@
 import { BASE_URL, getErrorMessageFromResponse, maybeHandleExpire, safeFetch } from './core'
 
-export type CourseGroupMember = { id: number; name: string; email?: string }
+export type CourseGroupMember = {
+  id: number
+  name: string
+  preferred_name?: string
+  preferred_pronouns?: 'Not specified' | 'he/him' | 'she/her' | 'they/them'
+  email?: string
+}
 export type CourseGroup = { id: number; name: string; members: CourseGroupMember[] }
 
 export const listCourseGroups = async (courseId: number): Promise<CourseGroup[]> => {

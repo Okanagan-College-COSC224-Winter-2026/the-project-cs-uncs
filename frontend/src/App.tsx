@@ -17,6 +17,7 @@ import ClassMembers from "./pages/ClassMembers";
 import Assignment from "./pages/Assignment";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePassword from "./pages/ChangePassword";
+import Help from "./pages/Help";
 // CreateTeacher removed in favor of AdminUsers
 import AdminUsers from "./pages/AdminUsers";
 import PeerReviews from "./pages/PeerReviews";
@@ -28,9 +29,10 @@ import AssignmentDetails from "./pages/AssignmentDetails";
 import Groups from "./pages/Groups";
 import Submissions from "./pages/Submissions";
 import MyGroup from "./pages/MyGroup";
+import Gradebook from "./pages/Gradebook";
 
 import { useEffect, useState } from "react";
-import { getCurrentUser } from "./util/api_client/users";
+import { getCurrentUser } from "./util/api_client";
 
 const NO_SIDEBAR_PATHS = ["/", "/login", "/register"];
 
@@ -40,6 +42,7 @@ function AppContent() {
 
   // Block rendering until user info is synced from backend
   const [userSyncDone, setUserSyncDone] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -67,8 +70,17 @@ function AppContent() {
 
   return (
     <div className="App">
-      {!isPublicPath && <Sidebar />}
+      {!isPublicPath && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       <div className="inner">
+        {!isPublicPath && (
+          <button
+            className="MobileMenuButton"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open Menu"
+          >
+            ☰
+          </button>
+        )}
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -76,6 +88,12 @@ function AppContent() {
           <Route path="/change-password" element={
             <ProtectedRoute>
               <ChangePassword />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/help" element={
+            <ProtectedRoute>
+              <Help />
             </ProtectedRoute>
           } />
 
@@ -113,12 +131,6 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/profile/:id" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-
           <Route path="/classes/:id/home" element={
             <ProtectedRoute>
               <ClassRouteGuard>
@@ -139,6 +151,14 @@ function AppContent() {
             <ProtectedRoute>
               <ClassRouteGuard>
                 <Groups />
+              </ClassRouteGuard>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/classes/:id/gradebook" element={
+            <ProtectedRoute>
+              <ClassRouteGuard requireTeacherOrAdmin>
+                <Gradebook />
               </ClassRouteGuard>
             </ProtectedRoute>
           } />

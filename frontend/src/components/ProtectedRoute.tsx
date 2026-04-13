@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getCurrentUser } from "../util/api_client/users";
+import { getCurrentUser } from "../util/api_client";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -16,13 +16,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
         ;(async () => {
             try {
-                const user = await getCurrentUser();
-                    localStorage.setItem('user', JSON.stringify(user));
+                const user = await getCurrentUser() as { must_change_password?: boolean };
+                localStorage.setItem('user', JSON.stringify(user));
                 if (cancelled) return;
 
                 // If user must change password, redirect to /change-password
                 // (unless they're already on that page)
-                if (user.must_change_password && location.pathname !== "/change-password") {
+                if (user.must_change_password === true && location.pathname !== "/change-password") {
                     navigate("/change-password");
                     return;
                 }

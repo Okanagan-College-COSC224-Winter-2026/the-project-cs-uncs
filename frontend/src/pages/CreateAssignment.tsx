@@ -47,6 +47,7 @@ export default function CreateAssignment() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [maxPoints, setMaxPoints] = useState('100')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [assignmentType, setAssignmentType] = useState<AssignmentType>('standard')
 
@@ -67,7 +68,6 @@ export default function CreateAssignment() {
     return `${yyyy}-${mm}-${dd}`
   })()
 
-  const showRubricEditor = assignmentType === 'peer_eval_group' || assignmentType === 'peer_eval_individual'
   const showGroupSelector = assignmentType === 'peer_eval_group'
   const showAttachment = assignmentType === 'standard'
 
@@ -95,12 +95,8 @@ export default function CreateAssignment() {
   }, [showGroupSelector, courseGroups])
 
   useEffect(() => {
-    if (!showRubricEditor) {
-      setRubricCriteria([])
-      return
-    }
     setRubricCriteria(defaultRubricFor(assignmentType))
-  }, [assignmentType, showRubricEditor])
+  }, [assignmentType])
 
   // If switching away from group peer eval, clear selection.
   useEffect(() => {
@@ -154,15 +150,32 @@ export default function CreateAssignment() {
       }
     }
 
-    if (showRubricEditor) {
+    // Peer eval types require at least one rubric criterion.
+    if (assignmentType !== 'standard') {
       if (hasEmptyRubricQuestion(rubricCriteria)) {
         setStatusType('error')
         setStatusMessage('Rubric must have at least one criterion with a question')
         return
       }
-      if (hasInvalidRubricScore(rubricCriteria)) {
+    }
+
+    // Validate scores on any criteria that were entered.
+    if (rubricCriteria.some((c) => c.question.trim()) && hasInvalidRubricScore(rubricCriteria)) {
+      setStatusType('error')
+      setStatusMessage('Rubric scores must be whole numbers between 1 and 10')
+      return
+    }
+
+    if (showAttachment) {
+      if (!maxPoints.trim()) {
         setStatusType('error')
-        setStatusMessage('Rubric scores must be whole numbers between 1 and 10')
+        setStatusMessage('Max Points is required')
+        return
+      }
+      const mp = Number(maxPoints.trim())
+      if (!Number.isInteger(mp) || mp < 1) {
+        setStatusType('error')
+        setStatusMessage('Max Points must be a positive whole number')
         return
       }
     }
@@ -177,6 +190,14 @@ export default function CreateAssignment() {
         formData.append('description', description)
         // Send as YYYY-MM-DD to avoid timezone shifting on the frontend.
         formData.append('due_date', dueDate)
+        formData.append('max_points', maxPoints.trim())
+        const filledCriteria = rubricCriteria.filter((c) => c.question.trim())
+        if (filledCriteria.length > 0) {
+          formData.append(
+            'rubric_criteria',
+            JSON.stringify(filledCriteria.map((c) => ({ question: c.question, scoreMax: c.scoreMax })))
+          )
+        }
         if (attachedFile) {
           formData.append('file', attachedFile)
         }
@@ -190,14 +211,12 @@ export default function CreateAssignment() {
           due_date: dueDate,
           assignment_type: assignmentType,
           included_group_ids: showGroupSelector ? includedGroupIds : undefined,
-          rubric_criteria: showRubricEditor
-            ? rubricCriteria
-                .filter((c) => c.question.trim())
-                .map((c) => ({
-                  question: c.question,
-                  scoreMax: c.scoreMax,
-                }))
-            : undefined,
+          rubric_criteria: rubricCriteria
+              .filter((c) => c.question.trim())
+              .map((c) => ({
+                question: c.question,
+                scoreMax: c.scoreMax,
+              })),
         })
       }
       navigate(`/classes/${id}/home`)
@@ -270,13 +289,26 @@ export default function CreateAssignment() {
         }}
       />
 
-      {showRubricEditor ? (
-        <RubricEditorPanel
-          header={<h2>Rubric</h2>}
-          criteria={rubricCriteria}
-          onChange={setRubricCriteria}
-        />
+      {showAttachment ? (
+        <>
+          <h2>Max Points</h2>
+          <Textbox
+            type="number"
+            value={maxPoints}
+            placeholder="e.g. 100"
+            onInput={(v) => {
+              setMaxPoints(v)
+              if (statusMessage) setStatusMessage('')
+            }}
+          />
+        </>
       ) : null}
+
+      <RubricEditorPanel
+        header={<h2>Rubric {assignmentType === 'standard' ? <span className="CreateAssignmentHint">(optional)</span> : null}</h2>}
+        criteria={rubricCriteria}
+        onChange={setRubricCriteria}
+      />
 
       {showGroupSelector ? (
         <div>

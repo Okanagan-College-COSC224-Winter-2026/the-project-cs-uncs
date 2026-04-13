@@ -24,6 +24,45 @@ Before you begin, ensure you have these installed:
 
 ---
 
+## Running Application if Setup Complete
+
+### Backend
+
+**Windows**
+New terminal in the directory the-project-cs-uncs.
+cd flask_backend
+.\venv\Scripts\Activate.ps1
+$env:FLASK_APP = "api"
+$env:SMTP_HOST="smtp.gmail.com"
+$env:SMTP_PORT="587"
+$env:SMTP_USER="your_email@gmail.com"
+$env:SMTP_PASS="App Password"
+$env:SMTP_FROM_EMAIL="your_email@gmail.com"
+$env:SMTP_FROM_NAME="Peer Evaluation App"
+$env:SMTP_USE_SSL="false"
+flask run
+
+**Mac**
+New terminal in the directory the-project-cs-uncs.
+cd flask_backend
+source venv/bin/activate
+export FLASK_APP=api
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USER=your_email@gmail.com
+export SMTP_PASS=App Password
+export SMTP_FROM_EMAIL=your_email@gmail.com
+export SMTP_FROM_NAME=Peer Evaluation App
+export SMTP_USE_SSL=false
+flask run
+
+### Frontend
+New terminal in the directory the-project-cs-uncs.
+cd frontend
+npm run dev
+
+---
+
 ## 🚀 Quick Setup (5 Steps)
 
 ### Step 1: Clone the Repository
@@ -43,6 +82,13 @@ python -m venv venv
 pip install -e .
 pip install -r requirements-dev.txt
 $env:FLASK_APP = "api"       # Required for all flask CLI commands in this session
+$env:SMTP_HOST="smtp.gmail.com"
+$env:SMTP_PORT="587"
+$env:SMTP_USER="your_email@gmail.com"
+$env:SMTP_PASS="App Password"
+$env:SMTP_FROM_EMAIL="your_email@gmail.com"
+$env:SMTP_FROM_NAME="Peer Evaluation App"
+$env:SMTP_USE_SSL="false"
 flask init_db
 flask add_users
 ```
@@ -55,6 +101,13 @@ source venv/bin/activate
 pip install -e .
 pip install -r requirements-dev.txt
 export FLASK_APP=api
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USER=your_email@gmail.com
+export SMTP_PASS=App Password
+export SMTP_FROM_EMAIL=your_email@gmail.com
+export SMTP_FROM_NAME=Peer Evaluation App
+export SMTP_USE_SSL=false
 flask init_db
 flask add_users
 ```

@@ -19,6 +19,13 @@ def login_as(client, email, password):
     )
 
 
+def future_due_date():
+    return (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(days=7)
+    ).isoformat()
+
+
 @pytest.fixture
 def make_user():
     def _make_user(role="student", email="user@example.com", password="pass", name="User"):
@@ -408,13 +415,9 @@ def test_list_submissions_includes_grade(test_client, make_user, make_course, en
     enroll_user_in_course(student.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (
-        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        + datetime.timedelta(days=7)
-    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
-        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
+        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": future_due_date()}),
         headers={"Content-Type": "application/json"},
     )
     assert create_resp.status_code == 201
@@ -452,13 +455,9 @@ def test_get_my_submission_includes_grade(test_client, make_user, make_course, e
     enroll_user_in_course(student.id, course.id)
 
     login_as(test_client, "t@example.com", "tpass")
-    due_date = (
-        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        + datetime.timedelta(days=7)
-    ).isoformat()
     create_resp = test_client.post(
         "/assignment/create_assignment",
-        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": due_date}),
+        data=json.dumps({"courseID": course.id, "name": "A1", "rubric": "R", "due_date": future_due_date()}),
         headers={"Content-Type": "application/json"},
     )
     assert create_resp.status_code == 201

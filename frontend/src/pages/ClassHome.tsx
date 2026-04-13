@@ -239,6 +239,7 @@ export default function ClassHome() {
                 { label: "Assignments", path: `/classes/${id}/home` },
                 { label: "Members", path: `/classes/${id}/members` },
                 { label: "Groups", path: `/classes/${id}/groups` },
+                { label: "Gradebook", path: `/classes/${id}/gradebook` },
               ]
             : [
                 { label: "Assignments", path: `/classes/${id}/home` },

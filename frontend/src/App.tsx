@@ -29,6 +29,7 @@ import AssignmentDetails from "./pages/AssignmentDetails";
 import Groups from "./pages/Groups";
 import Submissions from "./pages/Submissions";
 import MyGroup from "./pages/MyGroup";
+import Gradebook from "./pages/Gradebook";
 
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "./util/api_client/users";
@@ -140,6 +141,14 @@ function AppContent() {
             <ProtectedRoute>
               <ClassRouteGuard>
                 <Groups />
+              </ClassRouteGuard>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/classes/:id/gradebook" element={
+            <ProtectedRoute>
+              <ClassRouteGuard requireTeacherOrAdmin>
+                <Gradebook />
               </ClassRouteGuard>
             </ProtectedRoute>
           } />

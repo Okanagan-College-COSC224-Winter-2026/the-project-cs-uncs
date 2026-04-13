@@ -234,3 +234,55 @@ export const getAvailableCourses = async () => {
   return await resp.json()
 }
 
+export interface GradebookAssignment {
+  id: number
+  name: string
+}
+
+export interface GradebookRow {
+  student: { id: number; name: string }
+  grades: Record<string, number | null>
+}
+
+export interface GradebookData {
+  assignments: GradebookAssignment[]
+  rows: GradebookRow[]
+}
+
+export const getGradebook = async (classId: number): Promise<GradebookData> => {
+  const resp = await safeFetch(`${BASE_URL}/class/${classId}/gradebook`, {
+    method: 'GET',
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(await getErrorMessageFromResponse(resp))
+  }
+
+  return await resp.json()
+}
+
+export const updateGrade = async (
+  classId: number,
+  studentId: number,
+  assignmentId: number,
+  grade: number | null
+): Promise<{ grade: number | null }> => {
+  const resp = await safeFetch(`${BASE_URL}/class/${classId}/gradebook/${studentId}/${assignmentId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grade }),
+    credentials: 'include',
+  })
+
+  maybeHandleExpire(resp)
+
+  if (!resp.ok) {
+    throw new Error(await getErrorMessageFromResponse(resp))
+  }
+
+  return await resp.json()
+}
+

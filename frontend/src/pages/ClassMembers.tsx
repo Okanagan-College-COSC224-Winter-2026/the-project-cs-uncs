@@ -276,6 +276,10 @@ export default function ClassMembers() {
             label: "Groups",
             path: `/classes/${id}/groups`,
           },
+          {
+            label: "Gradebook",
+            path: `/classes/${id}/gradebook`,
+          },
         ]}
       />
 

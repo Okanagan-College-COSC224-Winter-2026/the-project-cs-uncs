@@ -12,7 +12,7 @@ import io
 import re
 from typing import List, Dict
 
-from ..models import Assignment, Course, Group, GroupMember, Review, User, User_Course, db
+from ..models import Assignment, Course, Group, GroupMember, Review, Submission, User, User_Course, db
 from ..services import generate_temp_password, send_new_account_email
 from .auth_controller import jwt_teacher_required
 
@@ -702,3 +702,129 @@ def join_roster_course():
         return jsonify({"msg": f"Successfully joined course {course.name}"}), 200
     except Exception as e:
         return jsonify({"msg": f"Error joining course: {str(e)}"}), 500
+
+
+@bp.route("/<int:class_id>/gradebook", methods=["GET"])
+@jwt_required()
+def get_gradebook(class_id: int):
+    """Return gradebook data for a course (teacher/admin only).
+
+    Response shape:
+    {
+      "assignments": [{"id": int, "name": str}, ...],
+      "rows": [
+        {
+          "student": {"id": int, "name": str},
+          "grades": {"<assignment_id>": float | null, ...}
+        },
+        ...
+      ]
+    }
+    """
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+    if not (user.is_admin() or is_course_teacher):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    assignments = Assignment.query.filter_by(courseID=class_id).order_by(Assignment.due_date.asc().nullslast(), Assignment.id.asc()).all()
+    students = course.students.all() if hasattr(course.students, "all") else list(course.students)
+
+    # Build a lookup: (student_id, assignment_id) -> grade
+    grade_lookup: dict[tuple[int, int], float | None] = {}
+    if assignments and students:
+        assignment_ids = [a.id for a in assignments]
+        student_ids = [s.id for s in students]
+        submissions = (
+            Submission.query
+            .filter(
+                Submission.assignmentID.in_(assignment_ids),
+                Submission.studentID.in_(student_ids),
+            )
+            .all()
+        )
+        for sub in submissions:
+            grade_lookup[(sub.studentID, sub.assignmentID)] = sub.grade
+
+    rows = []
+    for student in sorted(students, key=lambda s: s.name):
+        grades = {}
+        for assignment in assignments:
+            key = (student.id, assignment.id)
+            grades[str(assignment.id)] = grade_lookup.get(key)
+        rows.append({
+            "student": {"id": student.id, "name": student.name},
+            "grades": grades,
+        })
+
+    return jsonify({
+        "assignments": [{"id": a.id, "name": a.name} for a in assignments],
+        "rows": rows,
+    }), 200
+
+
+@bp.route("/<int:class_id>/gradebook/<int:student_id>/<int:assignment_id>", methods=["PATCH"])
+@jwt_required()
+def update_grade(class_id: int, student_id: int, assignment_id: int):
+    """Update a student's grade for an assignment (teacher/admin only).
+
+    Body: { "grade": number | null }
+    """
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    course = Course.get_by_id(class_id)
+    if not course:
+        return jsonify({"msg": "Class not found"}), 404
+
+    is_course_teacher = user.is_teacher() and course.teacherID == user.id
+    if not (user.is_admin() or is_course_teacher):
+        return jsonify({"msg": "Unauthorized"}), 403
+
+    assignment = Assignment.get_by_id(assignment_id)
+    if not assignment or assignment.courseID != class_id:
+        return jsonify({"msg": "Assignment not found"}), 404
+
+    student = User.get_by_id(student_id)
+    if not student:
+        return jsonify({"msg": "Student not found"}), 404
+
+    enrollment = User_Course.get(student_id, class_id)
+    if not enrollment:
+        return jsonify({"msg": "Student is not enrolled in this class"}), 404
+
+    data = request.get_json(silent=True) or {}
+    grade_value = data.get("grade")
+
+    if grade_value is not None:
+        try:
+            grade_value = float(grade_value)
+        except (TypeError, ValueError):
+            return jsonify({"msg": "Grade must be a number or null"}), 400
+        if grade_value < 0:
+            return jsonify({"msg": "Grade cannot be negative"}), 400
+
+    submission = Submission.query.filter_by(
+        studentID=student_id, assignmentID=assignment_id
+    ).first()
+
+    if submission is None:
+        if grade_value is None:
+            return jsonify({"grade": None}), 200
+        # Create a grade-only submission (no file)
+        submission = Submission(path=None, studentID=student_id, assignmentID=assignment_id)
+        db.session.add(submission)
+
+    submission.grade = grade_value
+    db.session.commit()
+
+    return jsonify({"grade": submission.grade}), 200

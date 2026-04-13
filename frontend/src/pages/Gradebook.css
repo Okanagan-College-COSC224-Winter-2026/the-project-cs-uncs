@@ -1,0 +1,120 @@
+.GradebookWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.GradebookTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  background-color: var(--background-secondary);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.GradebookTable th,
+.GradebookTable td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.GradebookStudentHeader,
+.GradebookStudentCell {
+  text-align: left;
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.GradebookTable thead th {
+  background-color: var(--background-primary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.GradebookTable thead th a {
+  color: var(--color-primary, #4f8ef7);
+  text-decoration: none;
+}
+
+.GradebookTable thead th a:hover {
+  text-decoration: underline;
+}
+
+.GradebookAssignmentHeader {
+  min-width: 120px;
+}
+
+.GradebookGradeCell {
+  padding: 4px var(--spacing-sm);
+}
+
+.GradebookGradeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: inherit;
+  width: 100%;
+  min-width: 60px;
+}
+
+.GradebookGradeBtn:hover {
+  background-color: var(--background-primary);
+  outline: 2px solid var(--border-color);
+}
+
+.GradebookNoGrade {
+  color: var(--text-secondary, #888);
+}
+
+.GradebookEditCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.GradebookInput {
+  width: 70px;
+  padding: 4px 6px;
+  border-radius: var(--border-radius);
+  border: 2px solid var(--color-primary, #4f8ef7);
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+  font-size: inherit;
+}
+
+.GradebookSaveBtn,
+.GradebookCancelBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: var(--border-radius);
+  line-height: 1;
+}
+
+.GradebookSaveBtn {
+  color: var(--color-success, #2ecc71);
+}
+
+.GradebookSaveBtn:hover:not(:disabled) {
+  background-color: var(--background-primary);
+}
+
+.GradebookCancelBtn {
+  color: var(--color-danger, #e74c3c);
+}
+
+.GradebookCancelBtn:hover:not(:disabled) {
+  background-color: var(--background-primary);
+}
+
+.GradebookEmpty {
+  color: var(--text-secondary, #888);
+}

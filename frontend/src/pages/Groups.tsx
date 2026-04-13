@@ -228,6 +228,7 @@ export default function Groups() {
             { label: "Assignments", path: `/classes/${courseId ?? id}/home` },
             { label: "Members", path: `/classes/${courseId ?? id}/members` },
             { label: "Groups", path: `/classes/${courseId ?? id}/groups` },
+            { label: "Gradebook", path: `/classes/${courseId ?? id}/gradebook` },
         ],
         [courseId, id]
     );

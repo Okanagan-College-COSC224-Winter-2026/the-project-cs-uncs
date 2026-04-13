@@ -64,6 +64,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           >
             Change Password
           </SidebarRow>
+
+          <SidebarRow
+            selected={location === '/help'}
+            href="/help"
+            iconName="help"
+            onClick={onClose}
+          >
+            Help
+          </SidebarRow>
         </div>
 
         <div className="SidebarBottom">

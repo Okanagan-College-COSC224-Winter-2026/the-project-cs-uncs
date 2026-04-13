@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { getUserRole } from '../util/login';
 import './Help.css';
 
@@ -13,7 +12,6 @@ type FAQItem = {
 };
 
 export default function Help() {
-  const navigate = useNavigate();
   const userRole = getUserRole() as Role;
   const activeRole = userRole;
   const [openFAQs, setOpenFAQs] = useState<Set<string>>(new Set());
@@ -109,7 +107,7 @@ export default function Help() {
     <div className="Help-container">
       {/* Hero Section */}
       <div className="help-hero">
-        <h1>PeerLens User Guide</h1>
+        <h1>Toodle User Guide</h1>
         <p>Learn how to make the most of peer evaluation and feedback</p>
       </div>
 
@@ -604,12 +602,6 @@ export default function Help() {
         </table>
       </div>
 
-      {/* Back to Home */}
-      <div className="help-footer">
-        <button className="back-home-btn" onClick={() => navigate('/')}>
-          ← Back to Dashboard
-        </button>
-      </div>
     </div>
   );
 }

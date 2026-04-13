@@ -734,7 +734,11 @@ def get_gradebook(class_id: int):
     if not (user.is_admin() or is_course_teacher):
         return jsonify({"msg": "Unauthorized"}), 403
 
-    assignments = Assignment.query.filter_by(courseID=class_id).order_by(Assignment.due_date.asc().nullslast(), Assignment.id.asc()).all()
+    assignments = (
+        Assignment.query.filter_by(courseID=class_id)
+        .order_by(Assignment.due_date.asc().nullslast(), Assignment.id.asc())
+        .all()
+    )
     students = course.students.all() if hasattr(course.students, "all") else list(course.students)
 
     # Build a lookup: (student_id, assignment_id) -> grade

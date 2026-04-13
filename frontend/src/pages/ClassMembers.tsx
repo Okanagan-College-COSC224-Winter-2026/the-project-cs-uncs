@@ -276,10 +276,9 @@ export default function ClassMembers() {
             label: "Groups",
             path: `/classes/${id}/groups`,
           },
-          {
-            label: "Gradebook",
-            path: `/classes/${id}/gradebook`,
-          },
+          ...(isTeacher() || isAdmin()
+            ? [{ label: "Gradebook", path: `/classes/${id}/gradebook` }]
+            : []),
         ]}
       />
 
